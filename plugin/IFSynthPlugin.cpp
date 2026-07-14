@@ -58,7 +58,9 @@ protected:
         if (index >= kParamCount)
             return;
         const ParamSpec& s = kParams[index];
-        parameter.hints      = kParameterIsAutomatable | (s.logarithmic ? kParameterIsLogarithmic : 0u);
+        parameter.hints      = kParameterIsAutomatable
+                             | (s.logarithmic ? kParameterIsLogarithmic : 0u)
+                             | (s.integer     ? kParameterIsInteger     : 0u);
         parameter.name       = s.name;
         parameter.symbol     = s.symbol;
         parameter.unit       = s.unit;
@@ -77,9 +79,10 @@ protected:
         if (index >= kParamCount)
             return;
         fValues[index] = value;
-        // Gain is applied in run(); the ADSR params drive the envelope module (all voices).
+        // Gain is applied in run(); every other param drives a VoiceManager module item
+        // (propagates to all voices, live).
         if (index != kParamGain && fVoiceManager)
-            fVoiceManager->setParameter(adsrAddress(index), value);
+            fVoiceManager->setParameter(vmAddress(index), value);
     }
 
     /* -- lifecycle -------------------------------------------------------- */
@@ -114,19 +117,26 @@ private:
     std::unique_ptr<VoiceManager> fVoiceManager;
     float                         fValues[kParamCount];
 
-    static AUParameterAddress adsrAddress(uint32_t paramIndex)
+    // Map a DPF param index onto its VoiceManager module item address (gain excepted).
+    static AUParameterAddress vmAddress(uint32_t paramIndex)
     {
-        // Map a DPF param index onto the matching ADSR module item.
-        ADSRParamItem item = ADSRParamItemAttack;
         switch (paramIndex)
         {
-        case kParamAttack:  item = ADSRParamItemAttack;  break;
-        case kParamDecay:   item = ADSRParamItemDecay;   break;
-        case kParamSustain: item = ADSRParamItemSustain; break;
-        case kParamRelease: item = ADSRParamItemRelease; break;
-        default: break;
+        case kParamAttack:     return MODULE_PARAM_ADDRESS(ModuleParamKindADSR, ModuleInstance1, ADSRParamItemAttack);
+        case kParamDecay:      return MODULE_PARAM_ADDRESS(ModuleParamKindADSR, ModuleInstance1, ADSRParamItemDecay);
+        case kParamSustain:    return MODULE_PARAM_ADDRESS(ModuleParamKindADSR, ModuleInstance1, ADSRParamItemSustain);
+        case kParamRelease:    return MODULE_PARAM_ADDRESS(ModuleParamKindADSR, ModuleInstance1, ADSRParamItemRelease);
+        case kParamOscPitch:   return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemPitch);
+        case kParamOscFine:    return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemPitchFine);
+        case kParamBx:         return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemBx);
+        case kParamBy:         return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemBy);
+        case kParamStartEndY:  return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemStartEndY);
+        case kParamIFS1Squash: return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemIFS1Squash);
+        case kParamIFS2Squash: return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemIFS2Squash);
+        case kParamSmoothing:  return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemSmoothing);
+        case kParamIterations: return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemIterations);
+        default:               return 0;
         }
-        return MODULE_PARAM_ADDRESS(ModuleParamKindADSR, ModuleInstance1, item);
     }
 
     // (Re)build the VoiceManager for the current sample rate and push all defaults into it.
@@ -142,10 +152,10 @@ private:
         setConfig(MIDIParamItemFreeRun, 0);
         setConfig(MIDIParamItemLegato, 0);
 
-        // Push the current ADSR values so the envelope matches the exposed parameters.
+        // Push every non-gain param so the engine matches the exposed parameter values.
         for (uint32_t i = 0; i < kParamCount; ++i)
             if (i != kParamGain)
-                fVoiceManager->setParameter(adsrAddress(i), fValues[i]);
+                fVoiceManager->setParameter(vmAddress(i), fValues[i]);
     }
 
     void setConfig(MIDIParamItem item, float v)

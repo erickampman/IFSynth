@@ -36,6 +36,16 @@ public:
     // Register a control (already parented to this box) for row layout.
     void addControl(SubWidget* control) { fControls.push_back(control); }
 
+    // The inner content rectangle (window-absolute), below the title strip and inside padding.
+    // For panels that lay their children out themselves rather than via relayout().
+    void contentBounds(int& x, int& y, int& w, int& h) const
+    {
+        x = getAbsoluteX() + kPadding;
+        y = getAbsoluteY() + kTitleHeight;
+        w = static_cast<int>(getWidth())  - 2 * kPadding;
+        h = static_cast<int>(getHeight()) - kTitleHeight - kPadding;
+    }
+
     // Lay the registered controls out evenly across the content area.
     void relayout()
     {

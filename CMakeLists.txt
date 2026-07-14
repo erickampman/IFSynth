@@ -54,6 +54,9 @@ dpf_add_plugin(IFSynth
 target_include_directories(IFSynth PUBLIC plugin)
 # The DSP side pulls in the vendored engine.
 target_link_libraries(IFSynth-dsp PUBLIC pm_framework)
+# The UI's IFSControl pad draws the true DSP waveform via IFSCore (computeIFSWavetable), so it
+# links pm_framework too. Static-lib symbol extraction dedups it in the final .clap.
+target_link_libraries(IFSynth-ui PUBLIC pm_framework)
 # DPF may default to an older standard; the DSP glue includes C++20 framework headers.
 set_target_properties(IFSynth-dsp IFSynth-ui PROPERTIES
     CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
