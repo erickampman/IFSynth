@@ -10,6 +10,7 @@
 #include "pm_params.h"
 
 extern const ModuleParamConstantsGroup sinOscConstantsGroup;
+extern const ModuleParamConstantsGroup ifsOscConstantsGroup;
 extern const ModuleParamConstantsGroup adsrConstantsGroup;
 extern const ModuleParamConstantsGroup combineConstantsGroup;
 extern const ModuleParamConstantsGroup finalConstantsGroup;

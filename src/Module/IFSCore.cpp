@@ -1,0 +1,319 @@
+//
+//  IFSCore.cpp
+//
+
+#include "IFSCore.hpp"
+
+#include <cmath>
+#include <algorithm>
+#include <cassert>
+
+// ------------------------------------------------------------
+// Internal: evaluate the IFS attractor function f(x) at depth d.
+//
+// Uses the functional equation directly (no explicit vertex storage):
+//   f(x) = sEY + (by-sEY)*(x/bx)       + s1*(f(x/bx) - sEY)     x ∈ [0,bx]
+//   f(x) = by  + (sEY-by)*((x-bx)/(1-bx)) + s2*(f(...) - sEY)    x ∈ [bx,1]
+//
+// At depth 0 the base case is the linear tent (one iteration of PWL).
+// Cost: O(depth) per call — 4 levels = 4 float ops of overhead.
+// ------------------------------------------------------------
+
+static float evaluateIFS(float x, int depth,
+                          float bxNorm, float by, float sEY,
+                          float s1, float s2)
+{
+    if (depth == 0) {
+        // Base: linear tent from sEY → by → sEY
+        if (x <= bxNorm) {
+            return sEY + (by - sEY) * (x / bxNorm);
+        } else {
+            return by + (sEY - by) * ((x - bxNorm) / (1.0f - bxNorm));
+        }
+    }
+
+    if (x <= bxNorm) {
+        float xn = x / bxNorm;
+        float fn = evaluateIFS(xn, depth - 1, bxNorm, by, sEY, s1, s2);
+        return sEY + (by - sEY) * xn + s1 * (fn - sEY);
+    } else {
+        float xn = (x - bxNorm) / (1.0f - bxNorm);
+        float fn = evaluateIFS(xn, depth - 1, bxNorm, by, sEY, s1, s2);
+        return by + (sEY - by) * xn + s2 * (fn - sEY);
+    }
+}
+
+// ------------------------------------------------------------
+// Internal: collect the 2^n + 1 canonical vertex x-positions for n iterations.
+// These are the breakpoints of the PWL approximation at the given depth.
+// Fills `out` in left-to-right order; returns the count (= 2^n + 1).
+// ------------------------------------------------------------
+
+static void collectXPositionsRecursive(float xL, float xR, float bxNorm,
+                                        int depth, float* out, int& idx)
+{
+    if (depth == 0) {
+        out[idx++] = xL;
+        return;
+    }
+    float xMid = xL + (xR - xL) * bxNorm;
+    collectXPositionsRecursive(xL, xMid, bxNorm, depth - 1, out, idx);
+    collectXPositionsRecursive(xMid, xR, bxNorm, depth - 1, out, idx);
+}
+
+static int collectVertexXPositions(float bxNorm, int iterations, float* out)
+{
+    int idx = 0;
+    collectXPositionsRecursive(0.0f, 1.0f, bxNorm, iterations, out, idx);
+    out[idx++] = 1.0f;   // rightmost endpoint
+    return idx;           // = 2^iterations + 1
+}
+
+// ------------------------------------------------------------
+// Internal: Cardinal spline evaluation for a single sample.
+//
+// P0..P3 are the four surrounding vertex y-values.
+// t is the local parameter in [0,1] within the [P1, P2] segment.
+// tension: 0 = Catmull-Rom (alpha = 0.5), 1 = linear.
+// ------------------------------------------------------------
+
+static inline float cardinalSpline(float P0, float P1, float P2, float P3,
+                                   float t, float tension)
+{
+    // Cardinal spline tangent scale: alpha = (1-tension) * 0.5
+    // At tension=0 this is standard Catmull-Rom.
+    const float alpha = (1.0f - tension) * 0.5f;
+
+    const float t2 = t * t;
+    const float t3 = t2 * t;
+
+    // Cubic Hermite basis with Cardinal tangents
+    const float m1 = alpha * (P2 - P0);    // tangent at P1
+    const float m2 = alpha * (P3 - P1);    // tangent at P2
+
+    return ( 2.0f*t3 - 3.0f*t2 + 1.0f) * P1
+         + (      t3 - 2.0f*t2 + t   ) * m1
+         + (-2.0f*t3 + 3.0f*t2       ) * P2
+         + (      t3 -      t2        ) * m2;
+}
+
+// ------------------------------------------------------------
+// Public entry point
+// ------------------------------------------------------------
+
+void computeIFSWavetable(const IFSShapeParams& p, float* wavetable)
+{
+    // Normalise bx from [-1,1] to (0,1).
+    // Clamp slightly away from the endpoints to keep the IFS non-degenerate.
+    const float bxNorm = std::clamp((p.bx + 1.0f) * 0.5f, 0.01f, 0.99f);
+    const float by     = p.by;
+    const float sEY    = p.startEndY;
+    const float s1     = std::clamp(p.ifs1Squash, -0.99f, 0.99f);
+    const float s2     = std::clamp(p.ifs2Squash, -0.99f, 0.99f);
+    const int   iters  = std::clamp(p.iterations, 1, IFS_MAX_ITERATIONS);
+    const float smooth = std::clamp(p.smoothing,  0.0f, 1.0f);
+
+    const int N = IFS_WAVETABLE_SIZE;
+
+    // --- Step 1: raw fractal wavetable (sampled point-by-point) ---
+    // At smoothing=1 this is the only thing we use.
+
+    float rawBuf[IFS_WAVETABLE_SIZE];
+    for (int i = 0; i < N; ++i) {
+        float x = static_cast<float>(i) / static_cast<float>(N);
+        rawBuf[i] = evaluateIFS(x, iters, bxNorm, by, sEY, s1, s2);
+    }
+
+    if (smooth >= 0.9999f) {
+        // Pure PWL — just copy raw.
+        for (int i = 0; i < N; ++i) wavetable[i] = rawBuf[i];
+        return;
+    }
+
+    // --- Step 2: Cardinal-spline wavetable through the IFS vertices ---
+    // Compute the 2^n + 1 vertex positions and y-values.
+
+    float vx[IFS_MAX_VERTICES];
+    float vy[IFS_MAX_VERTICES];
+
+    const int nVerts = collectVertexXPositions(bxNorm, iters, vx);
+
+    for (int k = 0; k < nVerts; ++k) {
+        vy[k] = evaluateIFS(vx[k], iters, bxNorm, by, sEY, s1, s2);
+    }
+
+    // Enforce boundary conditions explicitly (floating-point may drift slightly).
+    vy[0]         = sEY;
+    vy[nVerts-1]  = sEY;
+
+    // Render Cardinal spline into smoothBuf.
+    float smoothBuf[IFS_WAVETABLE_SIZE];
+
+    int seg = 0; // current vertex segment index
+
+    for (int i = 0; i < N; ++i) {
+        float x = static_cast<float>(i) / static_cast<float>(N);
+
+        // Advance segment pointer (vertices are in ascending x order).
+        while (seg < nVerts - 2 && x >= vx[seg + 1]) ++seg;
+
+        // Local parameter within this segment.
+        float segLen = vx[seg + 1] - vx[seg];
+        float t = (segLen > 1e-6f) ? (x - vx[seg]) / segLen : 0.0f;
+
+        // Gather four surrounding y-values with clamped boundary phantom points.
+        float P0 = vy[std::max(seg - 1, 0)];
+        float P1 = vy[seg];
+        float P2 = vy[seg + 1];
+        float P3 = vy[std::min(seg + 2, nVerts - 1)];
+
+        smoothBuf[i] = cardinalSpline(P0, P1, P2, P3, t, 0.0f); // tension=0 → Catmull-Rom
+    }
+
+    // --- Step 3: blend raw ↔ smooth according to smoothing param ---
+    // smoothing=0 → full Catmull-Rom, smoothing=1 → full PWL.
+
+    for (int i = 0; i < N; ++i) {
+        wavetable[i] = smoothBuf[i] + smooth * (rawBuf[i] - smoothBuf[i]);
+    }
+}
+
+// ------------------------------------------------------------
+// Single-point evaluator (for per-sample shape modulation)
+// ------------------------------------------------------------
+
+float evaluateIFSPoint(float x, const IFSShapeParams& p)
+{
+    const float bxNorm = std::clamp((p.bx + 1.0f) * 0.5f, 0.01f, 0.99f);
+    const float s1     = std::clamp(p.ifs1Squash, -0.99f, 0.99f);
+    const float s2     = std::clamp(p.ifs2Squash, -0.99f, 0.99f);
+    const int   iters  = std::clamp(p.iterations, 1, IFS_MAX_ITERATIONS);
+    // Wrap x to [0, 1) — caller may pass a phase-modulated value slightly outside range.
+    x = x - std::floor(x);
+    return evaluateIFS(x, iters, bxNorm, p.by, p.startEndY, s1, s2);
+}
+
+// ============================================================
+// IFS Envelope — 3-transform implementation
+// ============================================================
+
+// Internal 3-transform recursive evaluator.
+// x1 < x2, and all three segment widths (x1, x2-x1, 1-x2) are >= 0.01 (guaranteed by caller).
+static float evaluateIFS3(float x, int depth,
+                           float x1, float x2,
+                           float y0, float y1, float y2, float y3,
+                           float s1, float s2, float s3)
+{
+    if (x <= x1) {
+        float xn = x / x1;
+        if (depth == 0) return y0 + (y1 - y0) * xn;
+        float fn = evaluateIFS3(xn, depth - 1, x1, x2, y0, y1, y2, y3, s1, s2, s3);
+        return y0 + (y1 - y0) * xn + s1 * (fn - y0);
+    }
+    if (x <= x2) {
+        float w  = x2 - x1;
+        float xn = (x - x1) / w;
+        if (depth == 0) return y1 + (y2 - y1) * xn;
+        float fn = evaluateIFS3(xn, depth - 1, x1, x2, y0, y1, y2, y3, s1, s2, s3);
+        return y1 + (y2 - y1) * xn + s2 * (fn - y1);
+    }
+    {
+        float w  = 1.0f - x2;
+        float xn = (x - x2) / w;
+        if (depth == 0) return y2 + (y3 - y2) * xn;
+        float fn = evaluateIFS3(xn, depth - 1, x1, x2, y0, y1, y2, y3, s1, s2, s3);
+        return y2 + (y3 - y2) * xn + s3 * (fn - y2);
+    }
+}
+
+// Collect 3^depth vertex x-positions (left boundaries only; caller appends 1.0).
+static void collectEnvVerticesRecursive(float xL, float xR,
+                                         float x1, float x2,
+                                         int depth, float* out, int& idx)
+{
+    if (depth == 0) { out[idx++] = xL; return; }   // leaf only — keeps count at 3^depth
+    float mid1 = xL + (xR - xL) * x1;
+    float mid2 = xL + (xR - xL) * x2;
+    collectEnvVerticesRecursive(xL,   mid1, x1, x2, depth - 1, out, idx);
+    collectEnvVerticesRecursive(mid1, mid2, x1, x2, depth - 1, out, idx);
+    collectEnvVerticesRecursive(mid2, xR,   x1, x2, depth - 1, out, idx);
+}
+
+static int collectEnvVertexXPositions(float x1, float x2, int depth, float* out)
+{
+    int idx = 0;
+    collectEnvVerticesRecursive(0.0f, 1.0f, x1, x2, depth, out, idx);
+    out[idx++] = 1.0f;
+    return idx;   // = 3^depth + 1
+}
+
+void computeIFSEnvWavetable(const IFSEnvShapeParams& p, float* wavetable)
+{
+    // Sort Blue/Green by x so x1 < x2; y-values follow.
+    float x1, x2, y1, y2;
+    if (p.blueX <= p.greenX) {
+        x1 = p.blueX;  y1 = p.blueY;
+        x2 = p.greenX; y2 = p.greenY;
+    } else {
+        x1 = p.greenX; y1 = p.greenY;
+        x2 = p.blueX;  y2 = p.blueY;
+    }
+
+    // Clamp so every segment is at least 0.01 wide.
+    x1 = std::clamp(x1, 0.01f, 0.98f);
+    x2 = std::clamp(x2, x1 + 0.01f, 0.99f);
+
+    const float y0 = p.startEndY;
+    const float y3 = p.startEndY;
+    const float s1 = std::clamp(p.ifs1Squash, -0.99f, 0.99f);
+    const float s2 = std::clamp(p.ifs2Squash, -0.99f, 0.99f);
+    const float s3 = std::clamp(p.ifs3Squash, -0.99f, 0.99f);
+    const int   iters  = std::clamp(p.iterations, 1, 8);
+    const float smooth = std::clamp(p.smoothing,  0.0f, 1.0f);
+
+    const int N = IFS_WAVETABLE_SIZE;
+
+    // --- Step 1: raw fractal wavetable ---
+    float rawBuf[IFS_WAVETABLE_SIZE];
+    for (int i = 0; i < N; ++i) {
+        float x = static_cast<float>(i) / static_cast<float>(N);
+        rawBuf[i] = evaluateIFS3(x, iters, x1, x2, y0, y1, y2, y3, s1, s2, s3);
+    }
+
+    if (smooth >= 0.9999f) {
+        std::copy_n(rawBuf, N, wavetable);
+        return;
+    }
+
+    // --- Step 2: Catmull-Rom through IFS vertices (depth capped at IFS_ENV_MAX_SMOOTH_DEPTH) ---
+    const int smoothDepth = std::min(iters, IFS_ENV_MAX_SMOOTH_DEPTH);
+
+    float vx[IFS_ENV_MAX_VERTICES];
+    float vy[IFS_ENV_MAX_VERTICES];
+    const int nVerts = collectEnvVertexXPositions(x1, x2, smoothDepth, vx);
+
+    for (int k = 0; k < nVerts; ++k) {
+        vy[k] = evaluateIFS3(vx[k], iters, x1, x2, y0, y1, y2, y3, s1, s2, s3);
+    }
+    vy[0]         = y0;
+    vy[nVerts - 1] = y3;
+
+    float smoothBuf[IFS_WAVETABLE_SIZE];
+    int seg = 0;
+    for (int i = 0; i < N; ++i) {
+        float x = static_cast<float>(i) / static_cast<float>(N);
+        while (seg < nVerts - 2 && x >= vx[seg + 1]) ++seg;
+        float segLen = vx[seg + 1] - vx[seg];
+        float t      = (segLen > 1e-6f) ? (x - vx[seg]) / segLen : 0.0f;
+        float P0 = vy[std::max(seg - 1, 0)];
+        float P1 = vy[seg];
+        float P2 = vy[seg + 1];
+        float P3 = vy[std::min(seg + 2, nVerts - 1)];
+        smoothBuf[i] = cardinalSpline(P0, P1, P2, P3, t, 0.0f);
+    }
+
+    // --- Step 3: blend raw ↔ smooth ---
+    for (int i = 0; i < N; ++i) {
+        wavetable[i] = smoothBuf[i] + smooth * (rawBuf[i] - smoothBuf[i]);
+    }
+}

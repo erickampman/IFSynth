@@ -8,6 +8,7 @@
 #include "ADSRModule.hpp"
 #include "CombineModule.hpp"
 #include "FinalModule.hpp"
+#include "IFSOscModule.hpp"
 #include "PitchConverterModule.hpp"
 #include "SinOscillatorModule.hpp"
 #include "SlewModule.hpp"
@@ -22,6 +23,11 @@ const std::vector<ModuleInitSpec>& getModuleInitSpecs() {
        nullptr, nullptr, nullptr, nullptr},
       {sinOsc1Address, &sinOscConstantsGroup, InitSinOscillator, DeinitSinOscillator,
        ProcessSinOscillator, MIDISinOscillator, nullptr, ResetSinOscillator, SampleRateSinOscillator},
+      // IFSOsc is the active source (see buildDefaultPatch); SinOsc stays instantiated but
+      // unconnected — available as a second source / future phase-mod source.
+      {ifsOsc1Address, &ifsOscConstantsGroup, InitIFSOscModule, DeinitIFSOscModule,
+       ProcessIFSOscModule, MIDIIFSOscModule, ParamIFSOscModule, ResetIFSOscModule,
+       SampleRateIFSOscModule},
       {adsr1Address, &adsrConstantsGroup, InitADSRModule, DeinitADSRModule, ProcessADSRModule,
        MIDIProcADSRModule, ParamADSR, nullptr, SampleRateADSRModule},
       {combine1Address, &combineConstantsGroup, nullptr, nullptr, ProcessCombineModule, nullptr,

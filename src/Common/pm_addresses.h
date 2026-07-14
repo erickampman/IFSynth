@@ -22,6 +22,11 @@ inline constexpr AUParameterAddress sinOsc1Address =
 inline constexpr AUParameterAddress sinOsc1PitchInputAddress =
    MODULE_PARAM_ADDRESS(ModuleParamKindSinOsc, ModuleInstance1, SinOscParamItemPitchInput);
 
+inline constexpr AUParameterAddress ifsOsc1Address =
+   MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, 0);
+inline constexpr AUParameterAddress ifsOsc1PitchInputAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemPitchInput);
+
 inline constexpr AUParameterAddress adsr1Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindADSR, ModuleInstance1, 0);
 

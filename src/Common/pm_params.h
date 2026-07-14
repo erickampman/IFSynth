@@ -127,6 +127,21 @@ enum SinOscParamItem : NSUInteger {
    SinOscParamItemModSyncType,
 };
 
+// IFS fractal oscillator — trimmed v1 set (PM's modulation matrix is deferred). PitchInput is a
+// connection; the five fractal-shape items + smoothing + iterations drive the wavetable.
+enum IFSOscParamItem : NSUInteger {
+   IFSOscParamItemPitchInput = 1, // connection: pitch from the voice chain
+   IFSOscParamItemPitch,          // coarse tune (semitones)
+   IFSOscParamItemPitchFine,      // fine tune (cents)
+   IFSOscParamItemIFS1Squash,     // left-region self-similar vertical scale
+   IFSOscParamItemIFS2Squash,     // right-region self-similar vertical scale
+   IFSOscParamItemBx,             // split point (x)
+   IFSOscParamItemBy,             // junction height (y)
+   IFSOscParamItemStartEndY,      // shared endpoint level
+   IFSOscParamItemSmoothing,      // 0 = Catmull-Rom, 1 = piecewise-linear
+   IFSOscParamItemIterations,     // picker index: 0 → 3 iters, 1 → 4 iters
+};
+
 enum ADSRParamItem : NSUInteger {
    ADSRParamItemAttack = 1,
    ADSRParamItemDecay,

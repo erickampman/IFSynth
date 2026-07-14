@@ -22,6 +22,26 @@ const ModuleParamConstantsGroup sinOscConstantsGroup = {
    sinOscConstants,
 };
 
+// IFS oscillator — trimmed v1. Defaults match IFSShapeParams{} in IFSCore.hpp so the initial
+// wavetable and the parameter tree agree.
+static const ModuleParamConstants ifsOscConstants[] = {
+   {"pitchInput", IFSOscParamItemPitchInput, 0, 0, nullptr,   0.0f,   0.0f,  0.0f, 0},
+   {"pitch",      IFSOscParamItemPitch,      0, 0, nullptr, -24.0f,  24.0f,  0.0f, 0},
+   {"cents",      IFSOscParamItemPitchFine,  0, 0, nullptr, -100.0f, 100.0f, 0.0f, 0},
+   {"ifs1Squash", IFSOscParamItemIFS1Squash, 0, 0, nullptr, -0.99f,  0.99f,  0.5f, 0},
+   {"ifs2Squash", IFSOscParamItemIFS2Squash, 0, 0, nullptr, -0.99f,  0.99f, -0.5f, 0},
+   {"bx",         IFSOscParamItemBx,         0, 0, nullptr,  -1.0f,   1.0f,  0.0f, 0},
+   {"by",         IFSOscParamItemBy,         0, 0, nullptr,  -1.0f,   1.0f,  0.5f, 0},
+   {"startEndY",  IFSOscParamItemStartEndY,  0, 0, nullptr,  -1.0f,   1.0f, -1.0f, 0},
+   {"smoothing",  IFSOscParamItemSmoothing,  0, 0, nullptr,   0.0f,   1.0f,  0.5f, 0},
+   {"iterations", IFSOscParamItemIterations, 0, 0, nullptr,   0.0f,   1.0f,  1.0f, 0},
+};
+const ModuleParamConstantsGroup ifsOscConstantsGroup = {
+   const_cast<char*>("ifsOsc"),
+   sizeof(ifsOscConstants) / sizeof(ifsOscConstants[0]),
+   ifsOscConstants,
+};
+
 // ADSR — 7 params. Times in seconds; sustain is a level 0..1.
 static const ModuleParamConstants adsrConstants[] = {
    {"attack",    ADSRParamItemAttack,    0, 0, nullptr, 0.001f, 10.0f, 0.01f, 0},

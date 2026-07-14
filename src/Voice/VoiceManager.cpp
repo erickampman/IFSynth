@@ -60,8 +60,9 @@ void VoiceManager::buildDefaultPatch(Voice& voice)
 	// finalAddress
     Module* pitchConverterModule = voice.getModule(pitchConverter1Address);
     Module* slewModule = voice.getModule(slew1Address);
-    Module* sinOscModule = voice.getModule(sinOsc1Address);
-//	Module* adsrModule = voice.getModule(adsr1Address);
+    // IFSOsc is the active source. SinOsc stays instantiated (see the module specs) but is left
+    // unconnected here — available as a second source / future phase-mod source.
+    Module* ifsOscModule = voice.getModule(ifsOsc1Address);
 	Module *envExpModule = voice.getModule(adsr1Address);
 	Module* combineModule = voice.getModule(combine1Address);
 	Module* finalModule = voice.getModule(finalAddress);
@@ -70,9 +71,9 @@ void VoiceManager::buildDefaultPatch(Voice& voice)
 	//					 upstream    -> downstream   (downstream param)
     ++(finalModule->activeCount);
 	voice.connectModules(combineModule, finalModule, finalInputAddress);
-	voice.connectModules(sinOscModule, combineModule, combine1Input1Address);
+	voice.connectModules(ifsOscModule, combineModule, combine1Input1Address);
 	voice.connectModules(envExpModule, combineModule, combine1Input2Address);
-    voice.connectModules(slewModule, sinOscModule, sinOsc1PitchInputAddress);
+    voice.connectModules(slewModule, ifsOscModule, ifsOsc1PitchInputAddress);
     voice.connectModules(pitchConverterModule, slewModule, slew1InputAddress);
 #else
     // do nothing
