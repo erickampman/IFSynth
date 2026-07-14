@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.17)
 
 # C is needed for DPF's pugl / dgl sources.
-project(SimpleSynth VERSION 0.3.0 LANGUAGES C CXX)
+project(IFSynth VERSION 0.3.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)          # PM framework uses std::numbers / std::span
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-option(SIMPLESYNTH_WERROR "Treat warnings as errors (framework + tests)" OFF)
+option(IFSYNTH_WERROR "Treat warnings as errors (framework + tests)" OFF)
 
 # --- PM framework port -----------------------------------------------------
 # Vendored PolygraphModular framework + our shim/MIDI layer, as a static lib. Compiled with
@@ -41,19 +41,19 @@ endif()
 # subclasses; the DSP side drives pm_framework's VoiceManager. The four ADSR knobs route to
 # the envelope module live.
 add_subdirectory(dpf)
-dpf_add_plugin(SimpleSynth
+dpf_add_plugin(IFSynth
     TARGETS clap
     UI_TYPE opengl
     FILES_DSP
-        plugin/SimpleSynthPlugin.cpp
+        plugin/IFSynthPlugin.cpp
     FILES_UI
-        src/UI/SimpleSynthUI.cpp)
-# So both DSP and UI sources find DistrhoPluginInfo.h + SimpleSynthParams.h.
-target_include_directories(SimpleSynth PUBLIC plugin)
+        src/UI/IFSynthUI.cpp)
+# So both DSP and UI sources find DistrhoPluginInfo.h + IFSynthParams.h.
+target_include_directories(IFSynth PUBLIC plugin)
 # The DSP side pulls in the vendored engine.
-target_link_libraries(SimpleSynth-dsp PUBLIC pm_framework)
+target_link_libraries(IFSynth-dsp PUBLIC pm_framework)
 # DPF may default to an older standard; the DSP glue includes C++20 framework headers.
-set_target_properties(SimpleSynth-dsp SimpleSynth-ui PROPERTIES
+set_target_properties(IFSynth-dsp IFSynth-ui PROPERTIES
     CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
 
 # --- self-tests (the framework; headless, no DAW) --------------------------
@@ -85,7 +85,7 @@ target_link_libraries(pm-voicemanager-test PRIVATE pm_framework)
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
     # pm-selftest only pulls in light headers → fully strict (optionally -Werror in CI).
     target_compile_options(pm-selftest PRIVATE -Wall -Wextra)
-    if(SIMPLESYNTH_WERROR)
+    if(IFSYNTH_WERROR)
         target_compile_options(pm-selftest PRIVATE -Werror)
     endif()
     # tests that pull in vendored headers → relaxed (unused params in inline methods).

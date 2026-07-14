@@ -1,9 +1,10 @@
-# SimpleSynth
+# IFSynth
 
-A CLAP **software instrument**, being built as the vehicle for porting selected
-[PolygraphModular](https://github.com/) DSP + voice-framework code (the IFS module family)
-off AUv3 into a standalone, cross-platform CLAP synth. See `polygraph-clap-plan.md` (in
-`~/dev-clap/`) for the full port plan.
+A cross-platform **CLAP fractal synth** — the IFS (Iterated Function System) instrument built
+on top of the [SimpleSynth](https://github.com/erickampman/SimpleSynth) base project. IFSynth
+carries SimpleSynth's PolygraphModular voice engine + DPF/NanoVG UI kit unchanged and adds the
+IFS module family (IFSOsc / IFSEnv / IFSLFO) and their custom fractal-editor control. SimpleSynth
+stays a clean, IFS-free base; this repo is where the fractal work lives.
 
 ## Status
 
@@ -26,12 +27,12 @@ The engine (`src/`) mirrors PolygraphModular's structure; the DPF plugin assembl
 
 ```
 plugin/               the DPF plugin definition (the CLAP wrapper is generated from these)
-                        DistrhoPluginInfo.h (plugin flags), SimpleSynthParams.h (shared param
-                        table), SimpleSynthPlugin.cpp (DSP: MIDI + params → VoiceManager)
+                        DistrhoPluginInfo.h (plugin flags), IFSynthParams.h (shared param
+                        table), IFSynthPlugin.cpp (DSP: MIDI + params → VoiceManager)
 src/UI/               the plugin GUI (reusable NanoVG widgets + the panel)
                         Knob.hpp — labelled rotary-knob widget (NanoSubWidget + KnobEventHandler);
                         GroupBox.hpp — titled container panel that frames + lays out a group of
-                        controls; SimpleSynthUI.cpp — composes the knobs into labelled groups
+                        controls; IFSynthUI.cpp — composes the knobs into labelled groups
 src/Common/           shim + MIDI + params + utilities
                         pm_compat.h (Apple→portable), pm_midi.* (spec UMP + MIDI-1 decode),
                         clap_ump.h (CLAP↔UMP), pm_params.h / pm_param_data.* / pm_addresses.h,
@@ -68,7 +69,7 @@ cmake --build build -j
 ctest --test-dir build --output-on-failure     # see TESTING.md for the full suite
 ```
 
-Produces `build/bin/SimpleSynth.clap`. Copy/symlink into `~/.clap` (Linux) or
+Produces `build/bin/IFSynth.clap`. Copy/symlink into `~/.clap` (Linux) or
 `~/Library/Audio/Plug-Ins/CLAP/` (macOS), load in any CLAP host, and play — it's polyphonic
 (8 voices by default; drop the **Gain** knob if chords clip) with a rotary-knob UI for gain
 and the ADSR envelope. Validate with

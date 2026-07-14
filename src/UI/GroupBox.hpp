@@ -11,8 +11,8 @@
 // still reach the nested controls: the default Widget::onMouse forwards to subwidgets, and
 // this box does not override it.
 
-#ifndef SIMPLESYNTH_GROUPBOX_HPP
-#define SIMPLESYNTH_GROUPBOX_HPP
+#ifndef IFSYNTH_GROUPBOX_HPP
+#define IFSYNTH_GROUPBOX_HPP
 
 #include "NanoVG.hpp"
 
@@ -102,4 +102,4 @@ private:
 
 END_NAMESPACE_DGL
 
-#endif // SIMPLESYNTH_GROUPBOX_HPP
+#endif // IFSYNTH_GROUPBOX_HPP

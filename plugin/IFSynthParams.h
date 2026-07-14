@@ -1,12 +1,12 @@
-// SimpleSynthParams.h — the plugin's parameter table, shared by the DSP and UI sides so
+// IFSynthParams.h — the plugin's parameter table, shared by the DSP and UI sides so
 // they agree on index, name, range and default. v1 exposes master gain plus the four ADSR
 // controls of the (single) envelope; the ADSR ones route straight to the VoiceManager's
 // ADSR module. Time controls use a logarithmic law (natural for envelope times).
 
-#ifndef SIMPLESYNTH_PARAMS_H
-#define SIMPLESYNTH_PARAMS_H
+#ifndef IFSYNTH_PARAMS_H
+#define IFSYNTH_PARAMS_H
 
-namespace simplesynth {
+namespace ifsynth {
 
 enum ParamIndex {
    kParamGain = 0,
@@ -36,6 +36,6 @@ static constexpr ParamSpec kParams[kParamCount] = {
    {"Release", "release", "s", 0.001f, 10.0f, 1.0f,  true },
 };
 
-} // namespace simplesynth
+} // namespace ifsynth
 
-#endif // SIMPLESYNTH_PARAMS_H
+#endif // IFSYNTH_PARAMS_H

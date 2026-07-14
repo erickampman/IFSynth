@@ -1,15 +1,18 @@
 # IFS Waveform Control — design handoff
 
-Session handoff for the custom IFS editor control (and a snapshot of where SimpleSynth is
-overall). Written so a fresh Claude session — on any machine — can pick up with full context
-after a `git clone`/`pull`.
+Session handoff for the custom IFS editor control. Written so a fresh Claude session — on any
+machine — can pick up with full context after a `git clone`/`pull`.
+
+**IFSynth is a fork of the [SimpleSynth](https://github.com/erickampman/SimpleSynth) base**
+(full history preserved). SimpleSynth stays IFS-free as a reusable base; all the fractal
+work — the IFS modules and this control — lives here.
 
 Interactive prototype (view in a browser signed into the same Claude account):
 <https://claude.ai/code/artifact/7c8b58cb-6bc9-4b2b-952d-20b15b960c38>
 
 ---
 
-## Where SimpleSynth is right now
+## Where the base stands right now (inherited from SimpleSynth)
 
 - A cross-platform **CLAP synth** porting the PolygraphModular (PM) AUv3 voice framework off
   Apple. Polyphonic, real PM voice engine (VoiceManager → per-voice PitchConverter → Slew →

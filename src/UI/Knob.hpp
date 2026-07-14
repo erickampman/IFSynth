@@ -20,8 +20,8 @@
 //   k->setRealValue(0.01f);
 //   k->setSize(w, h); k->setAbsolutePos(x, y);
 
-#ifndef SIMPLESYNTH_KNOB_HPP
-#define SIMPLESYNTH_KNOB_HPP
+#ifndef IFSYNTH_KNOB_HPP
+#define IFSYNTH_KNOB_HPP
 
 #include "NanoVG.hpp"
 #include "EventHandlers.hpp"
@@ -195,4 +195,4 @@ private:
 
 END_NAMESPACE_DGL
 
-#endif // SIMPLESYNTH_KNOB_HPP
+#endif // IFSYNTH_KNOB_HPP

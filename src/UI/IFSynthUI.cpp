@@ -1,4 +1,4 @@
-// SimpleSynthUI.cpp — UI side: reusable Knob widgets grouped into titled GroupBox panels and
+// IFSynthUI.cpp — UI side: reusable Knob widgets grouped into titled GroupBox panels and
 // bound to the plugin parameters. The knob visuals/interaction live in Knob.hpp and the panel
 // framing in GroupBox.hpp; this file just builds the panels, drops a knob per parameter into
 // the right one, lays them out, and shuttles values to/from the host. Each future IFS module
@@ -11,20 +11,20 @@
 
 #include "GroupBox.hpp"
 #include "Knob.hpp"
-#include "SimpleSynthParams.h"
+#include "IFSynthParams.h"
 
 START_NAMESPACE_DISTRHO
 
-using namespace simplesynth;
+using namespace ifsynth;
 using DGL_NAMESPACE::Color;
 using DGL_NAMESPACE::GroupBox;
 using DGL_NAMESPACE::Knob;
 
-class SimpleSynthUI : public UI,
+class IFSynthUI : public UI,
                       public Knob::Callback
 {
 public:
-    SimpleSynthUI()
+    IFSynthUI()
         : UI(DISTRHO_UI_DEFAULT_WIDTH, DISTRHO_UI_DEFAULT_HEIGHT)
     {
         setGeometryConstraints(380, 240, false, false);
@@ -134,12 +134,12 @@ private:
         return buf;
     }
 
-    DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SimpleSynthUI)
+    DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(IFSynthUI)
 };
 
 UI* createUI()
 {
-    return new SimpleSynthUI();
+    return new IFSynthUI();
 }
 
 END_NAMESPACE_DISTRHO

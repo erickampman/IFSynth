@@ -1,4 +1,4 @@
-# Testing SimpleSynth
+# Testing IFSynth
 
 The project ships a suite of in-process self-tests (via CTest) plus the CLAP conformance
 validator. Everything runs headless on Linux/macOS — no DAW or audio device required.
@@ -26,7 +26,7 @@ cmake --build build -j
 ctest --test-dir build --output-on-failure
 ```
 
-Add `-DSIMPLESYNTH_WERROR=ON` at configure time to treat warnings as errors for the framework
+Add `-DIFSYNTH_WERROR=ON` at configure time to treat warnings as errors for the framework
 and the `pm-selftest` glue (this is what CI keys on). The tests that pull in vendored
 PolygraphModular headers stay on that code's own warning style.
 
@@ -62,10 +62,10 @@ Validate the built plugin against the CLAP spec with
 [`clap-validator`](https://github.com/free-audio/clap-validator):
 
 ```sh
-clap-validator validate build/bin/SimpleSynth.clap
+clap-validator validate build/bin/IFSynth.clap
 ```
 
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs the configure + build + `ctest` on every push across
-Linux (gcc/clang) and macOS (clang) with `-DSIMPLESYNTH_WERROR=ON`.
+Linux (gcc/clang) and macOS (clang) with `-DIFSYNTH_WERROR=ON`.

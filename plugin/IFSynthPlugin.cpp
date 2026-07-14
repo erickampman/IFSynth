@@ -1,4 +1,4 @@
-// SimpleSynthPlugin.cpp — DSP side: DPF Plugin wrapper around the vendored PolygraphModular
+// IFSynthPlugin.cpp — DSP side: DPF Plugin wrapper around the vendored PolygraphModular
 // voice engine. DPF hands us MIDI 1.0 events + a parameter interface and generates the CLAP
 // (VST3/LV2) wrapper; all the actual synthesis is the same VoiceManager the CLAP build used.
 //
@@ -11,7 +11,7 @@
 #include <algorithm>
 #include <memory>
 
-#include "SimpleSynthParams.h"
+#include "IFSynthParams.h"
 
 #include "ParamAddressMacros.h"
 #include "VoiceManager.hpp"
@@ -20,12 +20,12 @@
 
 START_NAMESPACE_DISTRHO
 
-using namespace simplesynth;
+using namespace ifsynth;
 
-class SimpleSynthPlugin : public Plugin
+class IFSynthPlugin : public Plugin
 {
 public:
-    SimpleSynthPlugin()
+    IFSynthPlugin()
         : Plugin(kParamCount, 0, 0) // params, programs, states
     {
         for (uint32_t i = 0; i < kParamCount; ++i)
@@ -35,16 +35,16 @@ public:
 
 protected:
     /* -- information ------------------------------------------------------ */
-    const char* getLabel()       const override { return "SimpleSynth"; }
+    const char* getLabel()       const override { return "IFSynth"; }
     const char* getDescription() const override
     {
         return "A polyphonic synth built on the PolygraphModular voice engine.";
     }
     const char* getMaker()    const override { return "example"; }
-    const char* getHomePage() const override { return "https://example.com/simplesynth"; }
+    const char* getHomePage() const override { return "https://example.com/ifsynth"; }
     const char* getLicense()  const override { return "MIT"; }
     uint32_t    getVersion()  const override { return d_version(0, 3, 0); }
-    int64_t     getUniqueId() const override { return d_cconst('S', 'S', 'y', '1'); }
+    int64_t     getUniqueId() const override { return d_cconst('I', 'F', 'S', 'y'); }
 
     /* -- init ------------------------------------------------------------- */
     void initAudioPort(bool input, uint32_t index, AudioPort& port) override
@@ -180,12 +180,12 @@ private:
         }
     }
 
-    DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SimpleSynthPlugin)
+    DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(IFSynthPlugin)
 };
 
 Plugin* createPlugin()
 {
-    return new SimpleSynthPlugin();
+    return new IFSynthPlugin();
 }
 
 END_NAMESPACE_DISTRHO
