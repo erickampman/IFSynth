@@ -12,22 +12,29 @@
 #include <memory>
 #include <string>
 
+#include "Dropdown.hpp"
 #include "GroupBox.hpp"
 #include "IFSControl.hpp"
 #include "IFSynthParams.h"
 #include "Knob.hpp"
+#include "PopupMenu.hpp"
 
 START_NAMESPACE_DISTRHO
 
 using namespace ifsynth;
 using DGL_NAMESPACE::Color;
+using DGL_NAMESPACE::Dropdown;
 using DGL_NAMESPACE::GroupBox;
 using DGL_NAMESPACE::IFSControl;
 using DGL_NAMESPACE::Knob;
+using DGL_NAMESPACE::PopupMenu;
+using DGL_NAMESPACE::SubWidget;
 
 class IFSynthUI : public UI,
                   public Knob::Callback,
-                  public IFSControl::Callback
+                  public IFSControl::Callback,
+                  public Dropdown::Callback,
+                  public PopupMenu::Callback
 {
 public:
     IFSynthUI()
@@ -47,7 +54,7 @@ public:
         // A Knob for every non-shape param, parented to its panel.
         for (uint32_t i = 0; i < kParamCount; ++i)
         {
-            if (isPadParam(i))
+            if (isPadParam(i) || i == kParamIterations) // shape → pad; iterations → dropdown
                 continue;
             const ParamSpec& s = kParams[i];
             GroupBox* group = groupFor(i);
@@ -61,6 +68,17 @@ public:
                 group->addControl(knob.get());   // even-row panels use relayout()
             fKnobs[i] = std::move(knob);
         }
+
+        // Iterations is a dropdown (choices 3 / 4), not a knob.
+        fIterDropdown = std::make_unique<Dropdown>(fIfsGroup.get(), this);
+        fIterDropdown->setId(kParamIterations);
+        fIterDropdown->setLabel(kParams[kParamIterations].name);
+        fIterDropdown->setChoices({"3", "4"});
+        fIterDropdown->setIndex(static_cast<int>(kParams[kParamIterations].def));
+
+        // The popup menu is a UI-level child created LAST, so it draws over every panel and is
+        // offered mouse events first while open.
+        fMenu = std::make_unique<PopupMenu>(this, this);
 
         pushPadDefaults();
         layout();
@@ -85,7 +103,7 @@ protected:
         case kParamIFS1Squash: fPad->setSquash1(value);    break;
         case kParamIFS2Squash: fPad->setSquash2(value);    break;
         case kParamSmoothing:  fPad->setSmoothing(value);  break;
-        case kParamIterations: fPad->setIterations(value); break;
+        case kParamIterations: fPad->setIterations(value); fIterDropdown->setIndex(static_cast<int>(value)); break;
         default: break;
         }
     }
@@ -99,6 +117,26 @@ protected:
     void ifsDragStarted(uint32_t id) override  { editParameter(id, true); }
     void ifsDragFinished(uint32_t id) override { editParameter(id, false); }
     void ifsValueChanged(uint32_t id, float v) override { setParameterValue(id, v); }
+
+    /* -- dropdown + menu -------------------------------------------------- */
+    void dropdownClicked(Dropdown* d) override
+    {
+        int x, y, w, h;
+        d->boxRect(x, y, w, h);
+        fMenu->openFor(d->getId(), d->choices(), d->index(), x, y + h, w);
+    }
+    void menuSelected(PopupMenu* menu, int index) override
+    {
+        const uint32_t id = menu->tag();
+        editParameter(id, true);
+        setParameterValue(id, static_cast<float>(index));
+        editParameter(id, false);
+        if (id == kParamIterations)
+        {
+            fIterDropdown->setIndex(index);
+            fPad->setIterations(static_cast<float>(index));
+        }
+    }
 
     /* -- drawing / layout ------------------------------------------------- */
     void onNanoDisplay() override
@@ -119,7 +157,9 @@ private:
     // Panels declared before their child controls so the children are destroyed first.
     std::unique_ptr<GroupBox>   fIfsGroup, fEnvGroup, fOutGroup;
     std::unique_ptr<IFSControl> fPad;
-    std::unique_ptr<Knob>       fKnobs[kParamCount]; // null for the five pad-edited params
+    std::unique_ptr<Knob>       fKnobs[kParamCount]; // null for pad params + iterations
+    std::unique_ptr<Dropdown>   fIterDropdown;
+    std::unique_ptr<PopupMenu>  fMenu;               // created last → drawn on top
 
     static bool isPadParam(uint32_t i)
     {
@@ -192,9 +232,10 @@ private:
         const int kx = cx + padW + gap;
         const int kw = cw - padW - gap;
         const int cellW = kw / 2, cellH = ch / 2;
-        Knob* grid[4] = {
+        // 2x2: pitch, fine, smoothing (knobs) + iterations (dropdown, bottom-right).
+        SubWidget* grid[4] = {
             fKnobs[kParamOscPitch].get(), fKnobs[kParamOscFine].get(),
-            fKnobs[kParamSmoothing].get(), fKnobs[kParamIterations].get()
+            fKnobs[kParamSmoothing].get(), fIterDropdown.get()
         };
         for (int i = 0; i < 4; ++i)
         {
