@@ -42,6 +42,32 @@ const ModuleParamConstantsGroup ifsOscConstantsGroup = {
    ifsOscConstants,
 };
 
+// IFS envelope. Defaults picked for a musical amplitude envelope: startEndY=0 (silence at the
+// ends), blue peak → green sustain, holdMode=Green so it holds at green while the note is held
+// and releases to 0 on note-off (ADSR-like). NOTE these differ from IFSEnvShapeParams{}; the
+// module renders struct defaults at init then re-renders from these on the first process.
+static const ModuleParamConstants ifsEnvConstants[] = {
+   {"gateInput",  IFSEnvParamItemGateInput,  0, 0, nullptr,  0.0f,   0.0f,  0.0f,  0},
+   {"duration",   IFSEnvParamItemDuration,   0, 0, nullptr,  0.01f,  10.0f, 1.0f,  0},
+   {"startEndY",  IFSEnvParamItemStartEndY,  0, 0, nullptr, -1.0f,   1.0f,  0.0f,  0},
+   {"blueX",      IFSEnvParamItemBlueX,      0, 0, nullptr,  0.0f,   1.0f,  0.15f, 0},
+   {"blueY",      IFSEnvParamItemBlueY,      0, 0, nullptr, -1.0f,   1.0f,  1.0f,  0},
+   {"greenX",     IFSEnvParamItemGreenX,     0, 0, nullptr,  0.0f,   1.0f,  0.45f, 0},
+   {"greenY",     IFSEnvParamItemGreenY,     0, 0, nullptr, -1.0f,   1.0f,  0.5f,  0},
+   {"ifs1Squash", IFSEnvParamItemIFS1Squash, 0, 0, nullptr, -0.99f,  0.99f, 0.2f,  0},
+   {"ifs2Squash", IFSEnvParamItemIFS2Squash, 0, 0, nullptr, -0.99f,  0.99f, 0.2f,  0},
+   {"ifs3Squash", IFSEnvParamItemIFS3Squash, 0, 0, nullptr, -0.99f,  0.99f, 0.2f,  0},
+   {"smoothing",  IFSEnvParamItemSmoothing,  0, 0, nullptr,  0.0f,   1.0f,  0.5f,  0},
+   {"iterations", IFSEnvParamItemIterations, 0, 0, nullptr,  0.0f,   7.0f,  2.0f,  0},
+   {"holdMode",   IFSEnvParamItemHoldMode,   0, 0, nullptr,  0.0f,   3.0f,  2.0f,  0},
+   {"legatoMode", IFSEnvParamItemLegatoMode, 0, 0, nullptr,  0.0f,   1.0f,  0.0f,  0},
+};
+const ModuleParamConstantsGroup ifsEnvConstantsGroup = {
+   const_cast<char*>("ifsEnv"),
+   sizeof(ifsEnvConstants) / sizeof(ifsEnvConstants[0]),
+   ifsEnvConstants,
+};
+
 // ADSR — 7 params. Times in seconds; sustain is a level 0..1.
 static const ModuleParamConstants adsrConstants[] = {
    {"attack",    ADSRParamItemAttack,    0, 0, nullptr, 0.001f, 10.0f, 0.01f, 0},

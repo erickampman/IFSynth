@@ -8,6 +8,7 @@
 #include "ADSRModule.hpp"
 #include "CombineModule.hpp"
 #include "FinalModule.hpp"
+#include "IFSEnvModule.hpp"
 #include "IFSOscModule.hpp"
 #include "PitchConverterModule.hpp"
 #include "SinOscillatorModule.hpp"
@@ -30,6 +31,11 @@ const std::vector<ModuleInitSpec>& getModuleInitSpecs() {
        SampleRateIFSOscModule},
       {adsr1Address, &adsrConstantsGroup, InitADSRModule, DeinitADSRModule, ProcessADSRModule,
        MIDIProcADSRModule, ParamADSR, nullptr, SampleRateADSRModule},
+      // IFSEnv is the active amplitude envelope (see buildDefaultPatch); ADSR stays instantiated
+      // but unconnected.
+      {ifsEnv1Address, &ifsEnvConstantsGroup, InitIFSEnvModule, DeinitIFSEnvModule,
+       ProcessIFSEnvModule, MIDIIFSEnvModule, ParamIFSEnvModule, ResetIFSEnvModule,
+       SampleRateIFSEnvModule},
       {combine1Address, &combineConstantsGroup, nullptr, nullptr, ProcessCombineModule, nullptr,
        nullptr, nullptr, nullptr},
       {finalAddress, &finalConstantsGroup, InitFinalModule, DeinitFinalModule, ProcessFinalModule,

@@ -142,6 +142,24 @@ enum IFSOscParamItem : NSUInteger {
    IFSOscParamItemIterations,     // picker index: 0 → 3 iters, 1 → 4 iters
 };
 
+// IFS fractal envelope — 3-transform shape (blue + green interior points), phase over Duration.
+enum IFSEnvParamItem : NSUInteger {
+   IFSEnvParamItemGateInput = 1, // connection (unused in v1 voice; MIDI drives the gate)
+   IFSEnvParamItemDuration,      // full-traversal time, seconds
+   IFSEnvParamItemStartEndY,     // level at both ends
+   IFSEnvParamItemBlueX,         // first interior point x [0,1]
+   IFSEnvParamItemBlueY,         // first interior point y [-1,1]
+   IFSEnvParamItemGreenX,        // second interior point x [0,1]
+   IFSEnvParamItemGreenY,        // second interior point y [-1,1]
+   IFSEnvParamItemIFS1Squash,
+   IFSEnvParamItemIFS2Squash,
+   IFSEnvParamItemIFS3Squash,
+   IFSEnvParamItemSmoothing,
+   IFSEnvParamItemIterations,    // picker index: 0 → 1 iteration
+   IFSEnvParamItemHoldMode,      // 0 None, 1 Blue, 2 Green, 3 Loop
+   IFSEnvParamItemLegatoMode,    // 0 NoteSteal, 1 FindMatchingY
+};
+
 enum ADSRParamItem : NSUInteger {
    ADSRParamItemAttack = 1,
    ADSRParamItemDecay,

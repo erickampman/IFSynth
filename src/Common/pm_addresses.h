@@ -27,6 +27,11 @@ inline constexpr AUParameterAddress ifsOsc1Address =
 inline constexpr AUParameterAddress ifsOsc1PitchInputAddress =
    MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemPitchInput);
 
+inline constexpr AUParameterAddress ifsEnv1Address =
+   MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance1, 0);
+inline constexpr AUParameterAddress ifsEnv1GateInputAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance1, IFSEnvParamItemGateInput);
+
 inline constexpr AUParameterAddress adsr1Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindADSR, ModuleInstance1, 0);
 

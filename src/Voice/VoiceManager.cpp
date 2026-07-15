@@ -63,7 +63,9 @@ void VoiceManager::buildDefaultPatch(Voice& voice)
     // IFSOsc is the active source. SinOsc stays instantiated (see the module specs) but is left
     // unconnected here — available as a second source / future phase-mod source.
     Module* ifsOscModule = voice.getModule(ifsOsc1Address);
-	Module *envExpModule = voice.getModule(adsr1Address);
+    // IFSEnv is the active amplitude envelope. ADSR stays instantiated (module specs) but is
+    // left unconnected here.
+    Module* envModule = voice.getModule(ifsEnv1Address);
 	Module* combineModule = voice.getModule(combine1Address);
 	Module* finalModule = voice.getModule(finalAddress);
 
@@ -72,7 +74,7 @@ void VoiceManager::buildDefaultPatch(Voice& voice)
     ++(finalModule->activeCount);
 	voice.connectModules(combineModule, finalModule, finalInputAddress);
 	voice.connectModules(ifsOscModule, combineModule, combine1Input1Address);
-	voice.connectModules(envExpModule, combineModule, combine1Input2Address);
+	voice.connectModules(envModule, combineModule, combine1Input2Address);
     voice.connectModules(slewModule, ifsOscModule, ifsOsc1PitchInputAddress);
     voice.connectModules(pitchConverterModule, slewModule, slew1InputAddress);
 #else
