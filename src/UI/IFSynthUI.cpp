@@ -238,7 +238,7 @@ private:
     {
         const int W = static_cast<int>(getWidth());
         const int H = static_cast<int>(getHeight());
-        const int m = 8, gap = 8, outH = 120;
+        const int m = 8, gap = 8, outH = 150;
         const int rowH = (H - 2 * m - 2 * gap - outH) / 2;
 
         fOscGroup->setAbsolutePos(m, m);

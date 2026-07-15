@@ -84,9 +84,13 @@ protected:
     {
         const float w  = getWidth();
         const float h  = getHeight();
+        // Reserve a fixed band at the bottom for the label + readout so text is never clipped;
+        // the knob scales to the space above it.
+        const float kTextBand = 30.0f;
+        const float knobH = h - kTextBand;
         const float cx = w * 0.5f;
-        const float cy = h * 0.42f;                       // knob above, label/readout below
-        const float r  = std::fmin(w, h * 0.74f) * 0.34f;
+        const float cy = knobH * 0.5f;
+        const float r  = std::fmin(w, knobH) * 0.32f;
 
         const float frac     = getNormalizedValue();      // 0..1 (= control position)
         const float valAngle = kArcStart + frac * kArcSweep;
@@ -137,12 +141,12 @@ protected:
             textAlign(ALIGN_CENTER | ALIGN_TOP);
             fontSize(13.0f);
             fillColor(Color(176, 182, 190));
-            text(cx, cy + r + 10, fLabel.c_str(), nullptr);
+            text(cx, knobH + 1.0f, fLabel.c_str(), nullptr);
 
             const std::string readout = fFormat ? fFormat(real) : defaultFormat(real);
             fontSize(12.0f);
             fillColor(Color(226, 230, 236));
-            text(cx, cy + r + 26, readout.c_str(), nullptr);
+            text(cx, knobH + 15.0f, readout.c_str(), nullptr);
         }
     }
 
