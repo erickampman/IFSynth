@@ -35,6 +35,16 @@ static const ModuleParamConstants ifsOscConstants[] = {
    {"startEndY",  IFSOscParamItemStartEndY,  0, 0, nullptr,  -1.0f,   1.0f, -1.0f, 0},
    {"smoothing",  IFSOscParamItemSmoothing,  0, 0, nullptr,   0.0f,   1.0f,  0.5f, 0},
    {"iterations", IFSOscParamItemIterations, 0, 0, nullptr,   0.0f,   1.0f,  1.0f, 0},
+   {"pitchModIn",  IFSOscParamItemPitchModInput,   0, 0, nullptr, 0.0f, 0.0f, 0.0f, 0},
+   {"pitchModLvl", IFSOscParamItemPitchModLevel,   0, 0, nullptr, -1.0f, 1.0f, 0.0f, 0},
+   {"bxModIn",     IFSOscParamItemBxModInput,      0, 0, nullptr, 0.0f, 0.0f, 0.0f, 0},
+   {"bxModLvl",    IFSOscParamItemBxModLevel,      0, 0, nullptr, -1.0f, 1.0f, 0.0f, 0},
+   {"byModIn",     IFSOscParamItemByModInput,      0, 0, nullptr, 0.0f, 0.0f, 0.0f, 0},
+   {"byModLvl",    IFSOscParamItemByModLevel,      0, 0, nullptr, -1.0f, 1.0f, 0.0f, 0},
+   {"sq1ModIn",    IFSOscParamItemSquash1ModInput, 0, 0, nullptr, 0.0f, 0.0f, 0.0f, 0},
+   {"sq1ModLvl",   IFSOscParamItemSquash1ModLevel, 0, 0, nullptr, -1.0f, 1.0f, 0.0f, 0},
+   {"sq2ModIn",    IFSOscParamItemSquash2ModInput, 0, 0, nullptr, 0.0f, 0.0f, 0.0f, 0},
+   {"sq2ModLvl",   IFSOscParamItemSquash2ModLevel, 0, 0, nullptr, -1.0f, 1.0f, 0.0f, 0},
 };
 const ModuleParamConstantsGroup ifsOscConstantsGroup = {
    const_cast<char*>("ifsOsc"),

@@ -67,6 +67,26 @@ void computeIFSWavetable(const IFSShapeParams& p, float* wavetable);
 /// Used for per-sample computation when shape parameters are audio-rate modulated.
 float evaluateIFSPoint(float x, const IFSShapeParams& p);
 
+/// Precomputed shape state for smoothed per-point evaluation. Holds the Catmull-Rom vertices
+/// (the expensive, shape-dependent part) so that evaluateIFSSmoothed() is cheap per sample.
+/// The pattern for control-rate shape modulation: recompute this once per small chunk, then
+/// call evaluateIFSSmoothed() per sample — keeps `smoothing` working under modulation without
+/// re-deriving vertices every sample.
+struct IFSVertices {
+   float vx[IFS_MAX_VERTICES];
+   float vy[IFS_MAX_VERTICES];
+   int   nVerts = 0;
+   float bxNorm = 0.5f, by = 0.5f, sEY = -1.0f, s1 = 0.5f, s2 = -0.5f, smooth = 0.5f;
+   int   iters = 4;
+};
+
+/// Derive the smoothing vertices (and the raw-eval params) for a shape. Do this once per chunk.
+void precomputeIFSVertices(const IFSShapeParams& p, IFSVertices& out);
+
+/// Smoothed (Catmull-Rom ↔ PWL blended) value at phase x ∈ [0, 1) using precomputed vertices.
+/// Matches computeIFSWavetable() at the wavetable sample points.
+float evaluateIFSSmoothed(float x, const IFSVertices& v);
+
 // ------------------------------------------------------------
 // IFS Envelope — 3-transform variant
 // ------------------------------------------------------------

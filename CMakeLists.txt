@@ -75,6 +75,9 @@ target_link_libraries(pm-module-test PRIVATE pm_framework)
 add_executable(pm-sinosc-test test/pm_sinosc_test.cpp)
 target_link_libraries(pm-sinosc-test PRIVATE pm_framework)
 
+add_executable(pm-ifscore-test test/pm_ifscore_test.cpp)
+target_link_libraries(pm-ifscore-test PRIVATE pm_framework)
+
 add_executable(pm-adsr-test test/pm_adsr_test.cpp)
 target_link_libraries(pm-adsr-test PRIVATE pm_framework)
 
@@ -97,7 +100,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
         target_compile_options(pm-selftest PRIVATE -Werror)
     endif()
     # tests that pull in vendored headers → relaxed (unused params in inline methods).
-    foreach(t pm-module-test pm-sinosc-test pm-adsr-test pm-modules-test pm-factory-test
+    foreach(t pm-module-test pm-sinosc-test pm-ifscore-test pm-adsr-test pm-modules-test pm-factory-test
               pm-voice-test pm-voicemanager-test)
         target_compile_options(${t} PRIVATE -Wall -Wno-unknown-pragmas -Wno-unused-parameter)
     endforeach()
@@ -112,6 +115,9 @@ set_tests_properties(pm-module PROPERTIES PASS_REGULAR_EXPRESSION "ALL PASS")
 
 add_test(NAME pm-sinosc COMMAND pm-sinosc-test)
 set_tests_properties(pm-sinosc PROPERTIES PASS_REGULAR_EXPRESSION "ALL PASS")
+
+add_test(NAME pm-ifscore COMMAND pm-ifscore-test)
+set_tests_properties(pm-ifscore PROPERTIES PASS_REGULAR_EXPRESSION "ALL PASS")
 
 add_test(NAME pm-adsr COMMAND pm-adsr-test)
 set_tests_properties(pm-adsr PROPERTIES PASS_REGULAR_EXPRESSION "ALL PASS")

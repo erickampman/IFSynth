@@ -141,6 +141,18 @@ enum IFSOscParamItem : NSUInteger {
    IFSOscParamItemStartEndY,      // shared endpoint level
    IFSOscParamItemSmoothing,      // 0 = Catmull-Rom, 1 = piecewise-linear
    IFSOscParamItemIterations,     // picker index: 0 → 3 iters, 1 → 4 iters
+   // Modulation inputs (connection ports) + their bipolar depth levels. Pitch mod is applied
+   // per-sample (wavetable-compatible); the shape mods switch IFSOsc to the chunked eval path.
+   IFSOscParamItemPitchModInput,
+   IFSOscParamItemPitchModLevel,
+   IFSOscParamItemBxModInput,
+   IFSOscParamItemBxModLevel,
+   IFSOscParamItemByModInput,
+   IFSOscParamItemByModLevel,
+   IFSOscParamItemSquash1ModInput,
+   IFSOscParamItemSquash1ModLevel,
+   IFSOscParamItemSquash2ModInput,
+   IFSOscParamItemSquash2ModLevel,
 };
 
 // IFS fractal envelope — 3-transform shape (blue + green interior points), phase over Duration.

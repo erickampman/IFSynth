@@ -154,6 +154,20 @@ void MIDIIFSOscModule(const pm::UmpMessage& message, Module* module)
     }
 }
 
+// Read the module's base shape from its params (no modulation applied).
+static IFSShapeParams baseShapeFromParams(Module* module)
+{
+    IFSShapeParams s;
+    s.ifs1Squash = module->paramByEnum(IFSOscParamItemIFS1Squash);
+    s.ifs2Squash = module->paramByEnum(IFSOscParamItemIFS2Squash);
+    s.bx         = module->paramByEnum(IFSOscParamItemBx);
+    s.by         = module->paramByEnum(IFSOscParamItemBy);
+    s.startEndY  = module->paramByEnum(IFSOscParamItemStartEndY);
+    s.smoothing  = module->paramByEnum(IFSOscParamItemSmoothing);
+    s.iterations = static_cast<int>(module->paramByEnum(IFSOscParamItemIterations)) + 3;
+    return s;
+}
+
 // ------------------------------------------------------------ Process
 const KPBuffPair* ProcessIFSOscModule(uint64_t processCallID, uint32_t count, Module* module)
 {
@@ -162,59 +176,102 @@ const KPBuffPair* ProcessIFSOscModule(uint64_t processCallID, uint32_t count, Mo
     float* outL = module->output.first->data;
     float* outR = module->output.second->data;
 
-    // Coalesced wavetable render: at most one per block, on the audio thread (cheap + bounded).
-    if (st->tableDirty) {
-        st->tableDirty = false;
-        applyShapeParams(st, module);
-        const int inactive = 1 - st->activeIdx;
-        computeIFSWavetable(st->pendingShape, st->wavetable[inactive]);
-        st->activeIdx   = inactive;
-        st->activeShape = st->pendingShape;
-        st->crossfadePos = IFS_CROSSFADE_SAMPLES;
-    }
-
-    auto pitchInputPair = module->retrieveInput(IFSOscParamItemPitchInput, processCallID, count);
-
     const AUValue freqParam = module->paramByEnum(IFSOscParamItemPitch)     * (float)SEMITONES_TO_PITCH;
     const AUValue fineParam = module->paramByEnum(IFSOscParamItemPitchFine) * (float)CENTS_TO_PITCH;
-
-    const double freqScale = module->mFrequencyScale;
-    auto* pitchConverter   = module->pitchConverter;
+    const double  freqScale = module->mFrequencyScale;
+    auto* pitchConverter    = module->pitchConverter;
 
     double& phaseL = module->mOmegaL;
     double& phaseR = module->mOmegaR;
     double& deltaL = module->mBaseDeltaOmegaL;
     double& deltaR = module->mBaseDeltaOmegaR;
 
+    auto pitchInputPair = module->retrieveInput(IFSOscParamItemPitchInput, processCallID, count);
     const float* pilPtr = pitchInputPair->first->data;
     const float* pirPtr = pitchInputPair->second->data;
 
-    const int    activeIdx = st->activeIdx;
-    const float* activeTbl = st->wavetable[activeIdx];
-    const float* prevTbl   = st->wavetable[1 - activeIdx];
-    bool crossfading       = st->crossfadePos > 0;
+    // Pitch mod (per-sample; wavetable-compatible).
+    auto pitchModPair = module->retrieveInput(IFSOscParamItemPitchModInput, processCallID, count);
+    const float* pmlPtr = pitchModPair->first->data;
+    const float* pmrPtr = pitchModPair->second->data;
+    const float pitchModLevel = module->paramByEnum(IFSOscParamItemPitchModLevel);
 
-    for (uint32_t i = 0; i < count; ++i) {
-        deltaL = pitchConverter->pitchToFrequency(pilPtr[i] + freqParam + fineParam) * freqScale;
-        deltaR = pitchConverter->pitchToFrequency(pirPtr[i] + freqParam + fineParam) * freqScale;
+    // Shape mods (per-chunk; switch to the eval path if any is connected).
+    const bool bxConn = module->isInputConnected(IFSOscParamItemBxModInput);
+    const bool byConn = module->isInputConnected(IFSOscParamItemByModInput);
+    const bool s1Conn = module->isInputConnected(IFSOscParamItemSquash1ModInput);
+    const bool s2Conn = module->isInputConnected(IFSOscParamItemSquash2ModInput);
+    const bool anyShapeMod = bxConn || byConn || s1Conn || s2Conn;
 
-        float sampleL = tableRead(activeTbl, phaseL);
-        float sampleR = tableRead(activeTbl, phaseR);
-
-        if (crossfading) {
-            float blend = static_cast<float>(st->crossfadePos) / IFS_CROSSFADE_SAMPLES;
-            sampleL += blend * (tableRead(prevTbl, phaseL) - sampleL);
-            sampleR += blend * (tableRead(prevTbl, phaseR) - sampleR);
-            --st->crossfadePos;
-            crossfading = st->crossfadePos > 0;
+    if (!anyShapeMod) {
+        // ---- Wavetable path (coalesced render; cheap) ----
+        if (st->tableDirty) {
+            st->tableDirty = false;
+            applyShapeParams(st, module);
+            const int inactive = 1 - st->activeIdx;
+            computeIFSWavetable(st->pendingShape, st->wavetable[inactive]);
+            st->activeIdx   = inactive;
+            st->activeShape = st->pendingShape;
+            st->crossfadePos = IFS_CROSSFADE_SAMPLES;
         }
+        const int    activeIdx = st->activeIdx;
+        const float* activeTbl = st->wavetable[activeIdx];
+        const float* prevTbl   = st->wavetable[1 - activeIdx];
+        bool crossfading       = st->crossfadePos > 0;
 
-        outL[i] = sampleL;
-        outR[i] = sampleR;
-
-        phaseL += deltaL; if (phaseL >= 1.0) phaseL -= 1.0;
-        phaseR += deltaR; if (phaseR >= 1.0) phaseR -= 1.0;
+        for (uint32_t i = 0; i < count; ++i) {
+            deltaL = pitchConverter->pitchToFrequency(pilPtr[i] + freqParam + fineParam + pmlPtr[i] * pitchModLevel) * freqScale;
+            deltaR = pitchConverter->pitchToFrequency(pirPtr[i] + freqParam + fineParam + pmrPtr[i] * pitchModLevel) * freqScale;
+            float sampleL = tableRead(activeTbl, phaseL);
+            float sampleR = tableRead(activeTbl, phaseR);
+            if (crossfading) {
+                float blend = static_cast<float>(st->crossfadePos) / IFS_CROSSFADE_SAMPLES;
+                sampleL += blend * (tableRead(prevTbl, phaseL) - sampleL);
+                sampleR += blend * (tableRead(prevTbl, phaseR) - sampleR);
+                --st->crossfadePos;
+                crossfading = st->crossfadePos > 0;
+            }
+            outL[i] = sampleL; outR[i] = sampleR;
+            phaseL += deltaL; if (phaseL >= 1.0) phaseL -= 1.0;
+            phaseR += deltaR; if (phaseR >= 1.0) phaseR -= 1.0;
+        }
+        return &module->output;
     }
 
+    // ---- Chunked modulated-eval path ----
+    // Shape params are modulated at control rate (32-sample chunks): recompute the smoothing
+    // vertices once per chunk, then evaluate smoothed per sample. Keeps `smoothing` working.
+    const IFSShapeParams base = baseShapeFromParams(module);
+    const float bxLevel = module->paramByEnum(IFSOscParamItemBxModLevel);
+    const float byLevel = module->paramByEnum(IFSOscParamItemByModLevel);
+    const float s1Level = module->paramByEnum(IFSOscParamItemSquash1ModLevel);
+    const float s2Level = module->paramByEnum(IFSOscParamItemSquash2ModLevel);
+    const float* bxM = module->retrieveInput(IFSOscParamItemBxModInput,      processCallID, count)->first->data;
+    const float* byM = module->retrieveInput(IFSOscParamItemByModInput,      processCallID, count)->first->data;
+    const float* s1M = module->retrieveInput(IFSOscParamItemSquash1ModInput, processCallID, count)->first->data;
+    const float* s2M = module->retrieveInput(IFSOscParamItemSquash2ModInput, processCallID, count)->first->data;
+
+    constexpr uint32_t CHUNK = 32;
+    IFSVertices verts;
+    for (uint32_t i0 = 0; i0 < count; i0 += CHUNK) {
+        const uint32_t i1 = std::min(i0 + CHUNK, count);
+        IFSShapeParams ms = base; // modulated shape for this chunk (sampled at its first frame)
+        if (bxConn) ms.bx         = std::clamp(base.bx         + bxM[i0] * bxLevel, -0.98f, 0.98f);
+        if (byConn) ms.by         = std::clamp(base.by         + byM[i0] * byLevel, -1.00f, 1.00f);
+        if (s1Conn) ms.ifs1Squash = std::clamp(base.ifs1Squash + s1M[i0] * s1Level, -0.99f, 0.99f);
+        if (s2Conn) ms.ifs2Squash = std::clamp(base.ifs2Squash + s2M[i0] * s2Level, -0.99f, 0.99f);
+        precomputeIFSVertices(ms, verts);
+
+        for (uint32_t j = i0; j < i1; ++j) {
+            deltaL = pitchConverter->pitchToFrequency(pilPtr[j] + freqParam + fineParam + pmlPtr[j] * pitchModLevel) * freqScale;
+            deltaR = pitchConverter->pitchToFrequency(pirPtr[j] + freqParam + fineParam + pmrPtr[j] * pitchModLevel) * freqScale;
+            outL[j] = evaluateIFSSmoothed(static_cast<float>(phaseL), verts);
+            outR[j] = evaluateIFSSmoothed(static_cast<float>(phaseR), verts);
+            phaseL += deltaL; if (phaseL >= 1.0) phaseL -= 1.0;
+            phaseR += deltaR; if (phaseR >= 1.0) phaseR -= 1.0;
+        }
+    }
+    // Force a fresh wavetable render when we next fall back to the non-modulated path.
+    st->tableDirty = true;
     return &module->output;
 }

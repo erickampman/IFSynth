@@ -193,6 +193,48 @@ float evaluateIFSPoint(float x, const IFSShapeParams& p)
     return evaluateIFS(x, iters, bxNorm, p.by, p.startEndY, s1, s2);
 }
 
+// ------------------------------------------------------------
+// Chunked smoothed evaluation (see IFSVertices in the header). Mirrors the vertex derivation
+// and Cardinal-spline blend of computeIFSWavetable(), but split so the shape-dependent part is
+// done once per chunk and the per-sample cost is just a segment lookup + spline + blend.
+// ------------------------------------------------------------
+
+void precomputeIFSVertices(const IFSShapeParams& p, IFSVertices& out)
+{
+    out.bxNorm = std::clamp((p.bx + 1.0f) * 0.5f, 0.01f, 0.99f);
+    out.by     = p.by;
+    out.sEY    = p.startEndY;
+    out.s1     = std::clamp(p.ifs1Squash, -0.99f, 0.99f);
+    out.s2     = std::clamp(p.ifs2Squash, -0.99f, 0.99f);
+    out.iters  = std::clamp(p.iterations, 1, IFS_MAX_ITERATIONS);
+    out.smooth = std::clamp(p.smoothing, 0.0f, 1.0f);
+
+    out.nVerts = collectVertexXPositions(out.bxNorm, out.iters, out.vx);
+    for (int k = 0; k < out.nVerts; ++k)
+        out.vy[k] = evaluateIFS(out.vx[k], out.iters, out.bxNorm, out.by, out.sEY, out.s1, out.s2);
+    out.vy[0]              = out.sEY;
+    out.vy[out.nVerts - 1] = out.sEY;
+}
+
+float evaluateIFSSmoothed(float x, const IFSVertices& v)
+{
+    x = x - std::floor(x);
+    const float raw = evaluateIFS(x, v.iters, v.bxNorm, v.by, v.sEY, v.s1, v.s2);
+    if (v.smooth >= 0.9999f)
+        return raw;
+
+    int seg = 0;
+    while (seg < v.nVerts - 2 && x >= v.vx[seg + 1]) ++seg;
+    const float segLen = v.vx[seg + 1] - v.vx[seg];
+    const float t = (segLen > 1e-6f) ? (x - v.vx[seg]) / segLen : 0.0f;
+    const float P0 = v.vy[std::max(seg - 1, 0)];
+    const float P1 = v.vy[seg];
+    const float P2 = v.vy[seg + 1];
+    const float P3 = v.vy[std::min(seg + 2, v.nVerts - 1)];
+    const float sm = cardinalSpline(P0, P1, P2, P3, t, 0.0f);
+    return sm + v.smooth * (raw - sm);
+}
+
 // ============================================================
 // IFS Envelope — 3-transform implementation
 // ============================================================

@@ -26,6 +26,17 @@ inline constexpr AUParameterAddress ifsOsc1Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, 0);
 inline constexpr AUParameterAddress ifsOsc1PitchInputAddress =
    MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemPitchInput);
+// IFSOsc mod-input ports (a source's output connects here; depth is the matching ModLevel).
+inline constexpr AUParameterAddress ifsOsc1PitchModInputAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemPitchModInput);
+inline constexpr AUParameterAddress ifsOsc1BxModInputAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemBxModInput);
+inline constexpr AUParameterAddress ifsOsc1ByModInputAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemByModInput);
+inline constexpr AUParameterAddress ifsOsc1Squash1ModInputAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemSquash1ModInput);
+inline constexpr AUParameterAddress ifsOsc1Squash2ModInputAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemSquash2ModInput);
 
 inline constexpr AUParameterAddress ifsEnv1Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance1, 0);
