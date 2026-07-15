@@ -154,6 +154,28 @@ private:
         case kParamLfoSquash2:    return MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance1, IFSLFOParamItemIFS2Squash);
         case kParamLfoSmoothing:  return MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance1, IFSLFOParamItemSmoothing);
         case kParamLfoIterations: return MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance1, IFSLFOParamItemIterations);
+        // IFS envelope 2 (instance 2)
+        case kParamEnv2Duration:   return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance2, IFSEnvParamItemDuration);
+        case kParamEnv2StartEndY:  return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance2, IFSEnvParamItemStartEndY);
+        case kParamEnv2BlueX:      return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance2, IFSEnvParamItemBlueX);
+        case kParamEnv2BlueY:      return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance2, IFSEnvParamItemBlueY);
+        case kParamEnv2GreenX:     return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance2, IFSEnvParamItemGreenX);
+        case kParamEnv2GreenY:     return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance2, IFSEnvParamItemGreenY);
+        case kParamEnv2Squash1:    return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance2, IFSEnvParamItemIFS1Squash);
+        case kParamEnv2Squash2:    return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance2, IFSEnvParamItemIFS2Squash);
+        case kParamEnv2Squash3:    return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance2, IFSEnvParamItemIFS3Squash);
+        case kParamEnv2Smoothing:  return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance2, IFSEnvParamItemSmoothing);
+        case kParamEnv2Iterations: return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance2, IFSEnvParamItemIterations);
+        case kParamEnv2HoldMode:   return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance2, IFSEnvParamItemHoldMode);
+        // IFS LFO 2 (instance 2)
+        case kParamLfo2Rate:       return MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance2, IFSLFOParamItemPitch);
+        case kParamLfo2Bx:         return MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance2, IFSLFOParamItemBx);
+        case kParamLfo2By:         return MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance2, IFSLFOParamItemBy);
+        case kParamLfo2StartEndY:  return MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance2, IFSLFOParamItemStartEndY);
+        case kParamLfo2Squash1:    return MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance2, IFSLFOParamItemIFS1Squash);
+        case kParamLfo2Squash2:    return MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance2, IFSLFOParamItemIFS2Squash);
+        case kParamLfo2Smoothing:  return MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance2, IFSLFOParamItemSmoothing);
+        case kParamLfo2Iterations: return MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance2, IFSLFOParamItemIterations);
         default:                  return 0;
         }
     }

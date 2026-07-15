@@ -1,9 +1,8 @@
-// IFSynthUI.cpp — UI side: three titled panels built from the reusable widget kit.
-//   "IFS Oscillator" — IFSControl pad + pitch/fine/smoothing knobs + iterations dropdown
-//   "IFS Envelope"   — IFSEnvControl pad + duration/smoothing knobs + hold/iterations dropdowns
-//   "Output"         — Gain knob
-// The two pads edit the fractal-shape params directly; scalar params are knobs; enum params are
-// dropdowns. The UI is the callback for all of them, shuttling values to/from the host by index.
+// IFSynthUI.cpp — UI side. Two columns of module panels (wide layout), each panel a compact
+// landscape tile: a shrunk fractal pad on the left + a single row of knobs/dropdowns on the
+// right. Left column: Oscillator, Envelope 1, Envelope 2. Right column: LFO 1, LFO 2, Output.
+// The pads edit fractal-shape params directly; scalars are knobs; enums are dropdowns. The UI
+// is the callback for all of them, routing by param index. (CV mixers come later.)
 
 #include "DistrhoUI.hpp"
 
@@ -46,24 +45,32 @@ public:
     IFSynthUI()
         : UI(DISTRHO_UI_DEFAULT_WIDTH, DISTRHO_UI_DEFAULT_HEIGHT)
     {
-        setGeometryConstraints(600, 700, false, false);
+        setGeometryConstraints(780, 480, false, false);
 
         const Color accent(120, 190, 205);
-        fOscGroup = makeGroup("IFS Oscillator", accent);
-        fEnvGroup = makeGroup("IFS Envelope", accent);
-        fLfoGroup = makeGroup("IFS LFO", accent);
-        fOutGroup = makeGroup("Output", accent);
+        fOscGroup  = makeGroup("IFS Oscillator", accent);
+        fEnv1Group = makeGroup("IFS Envelope 1", accent);
+        fEnv2Group = makeGroup("IFS Envelope 2", accent);
+        fLfo1Group = makeGroup("IFS LFO 1", accent);
+        fLfo2Group = makeGroup("IFS LFO 2", accent);
+        fOutGroup  = makeGroup("Output", accent);
 
         fOscPad = std::make_unique<IFSControl>(fOscGroup.get(), this);
         fOscPad->setParamIds(kParamOscBx, kParamOscBy, kParamOscStartEndY, kParamOscSquash1, kParamOscSquash2);
 
-        fEnvPad = std::make_unique<IFSEnvControl>(fEnvGroup.get(), this);
-        fEnvPad->setParamIds(kParamEnvBlueX, kParamEnvBlueY, kParamEnvGreenX, kParamEnvGreenY,
-                             kParamEnvStartEndY, kParamEnvSquash1, kParamEnvSquash2, kParamEnvSquash3);
+        fEnv1Pad = std::make_unique<IFSEnvControl>(fEnv1Group.get(), this);
+        fEnv1Pad->setParamIds(kParamEnvBlueX, kParamEnvBlueY, kParamEnvGreenX, kParamEnvGreenY,
+                              kParamEnvStartEndY, kParamEnvSquash1, kParamEnvSquash2, kParamEnvSquash3);
+        fEnv2Pad = std::make_unique<IFSEnvControl>(fEnv2Group.get(), this);
+        fEnv2Pad->setParamIds(kParamEnv2BlueX, kParamEnv2BlueY, kParamEnv2GreenX, kParamEnv2GreenY,
+                              kParamEnv2StartEndY, kParamEnv2Squash1, kParamEnv2Squash2, kParamEnv2Squash3);
 
-        fLfoPad = std::make_unique<IFSControl>(fLfoGroup.get(), this);
-        fLfoPad->setParamIds(kParamLfoBx, kParamLfoBy, kParamLfoStartEndY, kParamLfoSquash1, kParamLfoSquash2);
-        fLfoPad->setIterationBase(1); // LFO iterations param 0..7 → 1..8
+        fLfo1Pad = std::make_unique<IFSControl>(fLfo1Group.get(), this);
+        fLfo1Pad->setParamIds(kParamLfoBx, kParamLfoBy, kParamLfoStartEndY, kParamLfoSquash1, kParamLfoSquash2);
+        fLfo1Pad->setIterationBase(1);
+        fLfo2Pad = std::make_unique<IFSControl>(fLfo2Group.get(), this);
+        fLfo2Pad->setParamIds(kParamLfo2Bx, kParamLfo2By, kParamLfo2StartEndY, kParamLfo2Squash1, kParamLfo2Squash2);
+        fLfo2Pad->setIterationBase(1);
 
         for (uint32_t i = 0; i < kParamCount; ++i)
         {
@@ -80,8 +87,7 @@ public:
                 continue;
             }
             const ParamSpec& s = kParams[i];
-            GroupBox* group = groupFor(i);
-            auto knob = std::make_unique<Knob>(group, this);
+            auto knob = std::make_unique<Knob>(groupFor(i), this);
             knob->setId(i);
             knob->setLabel(s.name);
             knob->configure(s.min, s.max, s.logarithmic, s.def);
@@ -90,9 +96,7 @@ public:
             fKnobs[i] = std::move(knob);
         }
 
-        // Popup menu: a UI-level child created LAST so it draws over everything and captures
-        // events first while open.
-        fMenu = std::make_unique<PopupMenu>(this, this);
+        fMenu = std::make_unique<PopupMenu>(this, this); // created last → draws on top
 
         pushPadDefaults();
         layout();
@@ -114,7 +118,7 @@ protected:
     void knobDragFinished(Knob* k) override { editParameter(k->getId(), false); }
     void knobValueChanged(Knob* k, float v) override { setParameterValue(k->getId(), v); }
 
-    /* -- pad -> host (both pads share IFSControl::Callback) --------------- */
+    /* -- pad -> host (all pads share IFSControl::Callback) ---------------- */
     void ifsDragStarted(uint32_t id) override  { editParameter(id, true); }
     void ifsDragFinished(uint32_t id) override { editParameter(id, false); }
     void ifsValueChanged(uint32_t id, float v) override { setParameterValue(id, v); }
@@ -141,15 +145,13 @@ protected:
     {
         beginPath(); rect(0, 0, getWidth(), getHeight()); fillColor(24, 26, 31); fill();
     }
-
     void onResize(const ResizeEvent& ev) override { UI::onResize(ev); layout(); }
 
 private:
     // Panels declared before their child controls so the children are destroyed first.
-    std::unique_ptr<GroupBox>      fOscGroup, fEnvGroup, fLfoGroup, fOutGroup;
-    std::unique_ptr<IFSControl>    fOscPad;
-    std::unique_ptr<IFSEnvControl> fEnvPad;
-    std::unique_ptr<IFSControl>    fLfoPad;
+    std::unique_ptr<GroupBox>      fOscGroup, fEnv1Group, fEnv2Group, fLfo1Group, fLfo2Group, fOutGroup;
+    std::unique_ptr<IFSControl>    fOscPad, fLfo1Pad, fLfo2Pad;
+    std::unique_ptr<IFSEnvControl> fEnv1Pad, fEnv2Pad;
     std::unique_ptr<Knob>          fKnobs[kParamCount];
     std::unique_ptr<Dropdown>      fDropdowns[kParamCount];
     std::unique_ptr<PopupMenu>     fMenu;
@@ -164,62 +166,90 @@ private:
         case kParamEnvStartEndY: case kParamEnvSquash1: case kParamEnvSquash2: case kParamEnvSquash3:
         case kParamLfoBx: case kParamLfoBy: case kParamLfoStartEndY:
         case kParamLfoSquash1: case kParamLfoSquash2:
+        case kParamEnv2BlueX: case kParamEnv2BlueY: case kParamEnv2GreenX: case kParamEnv2GreenY:
+        case kParamEnv2StartEndY: case kParamEnv2Squash1: case kParamEnv2Squash2: case kParamEnv2Squash3:
+        case kParamLfo2Bx: case kParamLfo2By: case kParamLfo2StartEndY:
+        case kParamLfo2Squash1: case kParamLfo2Squash2:
             return true;
         default: return false;
         }
     }
     static bool isDropdownParam(uint32_t i)
     {
-        return i == kParamOscIterations || i == kParamEnvIterations || i == kParamEnvHoldMode
-            || i == kParamLfoIterations;
+        switch (i)
+        {
+        case kParamOscIterations:
+        case kParamEnvIterations: case kParamEnvHoldMode:
+        case kParamLfoIterations:
+        case kParamEnv2Iterations: case kParamEnv2HoldMode:
+        case kParamLfo2Iterations:
+            return true;
+        default: return false;
+        }
     }
 
     GroupBox* groupFor(uint32_t i) const
     {
-        if (i == kParamGain) return fOutGroup.get();
-        if (i >= kParamLfoRate) return fLfoGroup.get();
-        if (i >= kParamEnvDuration) return fEnvGroup.get();
-        return fOscGroup.get();
+        if (i == kParamGain)            return fOutGroup.get();
+        if (i <= kParamOscIterations)   return fOscGroup.get();
+        if (i <= kParamEnvHoldMode)     return fEnv1Group.get();
+        if (i <= kParamLfoIterations)   return fLfo1Group.get();
+        if (i <= kParamEnv2HoldMode)    return fEnv2Group.get();
+        return fLfo2Group.get();
     }
 
     static std::vector<std::string> choicesFor(uint32_t i)
     {
         if (i == kParamOscIterations) return {"3", "4"};
-        if (i == kParamEnvIterations || i == kParamLfoIterations)
-            return {"1", "2", "3", "4", "5", "6", "7", "8"};
-        if (i == kParamEnvHoldMode)   return {"None", "Blue", "Green", "Loop"};
-        return {};
+        if (i == kParamEnvHoldMode || i == kParamEnv2HoldMode) return {"None", "Blue", "Green", "Loop"};
+        return {"1", "2", "3", "4", "5", "6", "7", "8"}; // env/lfo iterations
     }
 
-    // Params the pads draw from.
     void routeToPad(uint32_t index, float v)
     {
         switch (index)
         {
-        case kParamOscBx:         fOscPad->setBx(v); break;
-        case kParamOscBy:         fOscPad->setBy(v); break;
-        case kParamOscStartEndY:  fOscPad->setStartEndY(v); break;
-        case kParamOscSquash1:    fOscPad->setSquash1(v); break;
-        case kParamOscSquash2:    fOscPad->setSquash2(v); break;
-        case kParamOscSmoothing:  fOscPad->setSmoothing(v); break;
+        case kParamOscBx: fOscPad->setBx(v); break;
+        case kParamOscBy: fOscPad->setBy(v); break;
+        case kParamOscStartEndY: fOscPad->setStartEndY(v); break;
+        case kParamOscSquash1: fOscPad->setSquash1(v); break;
+        case kParamOscSquash2: fOscPad->setSquash2(v); break;
+        case kParamOscSmoothing: fOscPad->setSmoothing(v); break;
         case kParamOscIterations: fOscPad->setIterations(v); break;
-        case kParamEnvBlueX:      fEnvPad->setBlueX(v); break;
-        case kParamEnvBlueY:      fEnvPad->setBlueY(v); break;
-        case kParamEnvGreenX:     fEnvPad->setGreenX(v); break;
-        case kParamEnvGreenY:     fEnvPad->setGreenY(v); break;
-        case kParamEnvStartEndY:  fEnvPad->setStartEndY(v); break;
-        case kParamEnvSquash1:    fEnvPad->setSquash1(v); break;
-        case kParamEnvSquash2:    fEnvPad->setSquash2(v); break;
-        case kParamEnvSquash3:    fEnvPad->setSquash3(v); break;
-        case kParamEnvSmoothing:  fEnvPad->setSmoothing(v); break;
-        case kParamEnvIterations: fEnvPad->setIterations(v); break;
-        case kParamLfoBx:         fLfoPad->setBx(v); break;
-        case kParamLfoBy:         fLfoPad->setBy(v); break;
-        case kParamLfoStartEndY:  fLfoPad->setStartEndY(v); break;
-        case kParamLfoSquash1:    fLfoPad->setSquash1(v); break;
-        case kParamLfoSquash2:    fLfoPad->setSquash2(v); break;
-        case kParamLfoSmoothing:  fLfoPad->setSmoothing(v); break;
-        case kParamLfoIterations: fLfoPad->setIterations(v); break;
+        case kParamEnvBlueX: fEnv1Pad->setBlueX(v); break;
+        case kParamEnvBlueY: fEnv1Pad->setBlueY(v); break;
+        case kParamEnvGreenX: fEnv1Pad->setGreenX(v); break;
+        case kParamEnvGreenY: fEnv1Pad->setGreenY(v); break;
+        case kParamEnvStartEndY: fEnv1Pad->setStartEndY(v); break;
+        case kParamEnvSquash1: fEnv1Pad->setSquash1(v); break;
+        case kParamEnvSquash2: fEnv1Pad->setSquash2(v); break;
+        case kParamEnvSquash3: fEnv1Pad->setSquash3(v); break;
+        case kParamEnvSmoothing: fEnv1Pad->setSmoothing(v); break;
+        case kParamEnvIterations: fEnv1Pad->setIterations(v); break;
+        case kParamLfoBx: fLfo1Pad->setBx(v); break;
+        case kParamLfoBy: fLfo1Pad->setBy(v); break;
+        case kParamLfoStartEndY: fLfo1Pad->setStartEndY(v); break;
+        case kParamLfoSquash1: fLfo1Pad->setSquash1(v); break;
+        case kParamLfoSquash2: fLfo1Pad->setSquash2(v); break;
+        case kParamLfoSmoothing: fLfo1Pad->setSmoothing(v); break;
+        case kParamLfoIterations: fLfo1Pad->setIterations(v); break;
+        case kParamEnv2BlueX: fEnv2Pad->setBlueX(v); break;
+        case kParamEnv2BlueY: fEnv2Pad->setBlueY(v); break;
+        case kParamEnv2GreenX: fEnv2Pad->setGreenX(v); break;
+        case kParamEnv2GreenY: fEnv2Pad->setGreenY(v); break;
+        case kParamEnv2StartEndY: fEnv2Pad->setStartEndY(v); break;
+        case kParamEnv2Squash1: fEnv2Pad->setSquash1(v); break;
+        case kParamEnv2Squash2: fEnv2Pad->setSquash2(v); break;
+        case kParamEnv2Squash3: fEnv2Pad->setSquash3(v); break;
+        case kParamEnv2Smoothing: fEnv2Pad->setSmoothing(v); break;
+        case kParamEnv2Iterations: fEnv2Pad->setIterations(v); break;
+        case kParamLfo2Bx: fLfo2Pad->setBx(v); break;
+        case kParamLfo2By: fLfo2Pad->setBy(v); break;
+        case kParamLfo2StartEndY: fLfo2Pad->setStartEndY(v); break;
+        case kParamLfo2Squash1: fLfo2Pad->setSquash1(v); break;
+        case kParamLfo2Squash2: fLfo2Pad->setSquash2(v); break;
+        case kParamLfo2Smoothing: fLfo2Pad->setSmoothing(v); break;
+        case kParamLfo2Iterations: fLfo2Pad->setIterations(v); break;
         default: break;
         }
     }
@@ -234,32 +264,30 @@ private:
 
     void pushPadDefaults()
     {
-        fOscPad->setBx(kParams[kParamOscBx].def);
-        fOscPad->setBy(kParams[kParamOscBy].def);
-        fOscPad->setStartEndY(kParams[kParamOscStartEndY].def);
-        fOscPad->setSquash1(kParams[kParamOscSquash1].def);
-        fOscPad->setSquash2(kParams[kParamOscSquash2].def);
-        fOscPad->setSmoothing(kParams[kParamOscSmoothing].def);
-        fOscPad->setIterations(kParams[kParamOscIterations].def);
-
-        fEnvPad->setBlueX(kParams[kParamEnvBlueX].def);
-        fEnvPad->setBlueY(kParams[kParamEnvBlueY].def);
-        fEnvPad->setGreenX(kParams[kParamEnvGreenX].def);
-        fEnvPad->setGreenY(kParams[kParamEnvGreenY].def);
-        fEnvPad->setStartEndY(kParams[kParamEnvStartEndY].def);
-        fEnvPad->setSquash1(kParams[kParamEnvSquash1].def);
-        fEnvPad->setSquash2(kParams[kParamEnvSquash2].def);
-        fEnvPad->setSquash3(kParams[kParamEnvSquash3].def);
-        fEnvPad->setSmoothing(kParams[kParamEnvSmoothing].def);
-        fEnvPad->setIterations(kParams[kParamEnvIterations].def);
-
-        fLfoPad->setBx(kParams[kParamLfoBx].def);
-        fLfoPad->setBy(kParams[kParamLfoBy].def);
-        fLfoPad->setStartEndY(kParams[kParamLfoStartEndY].def);
-        fLfoPad->setSquash1(kParams[kParamLfoSquash1].def);
-        fLfoPad->setSquash2(kParams[kParamLfoSquash2].def);
-        fLfoPad->setSmoothing(kParams[kParamLfoSmoothing].def);
-        fLfoPad->setIterations(kParams[kParamLfoIterations].def);
+        pushOscPad(fOscPad.get(), kParamOscBx);
+        pushLfoPad(fLfo1Pad.get(), kParamLfoBx);
+        pushLfoPad(fLfo2Pad.get(), kParamLfo2Bx);
+        pushEnvPad(fEnv1Pad.get(), kParamEnvDuration);
+        pushEnvPad(fEnv2Pad.get(), kParamEnv2Duration);
+    }
+    // The osc/lfo pads share IFSControl; params are laid out identically from a base index.
+    void pushOscPad(IFSControl* p, uint32_t bx)
+    {
+        p->setBx(kParams[bx + 0].def); p->setBy(kParams[bx + 1].def);
+        p->setStartEndY(kParams[bx + 2].def); p->setSquash1(kParams[bx + 3].def);
+        p->setSquash2(kParams[bx + 4].def);
+        p->setSmoothing(kParams[bx + 5].def); p->setIterations(kParams[bx + 6].def);
+    }
+    void pushLfoPad(IFSControl* p, uint32_t bx) { pushOscPad(p, bx); }
+    void pushEnvPad(IFSEnvControl* p, uint32_t dur)
+    {
+        // env order: Duration, StartEndY, BlueX, BlueY, GreenX, GreenY, Sq1, Sq2, Sq3, Smooth, Iter, Hold
+        p->setStartEndY(kParams[dur + 1].def);
+        p->setBlueX(kParams[dur + 2].def);  p->setBlueY(kParams[dur + 3].def);
+        p->setGreenX(kParams[dur + 4].def); p->setGreenY(kParams[dur + 5].def);
+        p->setSquash1(kParams[dur + 6].def); p->setSquash2(kParams[dur + 7].def);
+        p->setSquash3(kParams[dur + 8].def); p->setSmoothing(kParams[dur + 9].def);
+        p->setIterations(kParams[dur + 10].def);
     }
 
     void layout()
@@ -267,57 +295,63 @@ private:
         const int W = static_cast<int>(getWidth());
         const int H = static_cast<int>(getHeight());
         const int m = 8, gap = 8;
-        const int rowH = (H - 2 * m - 2 * gap) / 3; // three equal rows
+        const int colW = (W - 2 * m - gap) / 2;
+        const int rowH = (H - 2 * m - 2 * gap) / 3;
+        const int colL = m, colR = m + colW + gap;
+        const int row0 = m, row1 = m + rowH + gap, row2 = m + 2 * (rowH + gap);
 
-        fOscGroup->setAbsolutePos(m, m);
-        fOscGroup->setSize(static_cast<uint>(W - 2 * m), static_cast<uint>(rowH));
+        placeGroup(fOscGroup.get(),  colL, row0, colW, rowH);
+        placeGroup(fEnv1Group.get(), colL, row1, colW, rowH);
+        placeGroup(fEnv2Group.get(), colL, row2, colW, rowH);
+        placeGroup(fLfo1Group.get(), colR, row0, colW, rowH);
+        placeGroup(fLfo2Group.get(), colR, row1, colW, rowH);
+        placeGroup(fOutGroup.get(),  colR, row2, colW, rowH);
 
-        const int envY = m + rowH + gap;
-        fEnvGroup->setAbsolutePos(m, envY);
-        fEnvGroup->setSize(static_cast<uint>(W - 2 * m), static_cast<uint>(rowH));
+        SubWidget* oscG[4]  = { fKnobs[kParamOscPitch].get(), fKnobs[kParamOscFine].get(),
+                                fKnobs[kParamOscSmoothing].get(), fDropdowns[kParamOscIterations].get() };
+        layoutPadPanel(fOscGroup.get(), fOscPad.get(), oscG, 4);
 
-        // Row 3: IFS LFO (left) beside Output (right).
-        const int row3Y = envY + rowH + gap;
-        const int usableW = W - 2 * m - gap;
-        const int lfoW = usableW * 70 / 100;
-        const int outW = usableW - lfoW;
-        fLfoGroup->setAbsolutePos(m, row3Y);
-        fLfoGroup->setSize(static_cast<uint>(lfoW), static_cast<uint>(rowH));
-        fOutGroup->setAbsolutePos(m + lfoW + gap, row3Y);
-        fOutGroup->setSize(static_cast<uint>(outW), static_cast<uint>(rowH));
+        SubWidget* env1G[4] = { fKnobs[kParamEnvDuration].get(), fKnobs[kParamEnvSmoothing].get(),
+                                fDropdowns[kParamEnvHoldMode].get(), fDropdowns[kParamEnvIterations].get() };
+        layoutPadPanel(fEnv1Group.get(), fEnv1Pad.get(), env1G, 4);
 
-        SubWidget* oscGrid[4] = { fKnobs[kParamOscPitch].get(), fKnobs[kParamOscFine].get(),
-                                  fKnobs[kParamOscSmoothing].get(), fDropdowns[kParamOscIterations].get() };
-        layoutPadPanel(fOscGroup.get(), fOscPad.get(), oscGrid);
+        SubWidget* env2G[4] = { fKnobs[kParamEnv2Duration].get(), fKnobs[kParamEnv2Smoothing].get(),
+                                fDropdowns[kParamEnv2HoldMode].get(), fDropdowns[kParamEnv2Iterations].get() };
+        layoutPadPanel(fEnv2Group.get(), fEnv2Pad.get(), env2G, 4);
 
-        SubWidget* envGrid[4] = { fKnobs[kParamEnvDuration].get(), fKnobs[kParamEnvSmoothing].get(),
-                                  fDropdowns[kParamEnvHoldMode].get(), fDropdowns[kParamEnvIterations].get() };
-        layoutPadPanel(fEnvGroup.get(), fEnvPad.get(), envGrid);
+        SubWidget* lfo1G[3] = { fKnobs[kParamLfoRate].get(), fKnobs[kParamLfoSmoothing].get(),
+                                fDropdowns[kParamLfoIterations].get() };
+        layoutPadPanel(fLfo1Group.get(), fLfo1Pad.get(), lfo1G, 3);
 
-        SubWidget* lfoGrid[4] = { fKnobs[kParamLfoRate].get(), fKnobs[kParamLfoSmoothing].get(),
-                                  fDropdowns[kParamLfoIterations].get(), nullptr };
-        layoutPadPanel(fLfoGroup.get(), fLfoPad.get(), lfoGrid);
+        SubWidget* lfo2G[3] = { fKnobs[kParamLfo2Rate].get(), fKnobs[kParamLfo2Smoothing].get(),
+                                fDropdowns[kParamLfo2Iterations].get() };
+        layoutPadPanel(fLfo2Group.get(), fLfo2Pad.get(), lfo2G, 3);
 
         layoutOutput();
     }
 
-    void layoutPadPanel(GroupBox* group, NanoSubWidget* pad, SubWidget* grid[4])
+    void placeGroup(GroupBox* g, int x, int y, int w, int h)
+    {
+        g->setAbsolutePos(x, y);
+        g->setSize(static_cast<uint>(w), static_cast<uint>(h));
+    }
+
+    // Landscape panel: shrunk pad on the left, a single row of n controls on the right.
+    void layoutPadPanel(GroupBox* group, NanoSubWidget* pad, SubWidget* grid[], int n)
     {
         int cx, cy, cw, ch;
         group->contentBounds(cx, cy, cw, ch);
-        const int gap = 10;
-        const int padW = static_cast<int>(cw * 0.60);
+        const int gap = 8;
+        const int padW = static_cast<int>(cw * 0.42);
         pad->setSize(static_cast<uint>(padW), static_cast<uint>(ch));
         pad->setAbsolutePos(cx, cy);
 
         const int kx = cx + padW + gap, kw = cw - padW - gap;
-        const int cellW = kw / 2, cellH = ch / 2;
-        for (int i = 0; i < 4; ++i)
+        const int cellW = n > 0 ? kw / n : kw;
+        for (int i = 0; i < n; ++i)
         {
-            if (grid[i] == nullptr) continue; // panels with < 4 controls (e.g. LFO)
-            const int r = i / 2, c = i % 2;
-            grid[i]->setSize(static_cast<uint>(cellW), static_cast<uint>(cellH));
-            grid[i]->setAbsolutePos(kx + c * cellW, cy + r * cellH);
+            grid[i]->setSize(static_cast<uint>(cellW), static_cast<uint>(ch));
+            grid[i]->setAbsolutePos(kx + i * cellW, cy);
         }
     }
 
@@ -325,14 +359,14 @@ private:
     {
         int cx, cy, cw, ch;
         fOutGroup->contentBounds(cx, cy, cw, ch);
-        const int gw = std::min(cw, ch); // fit the (narrow) panel, centered
+        const int gw = std::min(cw, ch);
         fKnobs[kParamGain]->setSize(static_cast<uint>(gw), static_cast<uint>(ch));
         fKnobs[kParamGain]->setAbsolutePos(cx + (cw - gw) / 2, cy);
     }
 
     static std::function<std::string(float)> formatterFor(uint32_t index)
     {
-        if (index == kParamLfoRate) // octaves → Hz (0 = 1 Hz)
+        if (index == kParamLfoRate || index == kParamLfo2Rate) // octaves → Hz (0 = 1 Hz)
             return [](float v) { char b[16]; std::snprintf(b, sizeof(b), "%.2f Hz", std::exp2(v)); return std::string(b); };
         const std::string u = kParams[index].unit;
         const bool isTime = u == "s";

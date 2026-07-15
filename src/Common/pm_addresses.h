@@ -35,6 +35,12 @@ inline constexpr AUParameterAddress ifsEnv1GateInputAddress =
 inline constexpr AUParameterAddress ifsLFO1Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance1, 0);
 
+// Second IFS envelope / LFO instances — mod sources (not connected in the graph yet).
+inline constexpr AUParameterAddress ifsEnv2Address =
+   MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance2, 0);
+inline constexpr AUParameterAddress ifsLFO2Address =
+   MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance2, 0);
+
 inline constexpr AUParameterAddress adsr1Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindADSR, ModuleInstance1, 0);
 

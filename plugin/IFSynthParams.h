@@ -43,6 +43,28 @@ enum ParamIndex {
    kParamLfoSquash2,
    kParamLfoSmoothing,
    kParamLfoIterations,
+   // IFS envelope 2 (mod source, not wired to the graph)
+   kParamEnv2Duration,
+   kParamEnv2StartEndY,
+   kParamEnv2BlueX,
+   kParamEnv2BlueY,
+   kParamEnv2GreenX,
+   kParamEnv2GreenY,
+   kParamEnv2Squash1,
+   kParamEnv2Squash2,
+   kParamEnv2Squash3,
+   kParamEnv2Smoothing,
+   kParamEnv2Iterations,
+   kParamEnv2HoldMode,
+   // IFS LFO 2 (mod source, not wired to the graph)
+   kParamLfo2Rate,
+   kParamLfo2Bx,
+   kParamLfo2By,
+   kParamLfo2StartEndY,
+   kParamLfo2Squash1,
+   kParamLfo2Squash2,
+   kParamLfo2Smoothing,
+   kParamLfo2Iterations,
    kParamCount
 };
 
@@ -91,6 +113,28 @@ static constexpr ParamSpec kParams[kParamCount] = {
    {"Squash 2",    "lfoSq2",     "",   -0.99f, 0.99f, -0.5f,  false, false},
    {"Smoothing",   "lfoSmooth",  "",   0.0f,   1.0f,   0.5f,  false, false},
    {"Iterations",  "lfoIters",   "",   0.0f,   7.0f,   3.0f,  false, true },
+   // IFS envelope 2
+   {"Duration",    "env2Dur",    "s",  0.01f,  10.0f,  1.0f,  true,  false},
+   {"Ends",        "env2Ends",   "",   -1.0f,  1.0f,   0.0f,  false, false},
+   {"Blue X",      "env2BlueX",  "",   0.0f,   1.0f,   0.15f, false, false},
+   {"Blue Y",      "env2BlueY",  "",   -1.0f,  1.0f,   1.0f,  false, false},
+   {"Green X",     "env2GreenX", "",   0.0f,   1.0f,   0.45f, false, false},
+   {"Green Y",     "env2GreenY", "",   -1.0f,  1.0f,   0.5f,  false, false},
+   {"Squash 1",    "env2Sq1",    "",   -0.99f, 0.99f,  0.2f,  false, false},
+   {"Squash 2",    "env2Sq2",    "",   -0.99f, 0.99f,  0.2f,  false, false},
+   {"Squash 3",    "env2Sq3",    "",   -0.99f, 0.99f,  0.2f,  false, false},
+   {"Smoothing",   "env2Smooth", "",   0.0f,   1.0f,   0.5f,  false, false},
+   {"Iterations",  "env2Iters",  "",   0.0f,   7.0f,   2.0f,  false, true },
+   {"Hold",        "env2Hold",   "",   0.0f,   3.0f,   2.0f,  false, true },
+   // IFS LFO 2
+   {"Rate",        "lfo2Rate",   "oct",-7.0f,  7.0f,   0.0f,  false, false},
+   {"Split",       "lfo2Bx",     "",   -1.0f,  1.0f,   0.0f,  false, false},
+   {"Junction",    "lfo2By",     "",   -1.0f,  1.0f,   0.5f,  false, false},
+   {"Ends",        "lfo2Ends",   "",   -1.0f,  1.0f,  -1.0f,  false, false},
+   {"Squash 1",    "lfo2Sq1",    "",   -0.99f, 0.99f,  0.5f,  false, false},
+   {"Squash 2",    "lfo2Sq2",    "",   -0.99f, 0.99f, -0.5f,  false, false},
+   {"Smoothing",   "lfo2Smooth", "",   0.0f,   1.0f,   0.5f,  false, false},
+   {"Iterations",  "lfo2Iters",  "",   0.0f,   7.0f,   3.0f,  false, true },
 };
 
 } // namespace ifsynth

@@ -41,6 +41,13 @@ const std::vector<ModuleInitSpec>& getModuleInitSpecs() {
       // — it's a mod source awaiting the CV/mod system. Free-running, no MIDI/reset/sr procs.
       {ifsLFO1Address, &ifsLFOConstantsGroup, InitIFSLFOModule, DeinitIFSLFOModule,
        ProcessIFSLFOModule, nullptr, ParamIFSLFOModule, nullptr, nullptr},
+      // Second env + LFO instances (mod sources, also unconnected). Same procs, instance-2
+      // addresses distinguish them; each has its own state/params.
+      {ifsEnv2Address, &ifsEnvConstantsGroup, InitIFSEnvModule, DeinitIFSEnvModule,
+       ProcessIFSEnvModule, MIDIIFSEnvModule, ParamIFSEnvModule, ResetIFSEnvModule,
+       SampleRateIFSEnvModule},
+      {ifsLFO2Address, &ifsLFOConstantsGroup, InitIFSLFOModule, DeinitIFSLFOModule,
+       ProcessIFSLFOModule, nullptr, ParamIFSLFOModule, nullptr, nullptr},
       {combine1Address, &combineConstantsGroup, nullptr, nullptr, ProcessCombineModule, nullptr,
        nullptr, nullptr, nullptr},
       {finalAddress, &finalConstantsGroup, InitFinalModule, DeinitFinalModule, ProcessFinalModule,
