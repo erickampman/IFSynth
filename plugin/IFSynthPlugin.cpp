@@ -15,6 +15,7 @@
 
 #include "ParamAddressMacros.h"
 #include "VoiceManager.hpp"
+#include "pm_addresses.h"
 #include "pm_midi.h"
 #include "pm_params.h"
 
@@ -79,10 +80,7 @@ protected:
         if (index >= kParamCount)
             return;
         fValues[index] = value;
-        // Gain is applied in run(); every other param drives a VoiceManager module item
-        // (propagates to all voices, live).
-        if (index != kParamGain && fVoiceManager)
-            fVoiceManager->setParameter(vmAddress(index), value);
+        applyParam(index, value);
     }
 
     /* -- lifecycle -------------------------------------------------------- */
@@ -188,8 +186,65 @@ private:
         case kParamMix2EnableCC:  return MODULE_PARAM_ADDRESS(ModuleParamKindCVMixer, ModuleInstance2, CVMixerParamItemEnableCC);
         case kParamMix2CCNumber:  return MODULE_PARAM_ADDRESS(ModuleParamKindCVMixer, ModuleInstance2, CVMixerParamItemCCNumber);
         case kParamMix2Mode:      return MODULE_PARAM_ADDRESS(ModuleParamKindCVMixer, ModuleInstance2, CVMixerParamItemMode);
+        // IFSOsc mod depths (the module ModLevel params)
+        case kParamOscPitchModDepth: return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemPitchModLevel);
+        case kParamOscBxModDepth:    return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemBxModLevel);
+        case kParamOscByModDepth:    return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemByModLevel);
+        case kParamOscSq1ModDepth:   return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemSquash1ModLevel);
+        case kParamOscSq2ModDepth:   return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemSquash2ModLevel);
         default:                  return 0;
         }
+    }
+
+    // Mod-source dropdown index (0 = None) → the source module's base address.
+    static AUParameterAddress modSourceAddr(int idx)
+    {
+        switch (idx)
+        {
+        case 1: return ifsLFO1Address;
+        case 2: return ifsLFO2Address;
+        case 3: return ifsEnv1Address;
+        case 4: return ifsEnv2Address;
+        case 5: return cvMixer1Address;
+        case 6: return cvMixer2Address;
+        default: return 0; // None
+        }
+    }
+
+    // Handle the routing params (dropdowns → connections). Returns true if handled.
+    bool applyModRouting(uint32_t index, float value)
+    {
+        AUParameterAddress destInput = 0;
+        switch (index)
+        {
+        case kParamOscPitchModSrc: destInput = ifsOsc1PitchModInputAddress;   break;
+        case kParamOscBxModSrc:    destInput = ifsOsc1BxModInputAddress;      break;
+        case kParamOscByModSrc:    destInput = ifsOsc1ByModInputAddress;      break;
+        case kParamOscSq1ModSrc:   destInput = ifsOsc1Squash1ModInputAddress; break;
+        case kParamOscSq2ModSrc:   destInput = ifsOsc1Squash2ModInputAddress; break;
+        case kParamVCASource:
+            // The amplitude VCA always has an env: 0 = Env 1, 1 = Env 2.
+            fVoiceManager->setModSource(combine1Input2Address,
+                                        value < 0.5f ? ifsEnv1Address : ifsEnv2Address);
+            return true;
+        default:
+            return false;
+        }
+        fVoiceManager->setModSource(destInput, modSourceAddr(static_cast<int>(value + 0.5f)));
+        return true;
+    }
+
+    // Route one param to the engine: gain is applied in run(); routing params change connections;
+    // everything else is a module param.
+    void applyParam(uint32_t index, float value)
+    {
+        if (index == kParamGain || !fVoiceManager)
+            return;
+        if (applyModRouting(index, value))
+            return;
+        const AUParameterAddress a = vmAddress(index);
+        if (a != 0)
+            fVoiceManager->setParameter(a, value);
     }
 
     // (Re)build the VoiceManager for the current sample rate and push all defaults into it.
@@ -205,10 +260,10 @@ private:
         setConfig(MIDIParamItemFreeRun, 0);
         setConfig(MIDIParamItemLegato, 0);
 
-        // Push every non-gain param so the engine matches the exposed parameter values.
+        // Push every non-gain param so the engine matches the exposed parameter values
+        // (module params + the mod-routing connections).
         for (uint32_t i = 0; i < kParamCount; ++i)
-            if (i != kParamGain)
-                fVoiceManager->setParameter(vmAddress(i), fValues[i]);
+            applyParam(i, fValues[i]);
     }
 
     void setConfig(MIDIParamItem item, float v)

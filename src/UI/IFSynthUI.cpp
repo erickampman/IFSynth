@@ -21,6 +21,7 @@
 #include "IFSynthParams.h"
 #include "Knob.hpp"
 #include "PopupMenu.hpp"
+#include "Slider.hpp"
 #include "Toggle.hpp"
 
 START_NAMESPACE_DISTRHO
@@ -34,6 +35,7 @@ using DGL_NAMESPACE::IFSEnvControl;
 using DGL_NAMESPACE::Knob;
 using DGL_NAMESPACE::NanoSubWidget;
 using DGL_NAMESPACE::PopupMenu;
+using DGL_NAMESPACE::Slider;
 using DGL_NAMESPACE::SubWidget;
 using DGL_NAMESPACE::Toggle;
 
@@ -42,7 +44,8 @@ class IFSynthUI : public UI,
                   public IFSControl::Callback,
                   public Dropdown::Callback,
                   public PopupMenu::Callback,
-                  public Toggle::Callback
+                  public Toggle::Callback,
+                  public Slider::Callback
 {
 public:
     IFSynthUI()
@@ -58,6 +61,7 @@ public:
         fLfo2Group = makeGroup("IFS LFO 2", accent);
         fMix1Group = makeGroup("CV Mixer 1  (LFO 1 + Env 1)", accent);
         fMix2Group = makeGroup("CV Mixer 2  (LFO 2 + Env 2)", accent);
+        fModGroup  = makeGroup("Modulation  (source + depth per IFS Osc input; VCA envelope)", accent);
         fOutGroup  = makeGroup("Output", accent);
 
         fOscPad = std::make_unique<IFSControl>(fOscGroup.get(), this);
@@ -100,6 +104,16 @@ public:
                 fToggles[i] = std::move(t);
                 continue;
             }
+            if (isSliderParam(i))
+            {
+                auto s = std::make_unique<Slider>(groupFor(i), this);
+                s->setId(i);
+                s->setLabel(kParams[i].name);
+                s->setRange(kParams[i].min, kParams[i].max);
+                s->setValue(kParams[i].def, false);
+                fSliders[i] = std::move(s);
+                continue;
+            }
             const ParamSpec& s = kParams[i];
             auto knob = std::make_unique<Knob>(groupFor(i), this);
             knob->setId(i);
@@ -125,6 +139,7 @@ protected:
         if (fKnobs[index])     { fKnobs[index]->setRealValue(value, false); fKnobs[index]->repaint(); }
         if (fDropdowns[index]) fDropdowns[index]->setIndex(static_cast<int>(value));
         if (fToggles[index])   fToggles[index]->setState(value > 0.5f);
+        if (fSliders[index])   fSliders[index]->setValue(value, false);
         routeToPad(index, value);
     }
 
@@ -136,6 +151,11 @@ protected:
         setParameterValue(id, on ? 1.0f : 0.0f);
         editParameter(id, false);
     }
+
+    /* -- slider -> host --------------------------------------------------- */
+    void sliderDragStarted(Slider* s) override  { editParameter(s->getId(), true); }
+    void sliderDragFinished(Slider* s) override { editParameter(s->getId(), false); }
+    void sliderValueChanged(Slider* s, float v) override { setParameterValue(s->getId(), v); }
 
     /* -- knob -> host ----------------------------------------------------- */
     void knobDragStarted(Knob* k) override  { editParameter(k->getId(), true); }
@@ -174,12 +194,13 @@ protected:
 private:
     // Panels declared before their child controls so the children are destroyed first.
     std::unique_ptr<GroupBox>      fOscGroup, fEnv1Group, fEnv2Group, fLfo1Group, fLfo2Group;
-    std::unique_ptr<GroupBox>      fMix1Group, fMix2Group, fOutGroup;
+    std::unique_ptr<GroupBox>      fMix1Group, fMix2Group, fModGroup, fOutGroup;
     std::unique_ptr<IFSControl>    fOscPad, fLfo1Pad, fLfo2Pad;
     std::unique_ptr<IFSEnvControl> fEnv1Pad, fEnv2Pad;
     std::unique_ptr<Knob>          fKnobs[kParamCount];
     std::unique_ptr<Dropdown>      fDropdowns[kParamCount];
     std::unique_ptr<Toggle>        fToggles[kParamCount];
+    std::unique_ptr<Slider>        fSliders[kParamCount];
     std::unique_ptr<PopupMenu>     fMenu;
 
     static bool isPadParam(uint32_t i)
@@ -211,7 +232,7 @@ private:
         case kParamLfo2Iterations:
         case kParamMix1Mode: case kParamMix2Mode:
             return true;
-        default: return false;
+        default: return isModSrcParam(i); // mod source + VCA dropdowns
         }
     }
     static bool isToggleParam(uint32_t i)
@@ -224,17 +245,38 @@ private:
         default: return false;
         }
     }
+    static bool isSliderParam(uint32_t i) // the mod depths
+    {
+        switch (i)
+        {
+        case kParamOscPitchModDepth: case kParamOscBxModDepth: case kParamOscByModDepth:
+        case kParamOscSq1ModDepth: case kParamOscSq2ModDepth:
+            return true;
+        default: return false;
+        }
+    }
+    static bool isModSrcParam(uint32_t i) // source dropdowns (osc mods + VCA)
+    {
+        switch (i)
+        {
+        case kParamOscPitchModSrc: case kParamOscBxModSrc: case kParamOscByModSrc:
+        case kParamOscSq1ModSrc: case kParamOscSq2ModSrc: case kParamVCASource:
+            return true;
+        default: return false;
+        }
+    }
 
     GroupBox* groupFor(uint32_t i) const
     {
-        if (i == kParamGain)            return fOutGroup.get();
-        if (i <= kParamOscIterations)   return fOscGroup.get();
-        if (i <= kParamEnvHoldMode)     return fEnv1Group.get();
-        if (i <= kParamLfoIterations)   return fLfo1Group.get();
-        if (i <= kParamEnv2HoldMode)    return fEnv2Group.get();
-        if (i <= kParamLfo2Iterations)  return fLfo2Group.get();
-        if (i <= kParamMix1Mode)        return fMix1Group.get();
-        return fMix2Group.get();
+        if (i == kParamGain)             return fOutGroup.get();
+        if (i <= kParamOscIterations)    return fOscGroup.get();
+        if (i <= kParamEnvHoldMode)      return fEnv1Group.get();
+        if (i <= kParamLfoIterations)    return fLfo1Group.get();
+        if (i <= kParamEnv2HoldMode)     return fEnv2Group.get();
+        if (i <= kParamLfo2Iterations)   return fLfo2Group.get();
+        if (i <= kParamMix1Mode)         return fMix1Group.get();
+        if (i <= kParamMix2Mode)         return fMix2Group.get();
+        return fModGroup.get(); // modulation routing block
     }
 
     static std::vector<std::string> choicesFor(uint32_t i)
@@ -242,6 +284,8 @@ private:
         if (i == kParamOscIterations) return {"3", "4"};
         if (i == kParamEnvHoldMode || i == kParamEnv2HoldMode) return {"None", "Blue", "Green", "Loop"};
         if (i == kParamMix1Mode || i == kParamMix2Mode) return {"Add", "Multiply"};
+        if (i == kParamVCASource) return {"Env 1", "Env 2"};
+        if (isModSrcParam(i)) return {"None", "LFO 1", "LFO 2", "Env 1", "Env 2", "CV Mix 1", "CV Mix 2"};
         return {"1", "2", "3", "4", "5", "6", "7", "8"}; // env/lfo iterations
     }
 
@@ -335,12 +379,14 @@ private:
         const int W = static_cast<int>(getWidth());
         const int H = static_cast<int>(getHeight());
         const int m = 8, gap = 8;
-        const int mixerH = 128; // short pad-less mixer row at the bottom
+        const int mixerH = 120; // short pad-less mixer row
+        const int modH = 178;   // modulation matrix row (dropdown + fader per cell)
         const int colW = (W - 2 * m - gap) / 2;
-        const int rowH = (H - 2 * m - 3 * gap - mixerH) / 3;
+        const int rowH = (H - 2 * m - 4 * gap - mixerH - modH) / 3;
         const int colL = m, colR = m + colW + gap;
         const int row0 = m, row1 = m + rowH + gap, row2 = m + 2 * (rowH + gap);
         const int mixY = m + 3 * (rowH + gap);
+        const int modY = mixY + mixerH + gap;
 
         placeGroup(fOscGroup.get(),  colL, row0, colW, rowH);
         placeGroup(fEnv1Group.get(), colL, row1, colW, rowH);
@@ -350,6 +396,7 @@ private:
         placeGroup(fOutGroup.get(),  colR, row2, colW, rowH);
         placeGroup(fMix1Group.get(), colL, mixY, colW, mixerH);
         placeGroup(fMix2Group.get(), colR, mixY, colW, mixerH);
+        placeGroup(fModGroup.get(),  colL, modY, W - 2 * m, modH);
 
         SubWidget* oscG[4]  = { fKnobs[kParamOscPitch].get(), fKnobs[kParamOscFine].get(),
                                 fKnobs[kParamOscSmoothing].get(), fDropdowns[kParamOscIterations].get() };
@@ -380,7 +427,41 @@ private:
                                fDropdowns[kParamMix2Mode].get() };
         layoutRow(fMix2Group.get(), mix2, 5);
 
+        layoutModPanel();
+
         layoutOutput();
+    }
+
+    // Modulation matrix: 6 cells across, each a source dropdown over a depth fader (the VCA
+    // cell is dropdown-only — its envelope is always at full).
+    void layoutModPanel()
+    {
+        int cx, cy, cw, ch;
+        fModGroup->contentBounds(cx, cy, cw, ch);
+        struct Cell { uint32_t src; int depth; };
+        const Cell cells[6] = {
+            {kParamOscPitchModSrc, (int)kParamOscPitchModDepth},
+            {kParamOscBxModSrc,    (int)kParamOscBxModDepth},
+            {kParamOscByModSrc,    (int)kParamOscByModDepth},
+            {kParamOscSq1ModSrc,   (int)kParamOscSq1ModDepth},
+            {kParamOscSq2ModSrc,   (int)kParamOscSq2ModDepth},
+            {kParamVCASource,      -1},
+        };
+        const int n = 6;
+        const int cellW = cw / n;
+        const int dropH = 46;
+        for (int i = 0; i < n; ++i)
+        {
+            const int x = cx + i * cellW;
+            fDropdowns[cells[i].src]->setSize(static_cast<uint>(cellW), static_cast<uint>(dropH));
+            fDropdowns[cells[i].src]->setAbsolutePos(x, cy);
+            if (cells[i].depth >= 0)
+            {
+                Slider* s = fSliders[cells[i].depth].get();
+                s->setSize(static_cast<uint>(cellW), static_cast<uint>(ch - dropH - 4));
+                s->setAbsolutePos(x, cy + dropH + 4);
+            }
+        }
     }
 
     // A pad-less panel: n controls evenly across the content area (used by the CV mixers).

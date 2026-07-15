@@ -26,6 +26,6 @@
 #define DISTRHO_UI_USE_NANOVG          1   // knobs/labels drawn with NanoVG vector primitives
 #define DISTRHO_UI_USER_RESIZABLE      1
 #define DISTRHO_UI_DEFAULT_WIDTH       980
-#define DISTRHO_UI_DEFAULT_HEIGHT      700
+#define DISTRHO_UI_DEFAULT_HEIGHT      900
 
 #endif // DISTRHO_PLUGIN_INFO_H_INCLUDED

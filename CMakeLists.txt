@@ -90,6 +90,9 @@ target_link_libraries(pm-factory-test PRIVATE pm_framework)
 add_executable(pm-voice-test test/pm_voice_test.cpp)
 target_link_libraries(pm-voice-test PRIVATE pm_framework)
 
+add_executable(pm-modroute-test test/pm_modroute_test.cpp)
+target_link_libraries(pm-modroute-test PRIVATE pm_framework)
+
 add_executable(pm-voicemanager-test test/pm_voicemanager_test.cpp)
 target_link_libraries(pm-voicemanager-test PRIVATE pm_framework)
 
@@ -101,7 +104,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
     endif()
     # tests that pull in vendored headers → relaxed (unused params in inline methods).
     foreach(t pm-module-test pm-sinosc-test pm-ifscore-test pm-adsr-test pm-modules-test pm-factory-test
-              pm-voice-test pm-voicemanager-test)
+              pm-voice-test pm-voicemanager-test pm-modroute-test)
         target_compile_options(${t} PRIVATE -Wall -Wno-unknown-pragmas -Wno-unused-parameter)
     endforeach()
 endif()
@@ -130,6 +133,9 @@ set_tests_properties(pm-factory PROPERTIES PASS_REGULAR_EXPRESSION "ALL PASS")
 
 add_test(NAME pm-voice COMMAND pm-voice-test)
 set_tests_properties(pm-voice PROPERTIES PASS_REGULAR_EXPRESSION "ALL PASS")
+
+add_test(NAME pm-modroute COMMAND pm-modroute-test)
+set_tests_properties(pm-modroute PROPERTIES PASS_REGULAR_EXPRESSION "ALL PASS")
 
 add_test(NAME pm-voicemanager COMMAND pm-voicemanager-test)
 set_tests_properties(pm-voicemanager PROPERTIES PASS_REGULAR_EXPRESSION "ALL PASS")

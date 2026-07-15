@@ -615,6 +615,13 @@ AUValue VoiceManager::getParameter(AUParameterAddress address) {
     return referenceVoice->getParameter(address);
 }
 
+void VoiceManager::setModSource(AUParameterAddress destInput, AUParameterAddress source)
+{
+    clearInput(destInput);                 // disconnect current source (safe if none)
+    if (source != 0)                        // 0 = None
+        connectModules(source, MODULE_BASE_ADDRESS(destInput), destInput);
+}
+
 void VoiceManager::clearInput(AUParameterAddress address)
 {
     uint64_t baseAddr = MODULE_BASE_ADDRESS(address);

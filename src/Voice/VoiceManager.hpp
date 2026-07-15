@@ -68,6 +68,10 @@ public:
     void connectModules(uint64_t upstreamID, uint64_t downstreamID, AUParameterAddress inputAddress);
     void disconnectModule(uint64_t moduleID, int portID);
 
+    // Point a destination mod-input at a source module's output (or disconnect if source == 0).
+    // Clears whatever was on the input, then connects the new source, on all voices.
+    void setModSource(AUParameterAddress destInput, AUParameterAddress source);
+
 	// DSP block processing
     void process(uint32_t frameCount, float *left, float *right);
 //	void process(uint32_t frameCount);

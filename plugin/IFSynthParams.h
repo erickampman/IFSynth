@@ -77,6 +77,14 @@ enum ParamIndex {
    kParamMix2EnableCC,
    kParamMix2CCNumber,
    kParamMix2Mode,
+   // Modulation routing: per IFSOsc mod input, a source select (0=None,1..6) + bipolar depth.
+   kParamOscPitchModSrc, kParamOscPitchModDepth,
+   kParamOscBxModSrc,    kParamOscBxModDepth,
+   kParamOscByModSrc,    kParamOscByModDepth,
+   kParamOscSq1ModSrc,   kParamOscSq1ModDepth,
+   kParamOscSq2ModSrc,   kParamOscSq2ModDepth,
+   // The amplitude VCA's envelope source (Env 1 / Env 2), no depth.
+   kParamVCASource,
    kParamCount
 };
 
@@ -159,6 +167,18 @@ static constexpr ParamSpec kParams[kParamCount] = {
    {"CC",          "mix2CCen",   "",   0.0f,   1.0f,   0.0f,  false, true },
    {"CC #",        "mix2CCnum",  "",   1.0f, 127.0f,   1.0f,  false, true },
    {"Mode",        "mix2Mode",   "",   0.0f,   1.0f,   0.0f,  false, true },
+   // Modulation routing (source = int 0..6; depth = bipolar)
+   {"Pitch",       "oscPMsrc",   "",   0.0f,   6.0f,   0.0f,  false, true },
+   {"Depth",       "oscPMdpt",   "",  -1.0f,   1.0f,   0.0f,  false, false},
+   {"Split",       "oscBxMsrc",  "",   0.0f,   6.0f,   0.0f,  false, true },
+   {"Depth",       "oscBxMdpt",  "",  -1.0f,   1.0f,   0.0f,  false, false},
+   {"Junction",    "oscByMsrc",  "",   0.0f,   6.0f,   0.0f,  false, true },
+   {"Depth",       "oscByMdpt",  "",  -1.0f,   1.0f,   0.0f,  false, false},
+   {"Squash 1",    "oscSq1Msrc", "",   0.0f,   6.0f,   0.0f,  false, true },
+   {"Depth",       "oscSq1Mdpt", "",  -1.0f,   1.0f,   0.0f,  false, false},
+   {"Squash 2",    "oscSq2Msrc", "",   0.0f,   6.0f,   0.0f,  false, true },
+   {"Depth",       "oscSq2Mdpt", "",  -1.0f,   1.0f,   0.0f,  false, false},
+   {"VCA env",     "vcaSrc",     "",   0.0f,   1.0f,   0.0f,  false, true },
 };
 
 } // namespace ifsynth
