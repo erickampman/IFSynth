@@ -52,7 +52,9 @@ public:
     void setSquash1(float v)    { fShape.ifs1Squash = v; recompute(); }
     void setSquash2(float v)    { fShape.ifs2Squash = v; recompute(); }
     void setSmoothing(float v)  { fShape.smoothing = v;  recompute(); }
-    void setIterations(float paramValue) { fShape.iterations = static_cast<int>(paramValue) + 3; recompute(); }
+    void setIterations(float paramValue) { fShape.iterations = static_cast<int>(paramValue) + fIterBase; recompute(); }
+    // Iterations param index → actual count offset (IFSOsc: +3, IFSLFO: +1).
+    void setIterationBase(int base) { fIterBase = base; }
 
 protected:
     void onNanoDisplay() override
@@ -139,6 +141,7 @@ private:
     Callback* fCallback;
     IFSShapeParams fShape;                 // defaults from IFSShapeParams{} (match the DSP)
     float fTable[IFS_WAVETABLE_SIZE];
+    int fIterBase = 3;                     // IFSOsc iterations offset; IFSLFO sets 1
     Target fTarget = kNone;
     uint32_t fActive[2] = {0, 0};
     int fNumActive = 0;

@@ -7,6 +7,8 @@
 
 #include "DistrhoUI.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <functional>
 #include <memory>
@@ -44,11 +46,12 @@ public:
     IFSynthUI()
         : UI(DISTRHO_UI_DEFAULT_WIDTH, DISTRHO_UI_DEFAULT_HEIGHT)
     {
-        setGeometryConstraints(560, 620, false, false);
+        setGeometryConstraints(600, 700, false, false);
 
         const Color accent(120, 190, 205);
         fOscGroup = makeGroup("IFS Oscillator", accent);
         fEnvGroup = makeGroup("IFS Envelope", accent);
+        fLfoGroup = makeGroup("IFS LFO", accent);
         fOutGroup = makeGroup("Output", accent);
 
         fOscPad = std::make_unique<IFSControl>(fOscGroup.get(), this);
@@ -57,6 +60,10 @@ public:
         fEnvPad = std::make_unique<IFSEnvControl>(fEnvGroup.get(), this);
         fEnvPad->setParamIds(kParamEnvBlueX, kParamEnvBlueY, kParamEnvGreenX, kParamEnvGreenY,
                              kParamEnvStartEndY, kParamEnvSquash1, kParamEnvSquash2, kParamEnvSquash3);
+
+        fLfoPad = std::make_unique<IFSControl>(fLfoGroup.get(), this);
+        fLfoPad->setParamIds(kParamLfoBx, kParamLfoBy, kParamLfoStartEndY, kParamLfoSquash1, kParamLfoSquash2);
+        fLfoPad->setIterationBase(1); // LFO iterations param 0..7 → 1..8
 
         for (uint32_t i = 0; i < kParamCount; ++i)
         {
@@ -139,9 +146,10 @@ protected:
 
 private:
     // Panels declared before their child controls so the children are destroyed first.
-    std::unique_ptr<GroupBox>      fOscGroup, fEnvGroup, fOutGroup;
+    std::unique_ptr<GroupBox>      fOscGroup, fEnvGroup, fLfoGroup, fOutGroup;
     std::unique_ptr<IFSControl>    fOscPad;
     std::unique_ptr<IFSEnvControl> fEnvPad;
+    std::unique_ptr<IFSControl>    fLfoPad;
     std::unique_ptr<Knob>          fKnobs[kParamCount];
     std::unique_ptr<Dropdown>      fDropdowns[kParamCount];
     std::unique_ptr<PopupMenu>     fMenu;
@@ -154,18 +162,22 @@ private:
         case kParamOscSquash1: case kParamOscSquash2:
         case kParamEnvBlueX: case kParamEnvBlueY: case kParamEnvGreenX: case kParamEnvGreenY:
         case kParamEnvStartEndY: case kParamEnvSquash1: case kParamEnvSquash2: case kParamEnvSquash3:
+        case kParamLfoBx: case kParamLfoBy: case kParamLfoStartEndY:
+        case kParamLfoSquash1: case kParamLfoSquash2:
             return true;
         default: return false;
         }
     }
     static bool isDropdownParam(uint32_t i)
     {
-        return i == kParamOscIterations || i == kParamEnvIterations || i == kParamEnvHoldMode;
+        return i == kParamOscIterations || i == kParamEnvIterations || i == kParamEnvHoldMode
+            || i == kParamLfoIterations;
     }
 
     GroupBox* groupFor(uint32_t i) const
     {
         if (i == kParamGain) return fOutGroup.get();
+        if (i >= kParamLfoRate) return fLfoGroup.get();
         if (i >= kParamEnvDuration) return fEnvGroup.get();
         return fOscGroup.get();
     }
@@ -173,7 +185,8 @@ private:
     static std::vector<std::string> choicesFor(uint32_t i)
     {
         if (i == kParamOscIterations) return {"3", "4"};
-        if (i == kParamEnvIterations) return {"1", "2", "3", "4", "5", "6", "7", "8"};
+        if (i == kParamEnvIterations || i == kParamLfoIterations)
+            return {"1", "2", "3", "4", "5", "6", "7", "8"};
         if (i == kParamEnvHoldMode)   return {"None", "Blue", "Green", "Loop"};
         return {};
     }
@@ -200,6 +213,13 @@ private:
         case kParamEnvSquash3:    fEnvPad->setSquash3(v); break;
         case kParamEnvSmoothing:  fEnvPad->setSmoothing(v); break;
         case kParamEnvIterations: fEnvPad->setIterations(v); break;
+        case kParamLfoBx:         fLfoPad->setBx(v); break;
+        case kParamLfoBy:         fLfoPad->setBy(v); break;
+        case kParamLfoStartEndY:  fLfoPad->setStartEndY(v); break;
+        case kParamLfoSquash1:    fLfoPad->setSquash1(v); break;
+        case kParamLfoSquash2:    fLfoPad->setSquash2(v); break;
+        case kParamLfoSmoothing:  fLfoPad->setSmoothing(v); break;
+        case kParamLfoIterations: fLfoPad->setIterations(v); break;
         default: break;
         }
     }
@@ -232,14 +252,22 @@ private:
         fEnvPad->setSquash3(kParams[kParamEnvSquash3].def);
         fEnvPad->setSmoothing(kParams[kParamEnvSmoothing].def);
         fEnvPad->setIterations(kParams[kParamEnvIterations].def);
+
+        fLfoPad->setBx(kParams[kParamLfoBx].def);
+        fLfoPad->setBy(kParams[kParamLfoBy].def);
+        fLfoPad->setStartEndY(kParams[kParamLfoStartEndY].def);
+        fLfoPad->setSquash1(kParams[kParamLfoSquash1].def);
+        fLfoPad->setSquash2(kParams[kParamLfoSquash2].def);
+        fLfoPad->setSmoothing(kParams[kParamLfoSmoothing].def);
+        fLfoPad->setIterations(kParams[kParamLfoIterations].def);
     }
 
     void layout()
     {
         const int W = static_cast<int>(getWidth());
         const int H = static_cast<int>(getHeight());
-        const int m = 8, gap = 8, outH = 150;
-        const int rowH = (H - 2 * m - 2 * gap - outH) / 2;
+        const int m = 8, gap = 8;
+        const int rowH = (H - 2 * m - 2 * gap) / 3; // three equal rows
 
         fOscGroup->setAbsolutePos(m, m);
         fOscGroup->setSize(static_cast<uint>(W - 2 * m), static_cast<uint>(rowH));
@@ -248,9 +276,15 @@ private:
         fEnvGroup->setAbsolutePos(m, envY);
         fEnvGroup->setSize(static_cast<uint>(W - 2 * m), static_cast<uint>(rowH));
 
-        const int outY = envY + rowH + gap;
-        fOutGroup->setAbsolutePos(m, outY);
-        fOutGroup->setSize(static_cast<uint>(W - 2 * m), static_cast<uint>(outH));
+        // Row 3: IFS LFO (left) beside Output (right).
+        const int row3Y = envY + rowH + gap;
+        const int usableW = W - 2 * m - gap;
+        const int lfoW = usableW * 70 / 100;
+        const int outW = usableW - lfoW;
+        fLfoGroup->setAbsolutePos(m, row3Y);
+        fLfoGroup->setSize(static_cast<uint>(lfoW), static_cast<uint>(rowH));
+        fOutGroup->setAbsolutePos(m + lfoW + gap, row3Y);
+        fOutGroup->setSize(static_cast<uint>(outW), static_cast<uint>(rowH));
 
         SubWidget* oscGrid[4] = { fKnobs[kParamOscPitch].get(), fKnobs[kParamOscFine].get(),
                                   fKnobs[kParamOscSmoothing].get(), fDropdowns[kParamOscIterations].get() };
@@ -259,6 +293,10 @@ private:
         SubWidget* envGrid[4] = { fKnobs[kParamEnvDuration].get(), fKnobs[kParamEnvSmoothing].get(),
                                   fDropdowns[kParamEnvHoldMode].get(), fDropdowns[kParamEnvIterations].get() };
         layoutPadPanel(fEnvGroup.get(), fEnvPad.get(), envGrid);
+
+        SubWidget* lfoGrid[4] = { fKnobs[kParamLfoRate].get(), fKnobs[kParamLfoSmoothing].get(),
+                                  fDropdowns[kParamLfoIterations].get(), nullptr };
+        layoutPadPanel(fLfoGroup.get(), fLfoPad.get(), lfoGrid);
 
         layoutOutput();
     }
@@ -276,6 +314,7 @@ private:
         const int cellW = kw / 2, cellH = ch / 2;
         for (int i = 0; i < 4; ++i)
         {
+            if (grid[i] == nullptr) continue; // panels with < 4 controls (e.g. LFO)
             const int r = i / 2, c = i % 2;
             grid[i]->setSize(static_cast<uint>(cellW), static_cast<uint>(cellH));
             grid[i]->setAbsolutePos(kx + c * cellW, cy + r * cellH);
@@ -286,13 +325,15 @@ private:
     {
         int cx, cy, cw, ch;
         fOutGroup->contentBounds(cx, cy, cw, ch);
-        const int gw = ch; // square-ish, centered
+        const int gw = std::min(cw, ch); // fit the (narrow) panel, centered
         fKnobs[kParamGain]->setSize(static_cast<uint>(gw), static_cast<uint>(ch));
         fKnobs[kParamGain]->setAbsolutePos(cx + (cw - gw) / 2, cy);
     }
 
     static std::function<std::string(float)> formatterFor(uint32_t index)
     {
+        if (index == kParamLfoRate) // octaves → Hz (0 = 1 Hz)
+            return [](float v) { char b[16]; std::snprintf(b, sizeof(b), "%.2f Hz", std::exp2(v)); return std::string(b); };
         const std::string u = kParams[index].unit;
         const bool isTime = u == "s";
         return [isTime, u](float v) {

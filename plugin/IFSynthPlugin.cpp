@@ -145,6 +145,15 @@ private:
         case kParamEnvSmoothing:  return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance1, IFSEnvParamItemSmoothing);
         case kParamEnvIterations: return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance1, IFSEnvParamItemIterations);
         case kParamEnvHoldMode:   return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance1, IFSEnvParamItemHoldMode);
+        // IFS LFO
+        case kParamLfoRate:       return MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance1, IFSLFOParamItemPitch);
+        case kParamLfoBx:         return MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance1, IFSLFOParamItemBx);
+        case kParamLfoBy:         return MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance1, IFSLFOParamItemBy);
+        case kParamLfoStartEndY:  return MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance1, IFSLFOParamItemStartEndY);
+        case kParamLfoSquash1:    return MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance1, IFSLFOParamItemIFS1Squash);
+        case kParamLfoSquash2:    return MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance1, IFSLFOParamItemIFS2Squash);
+        case kParamLfoSmoothing:  return MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance1, IFSLFOParamItemSmoothing);
+        case kParamLfoIterations: return MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance1, IFSLFOParamItemIterations);
         default:                  return 0;
         }
     }

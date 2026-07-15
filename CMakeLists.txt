@@ -19,6 +19,7 @@ add_library(pm_framework STATIC
     src/Module/IFSCore.cpp
     src/Module/IFSOscModule.cpp
     src/Module/IFSEnvModule.cpp
+    src/Module/IFSLFOModule.cpp
     src/Module/ADSRHelper.cpp
     src/Module/ADSRModule.cpp
     src/Module/CombineModule.cpp

@@ -68,6 +68,23 @@ const ModuleParamConstantsGroup ifsEnvConstantsGroup = {
    ifsEnvConstants,
 };
 
+// IFS LFO — 2-transform shape, defaults matching IFSShapeParams{} (iterations param 3 → 4 iters).
+static const ModuleParamConstants ifsLFOConstants[] = {
+   {"pitch",      IFSLFOParamItemPitch,      0, 0, nullptr, -7.0f,  7.0f,  0.0f, 0},
+   {"bx",         IFSLFOParamItemBx,         0, 0, nullptr, -1.0f,  1.0f,  0.0f, 0},
+   {"by",         IFSLFOParamItemBy,         0, 0, nullptr, -1.0f,  1.0f,  0.5f, 0},
+   {"ifs1Squash", IFSLFOParamItemIFS1Squash, 0, 0, nullptr, -0.99f, 0.99f, 0.5f, 0},
+   {"ifs2Squash", IFSLFOParamItemIFS2Squash, 0, 0, nullptr, -0.99f, 0.99f,-0.5f, 0},
+   {"startEndY",  IFSLFOParamItemStartEndY,  0, 0, nullptr, -1.0f,  1.0f, -1.0f, 0},
+   {"smoothing",  IFSLFOParamItemSmoothing,  0, 0, nullptr,  0.0f,  1.0f,  0.5f, 0},
+   {"iterations", IFSLFOParamItemIterations, 0, 0, nullptr,  0.0f,  7.0f,  3.0f, 0},
+};
+const ModuleParamConstantsGroup ifsLFOConstantsGroup = {
+   const_cast<char*>("ifsLFO"),
+   sizeof(ifsLFOConstants) / sizeof(ifsLFOConstants[0]),
+   ifsLFOConstants,
+};
+
 // ADSR — 7 params. Times in seconds; sustain is a level 0..1.
 static const ModuleParamConstants adsrConstants[] = {
    {"attack",    ADSRParamItemAttack,    0, 0, nullptr, 0.001f, 10.0f, 0.01f, 0},

@@ -32,6 +32,9 @@ inline constexpr AUParameterAddress ifsEnv1Address =
 inline constexpr AUParameterAddress ifsEnv1GateInputAddress =
    MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance1, IFSEnvParamItemGateInput);
 
+inline constexpr AUParameterAddress ifsLFO1Address =
+   MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance1, 0);
+
 inline constexpr AUParameterAddress adsr1Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindADSR, ModuleInstance1, 0);
 

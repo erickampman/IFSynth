@@ -160,6 +160,19 @@ enum IFSEnvParamItem : NSUInteger {
    IFSEnvParamItemLegatoMode,    // 0 NoteSteal, 1 FindMatchingY
 };
 
+// IFS fractal LFO — free-running mod source, 2-transform shape (same family as IFSOsc). Trimmed
+// v1 set (no mod matrix / FM / reset / L-R phase).
+enum IFSLFOParamItem : NSUInteger {
+   IFSLFOParamItemPitch = 1,    // rate, octaves, -7..7, 0 = 1 Hz
+   IFSLFOParamItemBx,
+   IFSLFOParamItemBy,
+   IFSLFOParamItemIFS1Squash,
+   IFSLFOParamItemIFS2Squash,
+   IFSLFOParamItemStartEndY,
+   IFSLFOParamItemSmoothing,
+   IFSLFOParamItemIterations,   // picker index: 0 → 1 iteration
+};
+
 enum ADSRParamItem : NSUInteger {
    ADSRParamItemAttack = 1,
    ADSRParamItemDecay,

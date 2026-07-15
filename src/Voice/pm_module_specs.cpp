@@ -9,6 +9,7 @@
 #include "CombineModule.hpp"
 #include "FinalModule.hpp"
 #include "IFSEnvModule.hpp"
+#include "IFSLFOModule.hpp"
 #include "IFSOscModule.hpp"
 #include "PitchConverterModule.hpp"
 #include "SinOscillatorModule.hpp"
@@ -36,6 +37,10 @@ const std::vector<ModuleInitSpec>& getModuleInitSpecs() {
       {ifsEnv1Address, &ifsEnvConstantsGroup, InitIFSEnvModule, DeinitIFSEnvModule,
        ProcessIFSEnvModule, MIDIIFSEnvModule, ParamIFSEnvModule, ResetIFSEnvModule,
        SampleRateIFSEnvModule},
+      // IFSLFO is instantiated (params exposed, UI visible) but NOT connected in the graph yet
+      // — it's a mod source awaiting the CV/mod system. Free-running, no MIDI/reset/sr procs.
+      {ifsLFO1Address, &ifsLFOConstantsGroup, InitIFSLFOModule, DeinitIFSLFOModule,
+       ProcessIFSLFOModule, nullptr, ParamIFSLFOModule, nullptr, nullptr},
       {combine1Address, &combineConstantsGroup, nullptr, nullptr, ProcessCombineModule, nullptr,
        nullptr, nullptr, nullptr},
       {finalAddress, &finalConstantsGroup, InitFinalModule, DeinitFinalModule, ProcessFinalModule,

@@ -12,6 +12,7 @@
 extern const ModuleParamConstantsGroup sinOscConstantsGroup;
 extern const ModuleParamConstantsGroup ifsOscConstantsGroup;
 extern const ModuleParamConstantsGroup ifsEnvConstantsGroup;
+extern const ModuleParamConstantsGroup ifsLFOConstantsGroup;
 extern const ModuleParamConstantsGroup adsrConstantsGroup;
 extern const ModuleParamConstantsGroup combineConstantsGroup;
 extern const ModuleParamConstantsGroup finalConstantsGroup;

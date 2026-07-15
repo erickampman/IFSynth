@@ -34,6 +34,15 @@ enum ParamIndex {
    kParamEnvSmoothing,
    kParamEnvIterations,
    kParamEnvHoldMode,
+   // IFS LFO (not yet wired to the graph)
+   kParamLfoRate,
+   kParamLfoBx,
+   kParamLfoBy,
+   kParamLfoStartEndY,
+   kParamLfoSquash1,
+   kParamLfoSquash2,
+   kParamLfoSmoothing,
+   kParamLfoIterations,
    kParamCount
 };
 
@@ -73,6 +82,15 @@ static constexpr ParamSpec kParams[kParamCount] = {
    {"Smoothing",   "envSmooth",  "",   0.0f,   1.0f,   0.5f,  false, false},
    {"Iterations",  "envIters",   "",   0.0f,   7.0f,   2.0f,  false, true },
    {"Hold",        "envHold",    "",   0.0f,   3.0f,   2.0f,  false, true },
+   // IFS LFO
+   {"Rate",        "lfoRate",    "oct",-7.0f,  7.0f,   0.0f,  false, false},
+   {"Split",       "lfoBx",      "",   -1.0f,  1.0f,   0.0f,  false, false},
+   {"Junction",    "lfoBy",      "",   -1.0f,  1.0f,   0.5f,  false, false},
+   {"Ends",        "lfoEnds",    "",   -1.0f,  1.0f,  -1.0f,  false, false},
+   {"Squash 1",    "lfoSq1",     "",   -0.99f, 0.99f,  0.5f,  false, false},
+   {"Squash 2",    "lfoSq2",     "",   -0.99f, 0.99f, -0.5f,  false, false},
+   {"Smoothing",   "lfoSmooth",  "",   0.0f,   1.0f,   0.5f,  false, false},
+   {"Iterations",  "lfoIters",   "",   0.0f,   7.0f,   3.0f,  false, true },
 };
 
 } // namespace ifsynth
