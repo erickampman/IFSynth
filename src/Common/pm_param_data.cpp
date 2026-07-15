@@ -85,6 +85,22 @@ const ModuleParamConstantsGroup ifsLFOConstantsGroup = {
    ifsLFOConstants,
 };
 
+// CV mixer. LFO/Env enabled by default (summed); CC off, CC#1, mode = add.
+static const ModuleParamConstants cvMixerConstants[] = {
+   {"lfoInput",  CVMixerParamItemLFOInput,  0, 0, nullptr, 0.0f,   0.0f, 0.0f, 0}, // connection
+   {"envInput",  CVMixerParamItemEnvInput,  0, 0, nullptr, 0.0f,   0.0f, 0.0f, 0}, // connection
+   {"enableLFO", CVMixerParamItemEnableLFO, 0, 0, nullptr, 0.0f,   1.0f, 1.0f, 0},
+   {"enableEnv", CVMixerParamItemEnableEnv, 0, 0, nullptr, 0.0f,   1.0f, 1.0f, 0},
+   {"enableCC",  CVMixerParamItemEnableCC,  0, 0, nullptr, 0.0f,   1.0f, 0.0f, 0},
+   {"ccNumber",  CVMixerParamItemCCNumber,  0, 0, nullptr, 1.0f, 127.0f, 1.0f, 0},
+   {"mode",      CVMixerParamItemMode,      0, 0, nullptr, 0.0f,   1.0f, 0.0f, 0},
+};
+const ModuleParamConstantsGroup cvMixerConstantsGroup = {
+   const_cast<char*>("cvMixer"),
+   sizeof(cvMixerConstants) / sizeof(cvMixerConstants[0]),
+   cvMixerConstants,
+};
+
 // ADSR — 7 params. Times in seconds; sustain is a level 0..1.
 static const ModuleParamConstants adsrConstants[] = {
    {"attack",    ADSRParamItemAttack,    0, 0, nullptr, 0.001f, 10.0f, 0.01f, 0},

@@ -65,6 +65,18 @@ enum ParamIndex {
    kParamLfo2Squash2,
    kParamLfo2Smoothing,
    kParamLfo2Iterations,
+   // CV mixer 1 (combines LFO1 + Env1 + CC)
+   kParamMix1EnableLFO,
+   kParamMix1EnableEnv,
+   kParamMix1EnableCC,
+   kParamMix1CCNumber,
+   kParamMix1Mode,
+   // CV mixer 2 (combines LFO2 + Env2 + CC)
+   kParamMix2EnableLFO,
+   kParamMix2EnableEnv,
+   kParamMix2EnableCC,
+   kParamMix2CCNumber,
+   kParamMix2Mode,
    kParamCount
 };
 
@@ -135,6 +147,18 @@ static constexpr ParamSpec kParams[kParamCount] = {
    {"Squash 2",    "lfo2Sq2",    "",   -0.99f, 0.99f, -0.5f,  false, false},
    {"Smoothing",   "lfo2Smooth", "",   0.0f,   1.0f,   0.5f,  false, false},
    {"Iterations",  "lfo2Iters",  "",   0.0f,   7.0f,   3.0f,  false, true },
+   // CV mixer 1
+   {"LFO 1",       "mix1LFO",    "",   0.0f,   1.0f,   1.0f,  false, true },
+   {"Env 1",       "mix1Env",    "",   0.0f,   1.0f,   1.0f,  false, true },
+   {"CC",          "mix1CCen",   "",   0.0f,   1.0f,   0.0f,  false, true },
+   {"CC #",        "mix1CCnum",  "",   1.0f, 127.0f,   1.0f,  false, true },
+   {"Mode",        "mix1Mode",   "",   0.0f,   1.0f,   0.0f,  false, true },
+   // CV mixer 2
+   {"LFO 2",       "mix2LFO",    "",   0.0f,   1.0f,   1.0f,  false, true },
+   {"Env 2",       "mix2Env",    "",   0.0f,   1.0f,   1.0f,  false, true },
+   {"CC",          "mix2CCen",   "",   0.0f,   1.0f,   0.0f,  false, true },
+   {"CC #",        "mix2CCnum",  "",   1.0f, 127.0f,   1.0f,  false, true },
+   {"Mode",        "mix2Mode",   "",   0.0f,   1.0f,   0.0f,  false, true },
 };
 
 } // namespace ifsynth

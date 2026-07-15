@@ -21,6 +21,7 @@
 #include "IFSynthParams.h"
 #include "Knob.hpp"
 #include "PopupMenu.hpp"
+#include "Toggle.hpp"
 
 START_NAMESPACE_DISTRHO
 
@@ -34,12 +35,14 @@ using DGL_NAMESPACE::Knob;
 using DGL_NAMESPACE::NanoSubWidget;
 using DGL_NAMESPACE::PopupMenu;
 using DGL_NAMESPACE::SubWidget;
+using DGL_NAMESPACE::Toggle;
 
 class IFSynthUI : public UI,
                   public Knob::Callback,
                   public IFSControl::Callback,
                   public Dropdown::Callback,
-                  public PopupMenu::Callback
+                  public PopupMenu::Callback,
+                  public Toggle::Callback
 {
 public:
     IFSynthUI()
@@ -53,6 +56,8 @@ public:
         fEnv2Group = makeGroup("IFS Envelope 2", accent);
         fLfo1Group = makeGroup("IFS LFO 1", accent);
         fLfo2Group = makeGroup("IFS LFO 2", accent);
+        fMix1Group = makeGroup("CV Mixer 1  (LFO 1 + Env 1)", accent);
+        fMix2Group = makeGroup("CV Mixer 2  (LFO 2 + Env 2)", accent);
         fOutGroup  = makeGroup("Output", accent);
 
         fOscPad = std::make_unique<IFSControl>(fOscGroup.get(), this);
@@ -86,6 +91,15 @@ public:
                 fDropdowns[i] = std::move(d);
                 continue;
             }
+            if (isToggleParam(i))
+            {
+                auto t = std::make_unique<Toggle>(groupFor(i), this);
+                t->setId(i);
+                t->setLabel(kParams[i].name);
+                t->setState(kParams[i].def > 0.5f);
+                fToggles[i] = std::move(t);
+                continue;
+            }
             const ParamSpec& s = kParams[i];
             auto knob = std::make_unique<Knob>(groupFor(i), this);
             knob->setId(i);
@@ -110,7 +124,17 @@ protected:
             return;
         if (fKnobs[index])     { fKnobs[index]->setRealValue(value, false); fKnobs[index]->repaint(); }
         if (fDropdowns[index]) fDropdowns[index]->setIndex(static_cast<int>(value));
+        if (fToggles[index])   fToggles[index]->setState(value > 0.5f);
         routeToPad(index, value);
+    }
+
+    /* -- toggle -> host --------------------------------------------------- */
+    void toggleChanged(Toggle* t, bool on) override
+    {
+        const uint32_t id = t->getId();
+        editParameter(id, true);
+        setParameterValue(id, on ? 1.0f : 0.0f);
+        editParameter(id, false);
     }
 
     /* -- knob -> host ----------------------------------------------------- */
@@ -149,11 +173,13 @@ protected:
 
 private:
     // Panels declared before their child controls so the children are destroyed first.
-    std::unique_ptr<GroupBox>      fOscGroup, fEnv1Group, fEnv2Group, fLfo1Group, fLfo2Group, fOutGroup;
+    std::unique_ptr<GroupBox>      fOscGroup, fEnv1Group, fEnv2Group, fLfo1Group, fLfo2Group;
+    std::unique_ptr<GroupBox>      fMix1Group, fMix2Group, fOutGroup;
     std::unique_ptr<IFSControl>    fOscPad, fLfo1Pad, fLfo2Pad;
     std::unique_ptr<IFSEnvControl> fEnv1Pad, fEnv2Pad;
     std::unique_ptr<Knob>          fKnobs[kParamCount];
     std::unique_ptr<Dropdown>      fDropdowns[kParamCount];
+    std::unique_ptr<Toggle>        fToggles[kParamCount];
     std::unique_ptr<PopupMenu>     fMenu;
 
     static bool isPadParam(uint32_t i)
@@ -183,6 +209,17 @@ private:
         case kParamLfoIterations:
         case kParamEnv2Iterations: case kParamEnv2HoldMode:
         case kParamLfo2Iterations:
+        case kParamMix1Mode: case kParamMix2Mode:
+            return true;
+        default: return false;
+        }
+    }
+    static bool isToggleParam(uint32_t i)
+    {
+        switch (i)
+        {
+        case kParamMix1EnableLFO: case kParamMix1EnableEnv: case kParamMix1EnableCC:
+        case kParamMix2EnableLFO: case kParamMix2EnableEnv: case kParamMix2EnableCC:
             return true;
         default: return false;
         }
@@ -195,13 +232,16 @@ private:
         if (i <= kParamEnvHoldMode)     return fEnv1Group.get();
         if (i <= kParamLfoIterations)   return fLfo1Group.get();
         if (i <= kParamEnv2HoldMode)    return fEnv2Group.get();
-        return fLfo2Group.get();
+        if (i <= kParamLfo2Iterations)  return fLfo2Group.get();
+        if (i <= kParamMix1Mode)        return fMix1Group.get();
+        return fMix2Group.get();
     }
 
     static std::vector<std::string> choicesFor(uint32_t i)
     {
         if (i == kParamOscIterations) return {"3", "4"};
         if (i == kParamEnvHoldMode || i == kParamEnv2HoldMode) return {"None", "Blue", "Green", "Loop"};
+        if (i == kParamMix1Mode || i == kParamMix2Mode) return {"Add", "Multiply"};
         return {"1", "2", "3", "4", "5", "6", "7", "8"}; // env/lfo iterations
     }
 
@@ -295,10 +335,12 @@ private:
         const int W = static_cast<int>(getWidth());
         const int H = static_cast<int>(getHeight());
         const int m = 8, gap = 8;
+        const int mixerH = 128; // short pad-less mixer row at the bottom
         const int colW = (W - 2 * m - gap) / 2;
-        const int rowH = (H - 2 * m - 2 * gap) / 3;
+        const int rowH = (H - 2 * m - 3 * gap - mixerH) / 3;
         const int colL = m, colR = m + colW + gap;
         const int row0 = m, row1 = m + rowH + gap, row2 = m + 2 * (rowH + gap);
+        const int mixY = m + 3 * (rowH + gap);
 
         placeGroup(fOscGroup.get(),  colL, row0, colW, rowH);
         placeGroup(fEnv1Group.get(), colL, row1, colW, rowH);
@@ -306,6 +348,8 @@ private:
         placeGroup(fLfo1Group.get(), colR, row0, colW, rowH);
         placeGroup(fLfo2Group.get(), colR, row1, colW, rowH);
         placeGroup(fOutGroup.get(),  colR, row2, colW, rowH);
+        placeGroup(fMix1Group.get(), colL, mixY, colW, mixerH);
+        placeGroup(fMix2Group.get(), colR, mixY, colW, mixerH);
 
         SubWidget* oscG[4]  = { fKnobs[kParamOscPitch].get(), fKnobs[kParamOscFine].get(),
                                 fKnobs[kParamOscSmoothing].get(), fDropdowns[kParamOscIterations].get() };
@@ -327,7 +371,29 @@ private:
                                 fDropdowns[kParamLfo2Iterations].get() };
         layoutPadPanel(fLfo2Group.get(), fLfo2Pad.get(), lfo2G, 3);
 
+        SubWidget* mix1[5] = { fToggles[kParamMix1EnableLFO].get(), fToggles[kParamMix1EnableEnv].get(),
+                               fToggles[kParamMix1EnableCC].get(), fKnobs[kParamMix1CCNumber].get(),
+                               fDropdowns[kParamMix1Mode].get() };
+        layoutRow(fMix1Group.get(), mix1, 5);
+        SubWidget* mix2[5] = { fToggles[kParamMix2EnableLFO].get(), fToggles[kParamMix2EnableEnv].get(),
+                               fToggles[kParamMix2EnableCC].get(), fKnobs[kParamMix2CCNumber].get(),
+                               fDropdowns[kParamMix2Mode].get() };
+        layoutRow(fMix2Group.get(), mix2, 5);
+
         layoutOutput();
+    }
+
+    // A pad-less panel: n controls evenly across the content area (used by the CV mixers).
+    void layoutRow(GroupBox* group, SubWidget* grid[], int n)
+    {
+        int cx, cy, cw, ch;
+        group->contentBounds(cx, cy, cw, ch);
+        const int cellW = n > 0 ? cw / n : cw;
+        for (int i = 0; i < n; ++i)
+        {
+            grid[i]->setSize(static_cast<uint>(cellW), static_cast<uint>(ch));
+            grid[i]->setAbsolutePos(cx + i * cellW, cy);
+        }
     }
 
     void placeGroup(GroupBox* g, int x, int y, int w, int h)
@@ -368,6 +434,8 @@ private:
     {
         if (index == kParamLfoRate || index == kParamLfo2Rate) // octaves → Hz (0 = 1 Hz)
             return [](float v) { char b[16]; std::snprintf(b, sizeof(b), "%.2f Hz", std::exp2(v)); return std::string(b); };
+        if (index == kParamMix1CCNumber || index == kParamMix2CCNumber)
+            return [](float v) { char b[16]; std::snprintf(b, sizeof(b), "CC %d", static_cast<int>(v + 0.5f)); return std::string(b); };
         const std::string u = kParams[index].unit;
         const bool isTime = u == "s";
         return [isTime, u](float v) {

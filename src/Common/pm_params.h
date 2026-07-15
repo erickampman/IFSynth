@@ -89,6 +89,7 @@ enum ModuleParamKind : NSUInteger {
    ModuleParamKindMandOsc,
    ModuleParamKindJuliaGran,
    ModuleParamKindClockGran,
+   ModuleParamKindCVMixer, // IFSynth: combine mod sources (add/multiply, per-input enable)
 };
 
 // Module instance — the middle byte of a param address (1..24).
@@ -171,6 +172,19 @@ enum IFSLFOParamItem : NSUInteger {
    IFSLFOParamItemStartEndY,
    IFSLFOParamItemSmoothing,
    IFSLFOParamItemIterations,   // picker index: 0 → 1 iteration
+};
+
+// CV mixer — combines an LFO input, an Env input, and a MIDI CC into one output. Each input can
+// be enabled/disabled (a disabled input is SKIPPED, not treated as 0); Mode adds or multiplies
+// the enabled inputs. No per-input level (depth lives on the destination mod-input side).
+enum CVMixerParamItem : NSUInteger {
+   CVMixerParamItemLFOInput = 1, // connection port (from an IFSLFO)
+   CVMixerParamItemEnvInput,     // connection port (from an IFSEnv)
+   CVMixerParamItemEnableLFO,    // 0/1
+   CVMixerParamItemEnableEnv,    // 0/1
+   CVMixerParamItemEnableCC,     // 0/1
+   CVMixerParamItemCCNumber,     // 1..127 (default 1 = mod wheel)
+   CVMixerParamItemMode,         // 0 = add, 1 = multiply
 };
 
 enum ADSRParamItem : NSUInteger {

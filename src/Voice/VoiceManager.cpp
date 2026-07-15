@@ -77,6 +77,19 @@ void VoiceManager::buildDefaultPatch(Voice& voice)
 	voice.connectModules(envModule, combineModule, combine1Input2Address);
     voice.connectModules(slewModule, ifsOscModule, ifsOsc1PitchInputAddress);
     voice.connectModules(pitchConverterModule, slewModule, slew1InputAddress);
+
+    // CV mixer inputs: LFO1+Env1 → mixer 1, LFO2+Env2 → mixer 2. Env1 fans out (it also drives
+    // the VCA). The mixers' outputs aren't patched to destinations yet, so nothing is pulled
+    // through them and the mod sources stay dormant until the destination mod-inputs exist.
+    Module* lfo1Module = voice.getModule(ifsLFO1Address);
+    Module* lfo2Module = voice.getModule(ifsLFO2Address);
+    Module* env2Module = voice.getModule(ifsEnv2Address);
+    Module* cvMixer1Module = voice.getModule(cvMixer1Address);
+    Module* cvMixer2Module = voice.getModule(cvMixer2Address);
+    voice.connectModules(lfo1Module, cvMixer1Module, cvMixer1LFOInputAddress);
+    voice.connectModules(envModule,  cvMixer1Module, cvMixer1EnvInputAddress);
+    voice.connectModules(lfo2Module, cvMixer2Module, cvMixer2LFOInputAddress);
+    voice.connectModules(env2Module, cvMixer2Module, cvMixer2EnvInputAddress);
 #else
     // do nothing
 #endif

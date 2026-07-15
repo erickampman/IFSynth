@@ -6,6 +6,7 @@
 #include "ModuleInitSpecs.hpp"
 
 #include "ADSRModule.hpp"
+#include "CVMixerModule.hpp"
 #include "CombineModule.hpp"
 #include "FinalModule.hpp"
 #include "IFSEnvModule.hpp"
@@ -48,6 +49,12 @@ const std::vector<ModuleInitSpec>& getModuleInitSpecs() {
        SampleRateIFSEnvModule},
       {ifsLFO2Address, &ifsLFOConstantsGroup, InitIFSLFOModule, DeinitIFSLFOModule,
        ProcessIFSLFOModule, nullptr, ParamIFSLFOModule, nullptr, nullptr},
+      // Two CV mixers (combine LFO+Env+CC). Inputs are wired in buildDefaultPatch; their outputs
+      // await the destination mod-inputs, so they're dormant for now.
+      {cvMixer1Address, &cvMixerConstantsGroup, InitCVMixerModule, DeinitCVMixerModule,
+       ProcessCVMixerModule, MIDICVMixerModule, nullptr, nullptr, nullptr},
+      {cvMixer2Address, &cvMixerConstantsGroup, InitCVMixerModule, DeinitCVMixerModule,
+       ProcessCVMixerModule, MIDICVMixerModule, nullptr, nullptr, nullptr},
       {combine1Address, &combineConstantsGroup, nullptr, nullptr, ProcessCombineModule, nullptr,
        nullptr, nullptr, nullptr},
       {finalAddress, &finalConstantsGroup, InitFinalModule, DeinitFinalModule, ProcessFinalModule,

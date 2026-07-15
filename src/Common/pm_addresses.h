@@ -41,6 +41,20 @@ inline constexpr AUParameterAddress ifsEnv2Address =
 inline constexpr AUParameterAddress ifsLFO2Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance2, 0);
 
+// CV mixers (2). Base address + the two connection-input ports.
+inline constexpr AUParameterAddress cvMixer1Address =
+   MODULE_PARAM_ADDRESS(ModuleParamKindCVMixer, ModuleInstance1, 0);
+inline constexpr AUParameterAddress cvMixer1LFOInputAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindCVMixer, ModuleInstance1, CVMixerParamItemLFOInput);
+inline constexpr AUParameterAddress cvMixer1EnvInputAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindCVMixer, ModuleInstance1, CVMixerParamItemEnvInput);
+inline constexpr AUParameterAddress cvMixer2Address =
+   MODULE_PARAM_ADDRESS(ModuleParamKindCVMixer, ModuleInstance2, 0);
+inline constexpr AUParameterAddress cvMixer2LFOInputAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindCVMixer, ModuleInstance2, CVMixerParamItemLFOInput);
+inline constexpr AUParameterAddress cvMixer2EnvInputAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindCVMixer, ModuleInstance2, CVMixerParamItemEnvInput);
+
 inline constexpr AUParameterAddress adsr1Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindADSR, ModuleInstance1, 0);
 

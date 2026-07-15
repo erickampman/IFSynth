@@ -176,6 +176,18 @@ private:
         case kParamLfo2Squash2:    return MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance2, IFSLFOParamItemIFS2Squash);
         case kParamLfo2Smoothing:  return MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance2, IFSLFOParamItemSmoothing);
         case kParamLfo2Iterations: return MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance2, IFSLFOParamItemIterations);
+        // CV mixer 1 (instance 1)
+        case kParamMix1EnableLFO: return MODULE_PARAM_ADDRESS(ModuleParamKindCVMixer, ModuleInstance1, CVMixerParamItemEnableLFO);
+        case kParamMix1EnableEnv: return MODULE_PARAM_ADDRESS(ModuleParamKindCVMixer, ModuleInstance1, CVMixerParamItemEnableEnv);
+        case kParamMix1EnableCC:  return MODULE_PARAM_ADDRESS(ModuleParamKindCVMixer, ModuleInstance1, CVMixerParamItemEnableCC);
+        case kParamMix1CCNumber:  return MODULE_PARAM_ADDRESS(ModuleParamKindCVMixer, ModuleInstance1, CVMixerParamItemCCNumber);
+        case kParamMix1Mode:      return MODULE_PARAM_ADDRESS(ModuleParamKindCVMixer, ModuleInstance1, CVMixerParamItemMode);
+        // CV mixer 2 (instance 2)
+        case kParamMix2EnableLFO: return MODULE_PARAM_ADDRESS(ModuleParamKindCVMixer, ModuleInstance2, CVMixerParamItemEnableLFO);
+        case kParamMix2EnableEnv: return MODULE_PARAM_ADDRESS(ModuleParamKindCVMixer, ModuleInstance2, CVMixerParamItemEnableEnv);
+        case kParamMix2EnableCC:  return MODULE_PARAM_ADDRESS(ModuleParamKindCVMixer, ModuleInstance2, CVMixerParamItemEnableCC);
+        case kParamMix2CCNumber:  return MODULE_PARAM_ADDRESS(ModuleParamKindCVMixer, ModuleInstance2, CVMixerParamItemCCNumber);
+        case kParamMix2Mode:      return MODULE_PARAM_ADDRESS(ModuleParamKindCVMixer, ModuleInstance2, CVMixerParamItemMode);
         default:                  return 0;
         }
     }
