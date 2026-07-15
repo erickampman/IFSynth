@@ -70,7 +70,11 @@ protected:
         strokeLine(0, vToY(fShape.startEndY), w, vToY(fShape.startEndY), Color(255, 255, 255, 80), 1.0f, true);
         strokeLine(splitX, 0, splitX, h, Color(63, 185, 207, 140), 1.0f, true);
 
-        // resultant fractal (behind the squash rects)
+        // squash rectangles (translucent backdrop, anchored at center) — drawn BEHIND the curve
+        squashRect(0, splitX, fShape.ifs1Squash, midY);
+        squashRect(splitX, w, fShape.ifs2Squash, midY);
+
+        // resultant fractal — drawn on top so it stays crisp over the squash rects
         beginPath();
         const int N = static_cast<int>(w);
         for (int i = 0; i <= N; ++i)
@@ -81,10 +85,6 @@ protected:
             i == 0 ? moveTo(x, y) : lineTo(x, y);
         }
         strokeColor(Color(95, 215, 122)); strokeWidth(2.0f); lineJoin(ROUND); stroke();
-
-        // squash rectangles (translucent, anchored at center)
-        squashRect(0, splitX, fShape.ifs1Squash, midY);
-        squashRect(splitX, w, fShape.ifs2Squash, midY);
 
         // handles
         endpointHandle(0, vToY(fShape.startEndY));
@@ -204,7 +204,7 @@ private:
         const float y = vToY(s);
         const float top = std::fmin(yc, y), hgt = std::fabs(y - yc);
         beginPath(); rect(x0, top, x1 - x0, hgt);
-        fillColor(s >= 0 ? Color(63, 185, 207, 72) : Color(90, 140, 255, 78)); fill();
+        fillColor(s >= 0 ? Color(63, 185, 207, 52) : Color(90, 140, 255, 58)); fill();
         beginPath(); moveTo(x0, y); lineTo(x1, y);
         strokeColor(s >= 0 ? Color(63, 185, 207, 210) : Color(90, 140, 255, 210)); strokeWidth(1.0f); stroke();
     }
