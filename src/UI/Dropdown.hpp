@@ -80,8 +80,14 @@ protected:
 
     bool onMouse(const MouseEvent& ev) override
     {
-        if (ev.button == 1 && ev.press) { fCallback->dropdownClicked(this); return true; }
-        return false;
+        // DPF offers every sibling this event regardless of position — only claim our own area.
+        if (ev.button != 1 || !ev.press)
+            return false;
+        if (ev.pos.getX() < 0 || ev.pos.getX() >= getWidth()
+            || ev.pos.getY() < 0 || ev.pos.getY() >= getHeight())
+            return false;
+        fCallback->dropdownClicked(this);
+        return true;
     }
 
 private:

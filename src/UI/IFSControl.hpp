@@ -99,6 +99,11 @@ protected:
 
         if (ev.press)
         {
+            // DPF offers every sibling this event regardless of position — reject clicks
+            // outside our bounds so they fall through to the other panel controls.
+            if (ev.pos.getX() < 0 || ev.pos.getX() >= getWidth()
+                || ev.pos.getY() < 0 || ev.pos.getY() >= getHeight())
+                return false;
             fTarget = hitTest(ev.pos.getX(), ev.pos.getY());
             if (fTarget == kNone)
                 return false;
