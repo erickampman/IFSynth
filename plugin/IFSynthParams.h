@@ -11,6 +11,8 @@ namespace ifsynth {
 
 enum ParamIndex {
    kParamGain = 0,
+   kParamVoiceCount, // polyphony (1 = mono); glide only applies when this is 1
+   kParamSlewRate,   // pitch glide — drives the Slew module's Rise and Fall together
    // IFS oscillator
    kParamOscPitch,
    kParamOscFine,
@@ -106,6 +108,8 @@ struct ParamSpec {
 
 static constexpr ParamSpec kParams[kParamCount] = {
    {"Gain",        "gain",       "",   0.0f,   1.0f,   0.5f,  false, false},
+   {"Voices",      "voices",     "",   1.0f,   8.0f,   8.0f,  false, true },
+   {"Glide",       "glide",      "s",  0.0001f, 2.0f,  0.01f, true,  false},
    // IFS oscillator
    {"Osc Pitch",   "oscPitch",   "st", -24.0f, 24.0f,  0.0f,  false, false},
    {"Osc Fine",    "oscFine",    "ct", -100.0f,100.0f, 0.0f,  false, false},

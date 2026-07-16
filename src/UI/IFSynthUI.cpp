@@ -275,7 +275,7 @@ private:
 
     GroupBox* groupFor(uint32_t i) const
     {
-        if (i == kParamGain)             return fAmpGroup.get();
+        if (i == kParamGain || i == kParamVoiceCount) return fAmpGroup.get();
         if (i == kParamLpfCutoff || i == kParamLpfResonance || i == kParamLpfKeyTrack)
             return fLpfGroup.get();
         if (i == kParamLpfCutoffModSrc || i == kParamLpfCutoffModDepth)
@@ -409,7 +409,7 @@ private:
         placeGroup(fMix2Group.get(), colR, mixY, colW, mixerH);
         // Bottom row: wide IFS Osc modulation panel, then the LPF modulation panel, then a narrow
         // Amp box in the lower right.
-        const int ampW = 184, lpfModW = 150;
+        const int ampW = 224, lpfModW = 150;
         const int oscModW = W - 2 * m - 2 * gap - lpfModW - ampW;
         const int lpfModX = colL + oscModW + gap;
         const int ampX    = lpfModX + lpfModW + gap;
@@ -417,9 +417,10 @@ private:
         placeGroup(fLpfModGroup.get(), lpfModX, modY, lpfModW, modH);
         placeGroup(fAmpGroup.get(),    ampX,    modY, ampW,    modH);
 
-        SubWidget* oscG[4]  = { fKnobs[kParamOscPitch].get(), fKnobs[kParamOscFine].get(),
-                                fKnobs[kParamOscSmoothing].get(), fDropdowns[kParamOscIterations].get() };
-        layoutPadPanel(fOscGroup.get(), fOscPad.get(), oscG, 4);
+        SubWidget* oscG[5]  = { fKnobs[kParamOscPitch].get(), fKnobs[kParamOscFine].get(),
+                                fKnobs[kParamSlewRate].get(), fKnobs[kParamOscSmoothing].get(),
+                                fDropdowns[kParamOscIterations].get() };
+        layoutPadPanel(fOscGroup.get(), fOscPad.get(), oscG, 5);
 
         SubWidget* env1G[4] = { fKnobs[kParamEnvDuration].get(), fKnobs[kParamEnvSmoothing].get(),
                                 fDropdowns[kParamEnvHoldMode].get(), fDropdowns[kParamEnvIterations].get() };
@@ -498,7 +499,8 @@ private:
         }
     }
 
-    // Amp box (lower right): VCA-envelope source dropdown on top, master gain knob below it.
+    // Amp box (lower right): VCA-envelope source dropdown on top, then the Voices and master
+    // Gain knobs side by side below it.
     void layoutAmp()
     {
         int cx, cy, cw, ch;
@@ -508,11 +510,13 @@ private:
         vca->setSize(static_cast<uint>(cw), static_cast<uint>(dropH));
         vca->setAbsolutePos(cx, cy);
 
-        const int gy = cy + dropH + 6;
-        const int gh = ch - dropH - 6;
-        const int gw = std::min(cw, gh);
-        fKnobs[kParamGain]->setSize(static_cast<uint>(gw), static_cast<uint>(gh));
-        fKnobs[kParamGain]->setAbsolutePos(cx + (cw - gw) / 2, gy);
+        const int ky = cy + dropH + 6;
+        const int kh = ch - dropH - 6;
+        const int half = cw / 2;
+        fKnobs[kParamVoiceCount]->setSize(static_cast<uint>(half), static_cast<uint>(kh));
+        fKnobs[kParamVoiceCount]->setAbsolutePos(cx, ky);
+        fKnobs[kParamGain]->setSize(static_cast<uint>(cw - half), static_cast<uint>(kh));
+        fKnobs[kParamGain]->setAbsolutePos(cx + half, ky);
     }
 
     // A pad-less panel: n controls evenly across the content area (used by the CV mixers).
@@ -567,6 +571,14 @@ private:
             };
         if (index == kParamMix1CCNumber || index == kParamMix2CCNumber)
             return [](float v) { char b[16]; std::snprintf(b, sizeof(b), "CC %d", static_cast<int>(v + 0.5f)); return std::string(b); };
+        if (index == kParamVoiceCount)
+            return [](float v) {
+                const int n = static_cast<int>(v + 0.5f);
+                char b[16];
+                n <= 1 ? std::snprintf(b, sizeof(b), "mono")
+                       : std::snprintf(b, sizeof(b), "%d voices", n);
+                return std::string(b);
+            };
         const std::string u = kParams[index].unit;
         const bool isTime = u == "s";
         return [isTime, u](float v) {

@@ -16,6 +16,11 @@ inline constexpr AUParameterAddress slew1Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindSlew, ModuleInstance1, 0);
 inline constexpr AUParameterAddress slew1InputAddress =
    MODULE_PARAM_ADDRESS(ModuleParamKindSlew, ModuleInstance1, SlewParamItemInput);
+// Pitch glide: one knob drives Rise and Fall together (symmetric slew).
+inline constexpr AUParameterAddress slew1RiseAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindSlew, ModuleInstance1, SlewParamItemRise);
+inline constexpr AUParameterAddress slew1FallAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindSlew, ModuleInstance1, SlewParamItemFall);
 
 inline constexpr AUParameterAddress sinOsc1Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindSinOsc, ModuleInstance1, 0);

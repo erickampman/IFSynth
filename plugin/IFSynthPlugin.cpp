@@ -238,12 +238,31 @@ private:
         return true;
     }
 
+    // Pitch glide (Slew Rise == Fall). Only active in mono (voice count 1); in poly it is forced
+    // near-instant so each freshly allocated voice doesn't audibly scoop from its rest pitch.
+    void applySlew()
+    {
+        if (!fVoiceManager)
+            return;
+        const bool  mono = static_cast<int>(fValues[kParamVoiceCount] + 0.5f) == 1;
+        const float rate = mono ? fValues[kParamSlewRate] : 1e-8f;
+        fVoiceManager->setParameter(slew1RiseAddress, rate);
+        fVoiceManager->setParameter(slew1FallAddress, rate);
+    }
+
     // Route one param to the engine: gain is applied in run(); routing params change connections;
     // everything else is a module param.
     void applyParam(uint32_t index, float value)
     {
         if (index == kParamGain || !fVoiceManager)
             return;
+        if (index == kParamSlewRate)   { applySlew(); return; }
+        if (index == kParamVoiceCount)
+        {
+            setConfig(MIDIParamItemVoiceCount, static_cast<float>(static_cast<int>(value + 0.5f)));
+            applySlew(); // glide is gated on mono, so re-evaluate when the count changes
+            return;
+        }
         if (applyModRouting(index, value))
             return;
         const AUParameterAddress a = vmAddress(index);
@@ -257,7 +276,8 @@ private:
         fVoiceManager = std::make_unique<VoiceManager>(getSampleRate(), MODULE_BUFF_SIZE);
 
         // VoiceManager params aren't zero-initialised — set the v1 voice-allocation config.
-        setConfig(MIDIParamItemVoiceCount, 8);
+        setConfig(MIDIParamItemVoiceCount,
+                  static_cast<float>(static_cast<int>(fValues[kParamVoiceCount] + 0.5f)));
         setConfig(MIDIParamItemChannelFilterValue, 0);
         setConfig(MIDIParamItemGroupFilterValue, 0);
         setConfig(MIDIParamItemVoiceStealAlgorithm, VoiceStealAlgorithmOldest);
