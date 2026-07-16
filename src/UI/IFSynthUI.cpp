@@ -73,10 +73,10 @@ public:
 
         fEnv1Pad = std::make_unique<IFSEnvControl>(fEnv1Group.get(), this);
         fEnv1Pad->setParamIds(kParamEnvBlueX, kParamEnvBlueY, kParamEnvGreenX, kParamEnvGreenY,
-                              kParamEnvStartEndY, kParamEnvSquash1, kParamEnvSquash2, kParamEnvSquash3);
+                              kParamEnvSquash1, kParamEnvSquash2, kParamEnvSquash3);
         fEnv2Pad = std::make_unique<IFSEnvControl>(fEnv2Group.get(), this);
         fEnv2Pad->setParamIds(kParamEnv2BlueX, kParamEnv2BlueY, kParamEnv2GreenX, kParamEnv2GreenY,
-                              kParamEnv2StartEndY, kParamEnv2Squash1, kParamEnv2Squash2, kParamEnv2Squash3);
+                              kParamEnv2Squash1, kParamEnv2Squash2, kParamEnv2Squash3);
 
         fLfo1Pad = std::make_unique<IFSControl>(fLfo1Group.get(), this);
         fLfo1Pad->setParamIds(kParamLfoBx, kParamLfoBy, kParamLfoStartEndY, kParamLfoSquash1, kParamLfoSquash2);
@@ -215,11 +215,11 @@ private:
         case kParamOscBx: case kParamOscBy: case kParamOscStartEndY:
         case kParamOscSquash1: case kParamOscSquash2:
         case kParamEnvBlueX: case kParamEnvBlueY: case kParamEnvGreenX: case kParamEnvGreenY:
-        case kParamEnvStartEndY: case kParamEnvSquash1: case kParamEnvSquash2: case kParamEnvSquash3:
+        case kParamEnvSquash1: case kParamEnvSquash2: case kParamEnvSquash3:
         case kParamLfoBx: case kParamLfoBy: case kParamLfoStartEndY:
         case kParamLfoSquash1: case kParamLfoSquash2:
         case kParamEnv2BlueX: case kParamEnv2BlueY: case kParamEnv2GreenX: case kParamEnv2GreenY:
-        case kParamEnv2StartEndY: case kParamEnv2Squash1: case kParamEnv2Squash2: case kParamEnv2Squash3:
+        case kParamEnv2Squash1: case kParamEnv2Squash2: case kParamEnv2Squash3:
         case kParamLfo2Bx: case kParamLfo2By: case kParamLfo2StartEndY:
         case kParamLfo2Squash1: case kParamLfo2Squash2:
             return true;
@@ -316,7 +316,6 @@ private:
         case kParamEnvBlueY: fEnv1Pad->setBlueY(v); break;
         case kParamEnvGreenX: fEnv1Pad->setGreenX(v); break;
         case kParamEnvGreenY: fEnv1Pad->setGreenY(v); break;
-        case kParamEnvStartEndY: fEnv1Pad->setStartEndY(v); break;
         case kParamEnvSquash1: fEnv1Pad->setSquash1(v); break;
         case kParamEnvSquash2: fEnv1Pad->setSquash2(v); break;
         case kParamEnvSquash3: fEnv1Pad->setSquash3(v); break;
@@ -333,7 +332,6 @@ private:
         case kParamEnv2BlueY: fEnv2Pad->setBlueY(v); break;
         case kParamEnv2GreenX: fEnv2Pad->setGreenX(v); break;
         case kParamEnv2GreenY: fEnv2Pad->setGreenY(v); break;
-        case kParamEnv2StartEndY: fEnv2Pad->setStartEndY(v); break;
         case kParamEnv2Squash1: fEnv2Pad->setSquash1(v); break;
         case kParamEnv2Squash2: fEnv2Pad->setSquash2(v); break;
         case kParamEnv2Squash3: fEnv2Pad->setSquash3(v); break;
@@ -377,13 +375,13 @@ private:
     void pushLfoPad(IFSControl* p, uint32_t bx) { pushOscPad(p, bx); }
     void pushEnvPad(IFSEnvControl* p, uint32_t dur)
     {
-        // env order: Duration, StartEndY, BlueX, BlueY, GreenX, GreenY, Sq1, Sq2, Sq3, Smooth, Iter, Hold
-        p->setStartEndY(kParams[dur + 1].def);
-        p->setBlueX(kParams[dur + 2].def);  p->setBlueY(kParams[dur + 3].def);
-        p->setGreenX(kParams[dur + 4].def); p->setGreenY(kParams[dur + 5].def);
-        p->setSquash1(kParams[dur + 6].def); p->setSquash2(kParams[dur + 7].def);
-        p->setSquash3(kParams[dur + 8].def); p->setSmoothing(kParams[dur + 9].def);
-        p->setIterations(kParams[dur + 10].def);
+        // env order: Duration, BlueX, BlueY, GreenX, GreenY, Sq1, Sq2, Sq3, Smooth, Iter, Hold
+        // (no StartEndY — envelopes are pinned to start/end at 0).
+        p->setBlueX(kParams[dur + 1].def);  p->setBlueY(kParams[dur + 2].def);
+        p->setGreenX(kParams[dur + 3].def); p->setGreenY(kParams[dur + 4].def);
+        p->setSquash1(kParams[dur + 5].def); p->setSquash2(kParams[dur + 6].def);
+        p->setSquash3(kParams[dur + 7].def); p->setSmoothing(kParams[dur + 8].def);
+        p->setIterations(kParams[dur + 9].def);
     }
 
     void layout()

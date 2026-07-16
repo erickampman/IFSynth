@@ -132,7 +132,6 @@ private:
         case kParamOscIterations: return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemIterations);
         // IFS envelope
         case kParamEnvDuration:   return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance1, IFSEnvParamItemDuration);
-        case kParamEnvStartEndY:  return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance1, IFSEnvParamItemStartEndY);
         case kParamEnvBlueX:      return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance1, IFSEnvParamItemBlueX);
         case kParamEnvBlueY:      return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance1, IFSEnvParamItemBlueY);
         case kParamEnvGreenX:     return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance1, IFSEnvParamItemGreenX);
@@ -154,7 +153,6 @@ private:
         case kParamLfoIterations: return MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance1, IFSLFOParamItemIterations);
         // IFS envelope 2 (instance 2)
         case kParamEnv2Duration:   return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance2, IFSEnvParamItemDuration);
-        case kParamEnv2StartEndY:  return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance2, IFSEnvParamItemStartEndY);
         case kParamEnv2BlueX:      return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance2, IFSEnvParamItemBlueX);
         case kParamEnv2BlueY:      return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance2, IFSEnvParamItemBlueY);
         case kParamEnv2GreenX:     return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance2, IFSEnvParamItemGreenX);

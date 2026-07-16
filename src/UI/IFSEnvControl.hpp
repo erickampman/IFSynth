@@ -1,8 +1,9 @@
 // IFSEnvControl.hpp — the IFS envelope editor pad: the 3-transform sibling of IFSControl. Two
-// interior dots (Blue, then Green — kept ordered), linked endpoints, and three region squashes,
-// over a curve that is the exact DSP envelope shape (IFSCore::computeIFSEnvWavetable). Interior
-// X is a straight [0,1] position (not the oscillator's [-1,1] Bx). Reuses IFSControl::Callback
-// (paramId + value); the host param ids for the eight editable controls are set by the UI.
+// interior dots (Blue, then Green — kept ordered) and three region squashes, over a curve that is
+// the exact DSP envelope shape (IFSCore::computeIFSEnvWavetable). Interior X is a straight [0,1]
+// position (not the oscillator's [-1,1] Bx). Unlike the oscillator/LFO pads, an envelope always
+// starts and ends at 0.0 — there is no start/end handle. Reuses IFSControl::Callback (paramId +
+// value); the host param ids for the seven editable controls are set by the UI.
 
 #ifndef IFSYNTH_IFSENVCONTROL_HPP
 #define IFSYNTH_IFSENVCONTROL_HPP
@@ -26,21 +27,21 @@ public:
     explicit IFSEnvControl(Widget* parent, Callback* callback)
         : NanoSubWidget(parent), fCallback(callback)
     {
+        fShape.startEndY = 0.0f; // envelopes always start and end at 0 (no handle to change it)
         recompute();
     }
 
     void setParamIds(uint32_t blueX, uint32_t blueY, uint32_t greenX, uint32_t greenY,
-                     uint32_t sEY, uint32_t s1, uint32_t s2, uint32_t s3)
+                     uint32_t s1, uint32_t s2, uint32_t s3)
     {
         fIdBlueX = blueX; fIdBlueY = blueY; fIdGreenX = greenX; fIdGreenY = greenY;
-        fIdSEY = sEY; fIdS1 = s1; fIdS2 = s2; fIdS3 = s3;
+        fIdS1 = s1; fIdS2 = s2; fIdS3 = s3;
     }
 
     void setBlueX(float v)     { fShape.blueX = v;      recompute(); }
     void setBlueY(float v)     { fShape.blueY = v;      recompute(); }
     void setGreenX(float v)    { fShape.greenX = v;     recompute(); }
     void setGreenY(float v)    { fShape.greenY = v;     recompute(); }
-    void setStartEndY(float v) { fShape.startEndY = v;  recompute(); }
     void setSquash1(float v)   { fShape.ifs1Squash = v; recompute(); }
     void setSquash2(float v)   { fShape.ifs2Squash = v; recompute(); }
     void setSquash3(float v)   { fShape.ifs3Squash = v; recompute(); }
@@ -57,8 +58,8 @@ protected:
 
         beginPath(); roundedRect(0, 0, w, h, 5.0f); fillColor(Color(16, 18, 22)); fill();
 
-        strokeLine(0, midY, w, midY, Color(255, 255, 255, 26));
-        strokeLine(0, vToY(fShape.startEndY), w, vToY(fShape.startEndY), Color(255, 255, 255, 80));
+        // The envelope's fixed 0 baseline is the mid line (start/end are pinned to 0).
+        strokeLine(0, midY, w, midY, Color(255, 255, 255, 80));
         strokeLine(bxX, 0, bxX, h, Color(80, 150, 235, 130));
         strokeLine(gxX, 0, gxX, h, Color(95, 200, 130, 130));
 
@@ -78,8 +79,6 @@ protected:
         }
         strokeColor(Color(95, 215, 122)); strokeWidth(2.0f); lineJoin(ROUND); stroke();
 
-        endpointHandle(0, vToY(fShape.startEndY));
-        endpointHandle(w, vToY(fShape.startEndY));
         dot(bxX, vToY(fShape.blueY),  Color(96, 156, 240));  // blue
         dot(gxX, vToY(fShape.greenY), Color(110, 205, 140)); // green
     }
@@ -101,7 +100,6 @@ protected:
             {
             case kBlue:  fActive[fNumActive++] = fIdBlueX;  fActive[fNumActive++] = fIdBlueY;  break;
             case kGreen: fActive[fNumActive++] = fIdGreenX; fActive[fNumActive++] = fIdGreenY; break;
-            case kEnd:   fActive[fNumActive++] = fIdSEY; break;
             case kS1:    fActive[fNumActive++] = fIdS1;  break;
             case kS2:    fActive[fNumActive++] = fIdS2;  break;
             case kS3:    fActive[fNumActive++] = fIdS3;  break;
@@ -129,7 +127,7 @@ protected:
     }
 
 private:
-    enum Target { kNone, kBlue, kGreen, kEnd, kS1, kS2, kS3 };
+    enum Target { kNone, kBlue, kGreen, kS1, kS2, kS3 };
 
     Callback* fCallback;
     IFSEnvShapeParams fShape;
@@ -138,7 +136,7 @@ private:
     uint32_t fActive[2] = {0, 0};
     int fNumActive = 0;
     uint32_t fIdBlueX = 0, fIdBlueY = 0, fIdGreenX = 0, fIdGreenY = 0;
-    uint32_t fIdSEY = 0, fIdS1 = 0, fIdS2 = 0, fIdS3 = 0;
+    uint32_t fIdS1 = 0, fIdS2 = 0, fIdS3 = 0;
 
     void recompute() { computeIFSEnvWavetable(fShape, fTable); repaint(); }
 
@@ -152,9 +150,6 @@ private:
         const float bxX = fShape.blueX * w, gxX = fShape.greenX * w;
         if (near(mx, my, bxX, vToY(fShape.blueY)))  return kBlue;
         if (near(mx, my, gxX, vToY(fShape.greenY))) return kGreen;
-        const double sey = vToY(fShape.startEndY);
-        if (mx < 22 && std::fabs(my - sey) < 20) return kEnd;
-        if (mx > w - 22 && std::fabs(my - sey) < 20) return kEnd;
         if (mx < bxX) return kS1;
         if (mx < gxX) return kS2;
         return kS3;
@@ -182,10 +177,6 @@ private:
             fCallback->ifsValueChanged(fIdGreenX, fShape.greenX);
             fCallback->ifsValueChanged(fIdGreenY, fShape.greenY);
             break;
-        case kEnd:
-            fShape.startEndY = clampf(yToV(my), -1.0f, 1.0f);
-            fCallback->ifsValueChanged(fIdSEY, fShape.startEndY);
-            break;
         case kS1: fShape.ifs1Squash = clampf(yToV(my), -0.99f, 0.99f); fCallback->ifsValueChanged(fIdS1, fShape.ifs1Squash); break;
         case kS2: fShape.ifs2Squash = clampf(yToV(my), -0.99f, 0.99f); fCallback->ifsValueChanged(fIdS2, fShape.ifs2Squash); break;
         case kS3: fShape.ifs3Squash = clampf(yToV(my), -0.99f, 0.99f); fCallback->ifsValueChanged(fIdS3, fShape.ifs3Squash); break;
@@ -211,12 +202,6 @@ private:
     {
         beginPath(); circle(x, y, 6); fillColor(Color(226, 232, 238)); fill();
         beginPath(); circle(x, y, 8); strokeColor(ring); strokeWidth(2.0f); stroke();
-    }
-    void endpointHandle(float x, float y)
-    {
-        const float cx = clampf(x, 5.0f, getWidth() - 5.0f);
-        beginPath(); circle(cx, y, 4.5f); fillColor(Color(226, 232, 238)); fill();
-        strokeColor(Color(0, 0, 0, 110)); strokeWidth(1.0f); stroke();
     }
 
     DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(IFSEnvControl)

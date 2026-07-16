@@ -21,9 +21,8 @@ enum ParamIndex {
    kParamOscSquash2,
    kParamOscSmoothing,
    kParamOscIterations,
-   // IFS envelope
+   // IFS envelope (always starts/ends at 0 — no start/end param)
    kParamEnvDuration,
-   kParamEnvStartEndY,
    kParamEnvBlueX,
    kParamEnvBlueY,
    kParamEnvGreenX,
@@ -45,7 +44,6 @@ enum ParamIndex {
    kParamLfoIterations,
    // IFS envelope 2 (mod source, not wired to the graph)
    kParamEnv2Duration,
-   kParamEnv2StartEndY,
    kParamEnv2BlueX,
    kParamEnv2BlueY,
    kParamEnv2GreenX,
@@ -120,7 +118,6 @@ static constexpr ParamSpec kParams[kParamCount] = {
    {"Iterations",  "oscIters",   "",   0.0f,   1.0f,   1.0f,  false, true },
    // IFS envelope
    {"Duration",    "envDur",     "s",  0.01f,  10.0f,  1.0f,  true,  false},
-   {"Ends",        "envEnds",    "",   -1.0f,  1.0f,   0.0f,  false, false},
    {"Blue X",      "envBlueX",   "",   0.0f,   1.0f,   0.15f, false, false},
    {"Blue Y",      "envBlueY",   "",   -1.0f,  1.0f,   1.0f,  false, false},
    {"Green X",     "envGreenX",  "",   0.0f,   1.0f,   0.45f, false, false},
@@ -142,7 +139,6 @@ static constexpr ParamSpec kParams[kParamCount] = {
    {"Iterations",  "lfoIters",   "",   0.0f,   7.0f,   3.0f,  false, true },
    // IFS envelope 2
    {"Duration",    "env2Dur",    "s",  0.01f,  10.0f,  1.0f,  true,  false},
-   {"Ends",        "env2Ends",   "",   -1.0f,  1.0f,   0.0f,  false, false},
    {"Blue X",      "env2BlueX",  "",   0.0f,   1.0f,   0.15f, false, false},
    {"Blue Y",      "env2BlueY",  "",   -1.0f,  1.0f,   1.0f,  false, false},
    {"Green X",     "env2GreenX", "",   0.0f,   1.0f,   0.45f, false, false},
