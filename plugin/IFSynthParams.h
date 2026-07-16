@@ -16,6 +16,7 @@ enum ParamIndex {
    // IFS oscillator
    kParamOscPitch,
    kParamOscFine,
+   kParamOscDetune,   // stereo detune (cents), splits L/R
    kParamOscBx,
    kParamOscBy,
    kParamOscStartEndY,
@@ -113,6 +114,7 @@ static constexpr ParamSpec kParams[kParamCount] = {
    // IFS oscillator
    {"Osc Pitch",   "oscPitch",   "st", -24.0f, 24.0f,  0.0f,  false, false},
    {"Osc Fine",    "oscFine",    "ct", -100.0f,100.0f, 0.0f,  false, false},
+   {"Detune",      "oscDetune",  "ct", 0.0f,   25.0f,  0.0f,  false, false},
    {"Split",       "oscBx",      "",   -1.0f,  1.0f,   0.0f,  false, false},
    {"Junction",    "oscBy",      "",   -1.0f,  1.0f,   0.5f,  false, false},
    {"Ends",        "oscEnds",    "",   -1.0f,  1.0f,  -1.0f,  false, false},

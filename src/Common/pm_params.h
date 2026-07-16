@@ -153,6 +153,7 @@ enum IFSOscParamItem : NSUInteger {
    IFSOscParamItemSquash1ModLevel,
    IFSOscParamItemSquash2ModInput,
    IFSOscParamItemSquash2ModLevel,
+   IFSOscParamItemDetune,         // stereo detune, cents (splits L/R by ±half); 0 = mono
 };
 
 // IFS fractal envelope — 3-transform shape (blue + green interior points), phase over Duration.

@@ -440,7 +440,7 @@ private:
         // Uniform knob size + text scale, scaled to the window (independent of cell size).
         const float scale = std::fmin(static_cast<float>(W) / DISTRHO_UI_DEFAULT_WIDTH,
                                       static_cast<float>(H) / DISTRHO_UI_DEFAULT_HEIGHT);
-        const float knobD = std::fmax(30.0f, 58.0f * scale);
+        const float knobD = std::fmax(30.0f, 54.0f * scale);
         const float txtScale = std::fmax(0.72f, std::fmin(1.12f, scale));
         for (uint32_t i = 0; i < kParamCount; ++i)
             if (fKnobs[i]) fKnobs[i]->setDiameter(knobD, txtScale);
@@ -469,10 +469,10 @@ private:
         placeGroup(fLpfModGroup.get(), lpfModX, modY, lpfModW, modH);
         placeGroup(fAmpGroup.get(),    ampX,    modY, ampW,    modH);
 
-        SubWidget* oscG[5]  = { fKnobs[kParamOscPitch].get(), fKnobs[kParamOscFine].get(),
-                                fKnobs[kParamSlewRate].get(), fKnobs[kParamOscSmoothing].get(),
-                                fDropdowns[kParamOscIterations].get() };
-        layoutPadPanel(fOscGroup.get(), fOscPad.get(), oscG, 5);
+        SubWidget* oscG[6]  = { fKnobs[kParamOscPitch].get(), fKnobs[kParamOscFine].get(),
+                                fKnobs[kParamOscDetune].get(), fKnobs[kParamSlewRate].get(),
+                                fKnobs[kParamOscSmoothing].get(), fDropdowns[kParamOscIterations].get() };
+        layoutPadPanel(fOscGroup.get(), fOscPad.get(), oscG, 6);
 
         SubWidget* env1G[4] = { fKnobs[kParamEnvDuration].get(), fKnobs[kParamEnvSmoothing].get(),
                                 fDropdowns[kParamEnvHoldMode].get(), fDropdowns[kParamEnvIterations].get() };

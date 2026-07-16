@@ -45,6 +45,7 @@ static const ModuleParamConstants ifsOscConstants[] = {
    {"sq1ModLvl",   IFSOscParamItemSquash1ModLevel, 0, 0, nullptr, -1.0f, 1.0f, 0.0f, 0},
    {"sq2ModIn",    IFSOscParamItemSquash2ModInput, 0, 0, nullptr, 0.0f, 0.0f, 0.0f, 0},
    {"sq2ModLvl",   IFSOscParamItemSquash2ModLevel, 0, 0, nullptr, -1.0f, 1.0f, 0.0f, 0},
+   {"detune",      IFSOscParamItemDetune,          0, 0, nullptr,  0.0f, 25.0f, 0.0f, 0},
 };
 const ModuleParamConstantsGroup ifsOscConstantsGroup = {
    const_cast<char*>("ifsOsc"),

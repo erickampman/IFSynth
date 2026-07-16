@@ -178,6 +178,10 @@ const KPBuffPair* ProcessIFSOscModule(uint64_t processCallID, uint32_t count, Mo
 
     const AUValue freqParam = module->paramByEnum(IFSOscParamItemPitch)     * (float)SEMITONES_TO_PITCH;
     const AUValue fineParam = module->paramByEnum(IFSOscParamItemPitchFine) * (float)CENTS_TO_PITCH;
+    // Stereo detune (cents → octaves), split symmetrically: L is flattened, R is sharpened by
+    // half. A constant-cents split gives even width across the keyboard (beats speed up on high
+    // notes — the classic detune behaviour).
+    const float   detuneHalf = 0.5f * module->paramByEnum(IFSOscParamItemDetune) * (float)CENTS_TO_PITCH;
     const double  freqScale = module->mFrequencyScale;
     auto* pitchConverter    = module->pitchConverter;
 
@@ -220,8 +224,8 @@ const KPBuffPair* ProcessIFSOscModule(uint64_t processCallID, uint32_t count, Mo
         bool crossfading       = st->crossfadePos > 0;
 
         for (uint32_t i = 0; i < count; ++i) {
-            deltaL = pitchConverter->pitchToFrequency(pilPtr[i] + freqParam + fineParam + pmlPtr[i] * pitchModLevel) * freqScale;
-            deltaR = pitchConverter->pitchToFrequency(pirPtr[i] + freqParam + fineParam + pmrPtr[i] * pitchModLevel) * freqScale;
+            deltaL = pitchConverter->pitchToFrequency(pilPtr[i] + freqParam + fineParam - detuneHalf + pmlPtr[i] * pitchModLevel) * freqScale;
+            deltaR = pitchConverter->pitchToFrequency(pirPtr[i] + freqParam + fineParam + detuneHalf + pmrPtr[i] * pitchModLevel) * freqScale;
             float sampleL = tableRead(activeTbl, phaseL);
             float sampleR = tableRead(activeTbl, phaseR);
             if (crossfading) {
@@ -263,8 +267,8 @@ const KPBuffPair* ProcessIFSOscModule(uint64_t processCallID, uint32_t count, Mo
         precomputeIFSVertices(ms, verts);
 
         for (uint32_t j = i0; j < i1; ++j) {
-            deltaL = pitchConverter->pitchToFrequency(pilPtr[j] + freqParam + fineParam + pmlPtr[j] * pitchModLevel) * freqScale;
-            deltaR = pitchConverter->pitchToFrequency(pirPtr[j] + freqParam + fineParam + pmrPtr[j] * pitchModLevel) * freqScale;
+            deltaL = pitchConverter->pitchToFrequency(pilPtr[j] + freqParam + fineParam - detuneHalf + pmlPtr[j] * pitchModLevel) * freqScale;
+            deltaR = pitchConverter->pitchToFrequency(pirPtr[j] + freqParam + fineParam + detuneHalf + pmrPtr[j] * pitchModLevel) * freqScale;
             outL[j] = evaluateIFSSmoothed(static_cast<float>(phaseL), verts);
             outR[j] = evaluateIFSSmoothed(static_cast<float>(phaseR), verts);
             phaseL += deltaL; if (phaseL >= 1.0) phaseL -= 1.0;
