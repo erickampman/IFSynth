@@ -47,6 +47,10 @@ inline constexpr AUParameterAddress ifsEnv1Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance1, 0);
 inline constexpr AUParameterAddress ifsEnv1GateInputAddress =
    MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance1, IFSEnvParamItemGateInput);
+// LegatoMode: 0 = NoteSteal (retrigger), 1 = FindMatchingY (jump to the earliest phase whose
+// level matches the current output). Mono mode turns this on so retriggers don't click.
+inline constexpr AUParameterAddress ifsEnv1LegatoModeAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance1, IFSEnvParamItemLegatoMode);
 
 inline constexpr AUParameterAddress ifsLFO1Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance1, 0);
@@ -54,6 +58,8 @@ inline constexpr AUParameterAddress ifsLFO1Address =
 // Second IFS envelope / LFO instances — mod sources (not connected in the graph yet).
 inline constexpr AUParameterAddress ifsEnv2Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance2, 0);
+inline constexpr AUParameterAddress ifsEnv2LegatoModeAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance2, IFSEnvParamItemLegatoMode);
 inline constexpr AUParameterAddress ifsLFO2Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindIFSLFO, ModuleInstance2, 0);
 

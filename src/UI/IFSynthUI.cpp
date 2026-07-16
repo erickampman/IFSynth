@@ -236,6 +236,7 @@ private:
         case kParamEnv2Iterations: case kParamEnv2HoldMode:
         case kParamLfo2Iterations:
         case kParamMix1Mode: case kParamMix2Mode:
+        case kParamVoiceMode:
             return true;
         default: return isModSrcParam(i); // mod source + VCA dropdowns
         }
@@ -275,7 +276,7 @@ private:
 
     GroupBox* groupFor(uint32_t i) const
     {
-        if (i == kParamGain || i == kParamVoiceCount) return fAmpGroup.get();
+        if (i == kParamGain || i == kParamVoiceMode) return fAmpGroup.get();
         if (i == kParamLpfCutoff || i == kParamLpfResonance || i == kParamLpfKeyTrack)
             return fLpfGroup.get();
         if (i == kParamLpfCutoffModSrc || i == kParamLpfCutoffModDepth)
@@ -296,6 +297,7 @@ private:
         if (i == kParamOscIterations) return {"3", "4"};
         if (i == kParamEnvHoldMode || i == kParamEnv2HoldMode) return {"None", "Blue", "Green", "Loop"};
         if (i == kParamMix1Mode || i == kParamMix2Mode) return {"Add", "Multiply"};
+        if (i == kParamVoiceMode) return {"Mono", "10 Voices"};
         if (i == kParamVCASource) return {"Env 1", "Env 2"};
         if (isModSrcParam(i)) return {"None", "LFO 1", "LFO 2", "Env 1", "Env 2", "CV Mix 1", "CV Mix 2"};
         return {"1", "2", "3", "4", "5", "6", "7", "8"}; // env/lfo iterations
@@ -499,24 +501,24 @@ private:
         }
     }
 
-    // Amp box (lower right): VCA-envelope source dropdown on top, then the Voices and master
-    // Gain knobs side by side below it.
+    // Amp box (lower right): VCA-envelope source + Voices dropdowns side by side on top, master
+    // Gain knob centred below.
     void layoutAmp()
     {
         int cx, cy, cw, ch;
         fAmpGroup->contentBounds(cx, cy, cw, ch);
         const int dropH = 46;
-        Dropdown* vca = fDropdowns[kParamVCASource].get();
-        vca->setSize(static_cast<uint>(cw), static_cast<uint>(dropH));
-        vca->setAbsolutePos(cx, cy);
-
-        const int ky = cy + dropH + 6;
-        const int kh = ch - dropH - 6;
         const int half = cw / 2;
-        fKnobs[kParamVoiceCount]->setSize(static_cast<uint>(half), static_cast<uint>(kh));
-        fKnobs[kParamVoiceCount]->setAbsolutePos(cx, ky);
-        fKnobs[kParamGain]->setSize(static_cast<uint>(cw - half), static_cast<uint>(kh));
-        fKnobs[kParamGain]->setAbsolutePos(cx + half, ky);
+        fDropdowns[kParamVCASource]->setSize(static_cast<uint>(half), static_cast<uint>(dropH));
+        fDropdowns[kParamVCASource]->setAbsolutePos(cx, cy);
+        fDropdowns[kParamVoiceMode]->setSize(static_cast<uint>(cw - half), static_cast<uint>(dropH));
+        fDropdowns[kParamVoiceMode]->setAbsolutePos(cx + half, cy);
+
+        const int gy = cy + dropH + 6;
+        const int gh = ch - dropH - 6;
+        const int gw = std::min(cw, gh);
+        fKnobs[kParamGain]->setSize(static_cast<uint>(gw), static_cast<uint>(gh));
+        fKnobs[kParamGain]->setAbsolutePos(cx + (cw - gw) / 2, gy);
     }
 
     // A pad-less panel: n controls evenly across the content area (used by the CV mixers).
@@ -571,14 +573,6 @@ private:
             };
         if (index == kParamMix1CCNumber || index == kParamMix2CCNumber)
             return [](float v) { char b[16]; std::snprintf(b, sizeof(b), "CC %d", static_cast<int>(v + 0.5f)); return std::string(b); };
-        if (index == kParamVoiceCount)
-            return [](float v) {
-                const int n = static_cast<int>(v + 0.5f);
-                char b[16];
-                n <= 1 ? std::snprintf(b, sizeof(b), "mono")
-                       : std::snprintf(b, sizeof(b), "%d voices", n);
-                return std::string(b);
-            };
         const std::string u = kParams[index].unit;
         const bool isTime = u == "s";
         return [isTime, u](float v) {

@@ -238,14 +238,34 @@ private:
         return true;
     }
 
-    // Pitch glide (Slew Rise == Fall). Only active in mono (voice count 1); in poly it is forced
-    // near-instant so each freshly allocated voice doesn't audibly scoop from its rest pitch.
+    static bool isMono(float voiceModeValue)
+    {
+        return static_cast<int>(voiceModeValue + 0.5f) == 0; // 0 = Mono, 1 = poly
+    }
+
+    // Voice mode: Mono = 1 voice + VoiceManager legato (engages the last-note note-stack) + the
+    // envelopes' FindMatchingY level-matching (click-free retrigger). Poly = 10 voices, none of
+    // that. Glide (applySlew) also keys off mono.
+    void applyVoiceMode(float value)
+    {
+        if (!fVoiceManager)
+            return;
+        const bool mono = isMono(value);
+        setConfig(MIDIParamItemVoiceCount, mono ? 1.0f : 10.0f);
+        setConfig(MIDIParamItemLegato,     mono ? 1.0f : 0.0f);
+        const float envLegato = mono ? 1.0f : 0.0f; // 1 = FindMatchingY
+        fVoiceManager->setParameter(ifsEnv1LegatoModeAddress, envLegato);
+        fVoiceManager->setParameter(ifsEnv2LegatoModeAddress, envLegato);
+        applySlew();
+    }
+
+    // Pitch glide (Slew Rise == Fall). Only active in mono; in poly it is forced near-instant so
+    // each freshly allocated voice doesn't audibly scoop from its rest pitch.
     void applySlew()
     {
         if (!fVoiceManager)
             return;
-        const bool  mono = static_cast<int>(fValues[kParamVoiceCount] + 0.5f) == 1;
-        const float rate = mono ? fValues[kParamSlewRate] : 1e-8f;
+        const float rate = isMono(fValues[kParamVoiceMode]) ? fValues[kParamSlewRate] : 1e-8f;
         fVoiceManager->setParameter(slew1RiseAddress, rate);
         fVoiceManager->setParameter(slew1FallAddress, rate);
     }
@@ -256,13 +276,8 @@ private:
     {
         if (index == kParamGain || !fVoiceManager)
             return;
-        if (index == kParamSlewRate)   { applySlew(); return; }
-        if (index == kParamVoiceCount)
-        {
-            setConfig(MIDIParamItemVoiceCount, static_cast<float>(static_cast<int>(value + 0.5f)));
-            applySlew(); // glide is gated on mono, so re-evaluate when the count changes
-            return;
-        }
+        if (index == kParamSlewRate)  { applySlew(); return; }
+        if (index == kParamVoiceMode) { applyVoiceMode(value); return; }
         if (applyModRouting(index, value))
             return;
         const AUParameterAddress a = vmAddress(index);
@@ -275,14 +290,12 @@ private:
     {
         fVoiceManager = std::make_unique<VoiceManager>(getSampleRate(), MODULE_BUFF_SIZE);
 
-        // VoiceManager params aren't zero-initialised — set the v1 voice-allocation config.
-        setConfig(MIDIParamItemVoiceCount,
-                  static_cast<float>(static_cast<int>(fValues[kParamVoiceCount] + 0.5f)));
+        // VoiceManager params aren't zero-initialised. Voice count + legato are driven by the
+        // Voices param (applyVoiceMode, pushed in the loop below); set the rest here.
         setConfig(MIDIParamItemChannelFilterValue, 0);
         setConfig(MIDIParamItemGroupFilterValue, 0);
         setConfig(MIDIParamItemVoiceStealAlgorithm, VoiceStealAlgorithmOldest);
         setConfig(MIDIParamItemFreeRun, 0);
-        setConfig(MIDIParamItemLegato, 0);
 
         // Push every non-gain param so the engine matches the exposed parameter values
         // (module params + the mod-routing connections).
