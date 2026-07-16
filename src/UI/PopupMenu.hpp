@@ -31,11 +31,19 @@ public:
         hide();
     }
 
-    // Open at window-absolute (x, y) with the given width.
-    void openFor(uint32_t tag, const std::vector<std::string>& items, int current, int x, int y, int width)
+    // Open anchored to a control's box (window-absolute). Normally drops below the box (at
+    // boxBottom); if that would run past the bottom of the window it flips to open above the box
+    // instead (boxTop - height), so bottom-row dropdowns aren't clipped. windowH is the UI height.
+    void openFor(uint32_t tag, const std::vector<std::string>& items, int current,
+                 int x, int boxBottom, int boxTop, int width, int windowH)
     {
         fTag = tag; fItems = items; fCurrent = current; fHover = -1;
         const int h = static_cast<int>(items.size()) * kRowH + 2 * kPad;
+        int y = boxBottom;
+        if (y + h > windowH)   // not enough room below → open above the box
+            y = boxTop - h;
+        if (y < 0)             // last-resort clamp for a very short window
+            y = 0;
         setAbsolutePos(x, y);
         setSize(static_cast<uint>(width), static_cast<uint>(h));
         toFront();

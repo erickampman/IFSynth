@@ -175,8 +175,9 @@ protected:
     void dropdownClicked(Dropdown* d) override
     {
         int x, y, w, h;
-        d->boxRect(x, y, w, h);
-        fMenu->openFor(d->getId(), d->choices(), d->index(), x, y + h, w);
+        d->boxRect(x, y, w, h); // y = box top, h = box height (window-absolute)
+        fMenu->openFor(d->getId(), d->choices(), d->index(), x, y + h, y, w,
+                       static_cast<int>(getHeight()));
     }
     void menuSelected(PopupMenu* menu, int index) override
     {
