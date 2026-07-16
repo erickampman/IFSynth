@@ -61,8 +61,9 @@ public:
         fLfo2Group = makeGroup("IFS LFO 2", accent);
         fMix1Group = makeGroup("CV Mixer 1  (LFO 1 + Env 1)", accent);
         fMix2Group = makeGroup("CV Mixer 2  (LFO 2 + Env 2)", accent);
-        fModGroup  = makeGroup("Modulation  (source + depth per IFS Osc input; VCA envelope)", accent);
-        fOutGroup  = makeGroup("Output", accent);
+        fOscModGroup = makeGroup("IFS Osc Modulation  (source + depth)", accent);
+        fVcaModGroup = makeGroup("VCA Envelope", accent);
+        fOutGroup    = makeGroup("Output", accent);
 
         fOscPad = std::make_unique<IFSControl>(fOscGroup.get(), this);
         fOscPad->setParamIds(kParamOscBx, kParamOscBy, kParamOscStartEndY, kParamOscSquash1, kParamOscSquash2);
@@ -194,7 +195,7 @@ protected:
 private:
     // Panels declared before their child controls so the children are destroyed first.
     std::unique_ptr<GroupBox>      fOscGroup, fEnv1Group, fEnv2Group, fLfo1Group, fLfo2Group;
-    std::unique_ptr<GroupBox>      fMix1Group, fMix2Group, fModGroup, fOutGroup;
+    std::unique_ptr<GroupBox>      fMix1Group, fMix2Group, fOscModGroup, fVcaModGroup, fOutGroup;
     std::unique_ptr<IFSControl>    fOscPad, fLfo1Pad, fLfo2Pad;
     std::unique_ptr<IFSEnvControl> fEnv1Pad, fEnv2Pad;
     std::unique_ptr<Knob>          fKnobs[kParamCount];
@@ -276,7 +277,8 @@ private:
         if (i <= kParamLfo2Iterations)   return fLfo2Group.get();
         if (i <= kParamMix1Mode)         return fMix1Group.get();
         if (i <= kParamMix2Mode)         return fMix2Group.get();
-        return fModGroup.get(); // modulation routing block
+        if (i == kParamVCASource)        return fVcaModGroup.get();
+        return fOscModGroup.get(); // the IFS Osc mod inputs
     }
 
     static std::vector<std::string> choicesFor(uint32_t i)
@@ -396,7 +398,11 @@ private:
         placeGroup(fOutGroup.get(),  colR, row2, colW, rowH);
         placeGroup(fMix1Group.get(), colL, mixY, colW, mixerH);
         placeGroup(fMix2Group.get(), colR, mixY, colW, mixerH);
-        placeGroup(fModGroup.get(),  colL, modY, W - 2 * m, modH);
+        // Bottom row: the (wide) IFS Osc modulation panel + a narrow VCA-envelope panel.
+        const int vcaW = 184;
+        const int oscModW = W - 2 * m - gap - vcaW;
+        placeGroup(fOscModGroup.get(), colL, modY, oscModW, modH);
+        placeGroup(fVcaModGroup.get(), colL + oscModW + gap, modY, vcaW, modH);
 
         SubWidget* oscG[4]  = { fKnobs[kParamOscPitch].get(), fKnobs[kParamOscFine].get(),
                                 fKnobs[kParamOscSmoothing].get(), fDropdowns[kParamOscIterations].get() };
@@ -432,36 +438,35 @@ private:
         layoutOutput();
     }
 
-    // Modulation matrix: 6 cells across, each a source dropdown over a depth fader (the VCA
-    // cell is dropdown-only — its envelope is always at full).
+    // IFS Osc modulation: 5 cells, each a source dropdown over a depth fader.
     void layoutModPanel()
     {
-        int cx, cy, cw, ch;
-        fModGroup->contentBounds(cx, cy, cw, ch);
-        struct Cell { uint32_t src; int depth; };
-        const Cell cells[6] = {
-            {kParamOscPitchModSrc, (int)kParamOscPitchModDepth},
-            {kParamOscBxModSrc,    (int)kParamOscBxModDepth},
-            {kParamOscByModSrc,    (int)kParamOscByModDepth},
-            {kParamOscSq1ModSrc,   (int)kParamOscSq1ModDepth},
-            {kParamOscSq2ModSrc,   (int)kParamOscSq2ModDepth},
-            {kParamVCASource,      -1},
+        struct Cell { uint32_t src; uint32_t depth; };
+        const Cell cells[5] = {
+            {kParamOscPitchModSrc, kParamOscPitchModDepth},
+            {kParamOscBxModSrc,    kParamOscBxModDepth},
+            {kParamOscByModSrc,    kParamOscByModDepth},
+            {kParamOscSq1ModSrc,   kParamOscSq1ModDepth},
+            {kParamOscSq2ModSrc,   kParamOscSq2ModDepth},
         };
-        const int n = 6;
-        const int cellW = cw / n;
-        const int dropH = 46;
+        int cx, cy, cw, ch;
+        fOscModGroup->contentBounds(cx, cy, cw, ch);
+        const int n = 5, cellW = cw / n, dropH = 46;
         for (int i = 0; i < n; ++i)
         {
             const int x = cx + i * cellW;
-            fDropdowns[cells[i].src]->setSize(static_cast<uint>(cellW), static_cast<uint>(dropH));
-            fDropdowns[cells[i].src]->setAbsolutePos(x, cy);
-            if (cells[i].depth >= 0)
-            {
-                Slider* s = fSliders[cells[i].depth].get();
-                s->setSize(static_cast<uint>(cellW), static_cast<uint>(ch - dropH - 4));
-                s->setAbsolutePos(x, cy + dropH + 4);
-            }
+            Dropdown* d = fDropdowns[cells[i].src].get();
+            d->setSize(static_cast<uint>(cellW), static_cast<uint>(dropH));
+            d->setAbsolutePos(x, cy);
+            Slider* s = fSliders[cells[i].depth].get();
+            s->setSize(static_cast<uint>(cellW), static_cast<uint>(ch - dropH - 4));
+            s->setAbsolutePos(x, cy + dropH + 4);
         }
+
+        // VCA envelope: a single source dropdown (no depth).
+        fVcaModGroup->contentBounds(cx, cy, cw, ch);
+        fDropdowns[kParamVCASource]->setSize(static_cast<uint>(cw), static_cast<uint>(dropH));
+        fDropdowns[kParamVCASource]->setAbsolutePos(cx, cy);
     }
 
     // A pad-less panel: n controls evenly across the content area (used by the CV mixers).
