@@ -53,11 +53,12 @@ protected:
 
         if (fHasFont)
         {
+            // Label sits in the reserved band above the box (always inside bounds).
             fontFace(NANOVG_DEJAVU_SANS_TTF);
-            textAlign(ALIGN_CENTER | ALIGN_BOTTOM);
+            textAlign(ALIGN_CENTER | ALIGN_TOP);
             fontSize(13.0f);
             fillColor(Color(176, 182, 190));
-            text(w * 0.5f, by - 6.0f, fLabel.c_str(), nullptr);
+            text(w * 0.5f, by - kLabelH + 1.0f, fLabel.c_str(), nullptr);
         }
 
         beginPath(); roundedRect(bx, by, bw, bh, 4.0f);
@@ -91,7 +92,13 @@ protected:
     }
 
 private:
-    float boxTop() const { return (getHeight() - kBoxH) * 0.5f; }
+    // Reserve kLabelH at the top for the caption; centre the label+box pair, clamped so a short
+    // widget keeps the label inside its bounds.
+    float boxTop() const
+    {
+        const float rem = getHeight() - (kLabelH + kBoxH);
+        return (rem > 0.0f ? rem * 0.5f : 0.0f) + kLabelH;
+    }
 
     Callback*                fCallback;
     std::string              fLabel;
@@ -99,7 +106,7 @@ private:
     int                      fIndex = 0;
     bool                     fHasFont = false;
 
-    static constexpr int kBoxH = 26, kInset = 12;
+    static constexpr int kBoxH = 26, kInset = 12, kLabelH = 16;
 
     DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Dropdown)
 };
