@@ -59,10 +59,10 @@ public:
         // control signals=amber, combiner=orange, modulation=teal).
         fOscGroup  = makeGroup("IFS Oscillator", colSound());
         fLpfGroup  = makeGroup("Low-Pass Filter", colFilter());
-        fEnv1Group = makeGroup("IFS Envelope 1", colCtrl());
-        fEnv2Group = makeGroup("IFS Envelope 2", colCtrl());
-        fLfo1Group = makeGroup("IFS LFO 1", colCtrl());
-        fLfo2Group = makeGroup("IFS LFO 2", colCtrl());
+        fEnv1Group = makeGroup("IFS Envelope 1", colEnv());
+        fEnv2Group = makeGroup("IFS Envelope 2", colEnv());
+        fLfo1Group = makeGroup("IFS LFO 1", colLfo());
+        fLfo2Group = makeGroup("IFS LFO 2", colLfo());
         fMix1Group = makeGroup("CV Mixer 1  (LFO 1 + Env 1)", colComb());
         fMix2Group = makeGroup("CV Mixer 2  (LFO 2 + Env 2)", colComb());
         fOscModGroup = makeGroup("IFS Osc Modulation  (source + depth)", colNeutral());
@@ -279,12 +279,13 @@ private:
         }
     }
 
-    // Module-category accent colours (PM scheme).
-    static Color colSound()   { return Color(60, 200, 90); }   // oscillator (sound)
-    static Color colFilter()  { return Color(170, 112, 226); } // filter
-    static Color colCtrl()    { return Color(232, 194, 64); }  // control signals (env/lfo)
-    static Color colComb()    { return Color(242, 150, 46); }  // combiner (mixers, VCA/amp)
-    static Color colNeutral() { return Color(120, 190, 205); } // modulation routing
+    // Module-category accent colours (PM-inspired, but Env/LFO/Mixer kept clearly distinct).
+    static Color colSound()   { return Color(60, 200, 90); }   // oscillator (sound) — green
+    static Color colFilter()  { return Color(170, 112, 226); } // filter — purple
+    static Color colEnv()     { return Color(232, 194, 64); }  // envelopes — amber
+    static Color colLfo()     { return Color(233, 112, 158); } // LFOs — rose
+    static Color colComb()    { return Color(242, 150, 46); }  // combiner (mixers, VCA/amp) — orange
+    static Color colNeutral() { return Color(120, 190, 205); } // modulation routing — teal
 
     // Same dispatch as groupFor, but returns the module's accent colour (for knobs).
     Color accentFor(uint32_t i) const
@@ -294,7 +295,10 @@ private:
             return colFilter();
         if (i == kParamLpfCutoffModSrc || i == kParamLpfCutoffModDepth) return colNeutral();
         if (i <= kParamOscIterations)  return colSound();
-        if (i <= kParamLfo2Iterations) return colCtrl();  // env1/lfo1/env2/lfo2 block
+        if (i <= kParamEnvHoldMode)    return colEnv();
+        if (i <= kParamLfoIterations)  return colLfo();
+        if (i <= kParamEnv2HoldMode)   return colEnv();
+        if (i <= kParamLfo2Iterations) return colLfo();
         if (i <= kParamMix2Mode)       return colComb();
         if (i == kParamVCASource)      return colComb();
         return colNeutral(); // osc mod

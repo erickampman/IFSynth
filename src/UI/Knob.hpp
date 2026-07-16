@@ -129,11 +129,14 @@ protected:
                                     withA(lighten(base, 0.35f), 0.85f * I), withA(base, 0.0f));
         beginPath(); circle(cx, cy, r * 0.64f); fillPaint(core); fill();
 
-        // Faint rim + top-left specular highlight for a spherical read.
+        // Faint rim + a soft top-left glint (gradient, not a hard disc, so it reads subtly).
         beginPath(); circle(cx, cy, r);
-        strokeColor(withA(Color(255, 255, 255), 0.16f * I)); strokeWidth(1.2f); stroke();
-        beginPath(); circle(cx - r * 0.30f, cy - r * 0.32f, r * 0.16f);
-        fillColor(withA(Color(255, 255, 255), 0.22f * I)); fill();
+        strokeColor(withA(Color(255, 255, 255), 0.14f * I)); strokeWidth(1.2f); stroke();
+        const float hx = cx - r * 0.30f, hy = cy - r * 0.34f, hr = r * 0.26f;
+        Paint glint = radialGradient(hx, hy, 0.0f, hr,
+                                     withA(Color(255, 255, 255), 0.11f * I),
+                                     withA(Color(255, 255, 255), 0.0f));
+        beginPath(); circle(hx, hy, hr); fillPaint(glint); fill();
 
         // Position indicator: a bright dot near the rim at the value angle.
         const float ix = cx + std::cos(valAngle) * (r * 0.72f);
