@@ -132,6 +132,7 @@ public:
 
         pushPadDefaults();
         layout();
+        updateGlideEnabled();
     }
 
 protected:
@@ -145,6 +146,7 @@ protected:
         if (fToggles[index])   fToggles[index]->setState(value > 0.5f);
         if (fSliders[index])   fSliders[index]->setValue(value, false);
         routeToPad(index, value);
+        if (index == kParamVoiceMode) updateGlideEnabled();
     }
 
     /* -- toggle -> host --------------------------------------------------- */
@@ -187,6 +189,7 @@ protected:
         editParameter(id, false);
         if (fDropdowns[id]) fDropdowns[id]->setIndex(index);
         routeToPad(id, static_cast<float>(index));
+        if (id == kParamVoiceMode) updateGlideEnabled();
     }
 
     /* -- drawing / layout ------------------------------------------------- */
@@ -348,6 +351,13 @@ private:
         case kParamLfo2Iterations: fLfo2Pad->setIterations(v); break;
         default: break;
         }
+    }
+
+    // Glide only does anything in mono (index 0 of the Voices dropdown); grey it out otherwise.
+    void updateGlideEnabled()
+    {
+        const bool mono = fDropdowns[kParamVoiceMode] && fDropdowns[kParamVoiceMode]->index() == 0;
+        if (fKnobs[kParamSlewRate]) fKnobs[kParamSlewRate]->setEnabled(mono);
     }
 
     std::unique_ptr<GroupBox> makeGroup(const char* title, Color accent)

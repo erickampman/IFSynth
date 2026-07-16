@@ -79,6 +79,10 @@ public:
     void setAccentColor(Color color)         { fAccent = color; }
     void setFormatter(std::function<std::string(float)> fn) { fFormat = std::move(fn); }
 
+    // A disabled knob is greyed out and ignores all interaction (the value is still shown).
+    void setEnabled(bool e) { if (fEnabled != e) { fEnabled = e; repaint(); } }
+    bool isEnabled() const  { return fEnabled; }
+
 protected:
     void onNanoDisplay() override
     {
@@ -102,10 +106,10 @@ protected:
         strokeWidth(4.0f);
         stroke();
 
-        // value-ring fill (accent, up to current value)
+        // value-ring fill (accent, up to current value; greyed when disabled)
         beginPath();
         arc(cx, cy, r + 6, kArcStart, valAngle, CW);
-        strokeColor(fAccent);
+        strokeColor(fEnabled ? fAccent : Color(74, 78, 86));
         strokeWidth(4.0f);
         stroke();
 
@@ -129,7 +133,7 @@ protected:
         beginPath();
         moveTo(cx + std::cos(valAngle) * (r * 0.35f), cy + std::sin(valAngle) * (r * 0.35f));
         lineTo(ix, iy);
-        strokeColor(Color(233, 236, 240));
+        strokeColor(fEnabled ? Color(233, 236, 240) : Color(120, 125, 132));
         strokeWidth(2.5f);
         stroke();
 
@@ -140,20 +144,20 @@ protected:
             fontFace(NANOVG_DEJAVU_SANS_TTF);
             textAlign(ALIGN_CENTER | ALIGN_TOP);
             fontSize(13.0f);
-            fillColor(Color(176, 182, 190));
+            fillColor(fEnabled ? Color(176, 182, 190) : Color(108, 113, 120));
             text(cx, knobH + 1.0f, fLabel.c_str(), nullptr);
 
             const std::string readout = fFormat ? fFormat(real) : defaultFormat(real);
             fontSize(12.0f);
-            fillColor(Color(226, 230, 236));
+            fillColor(fEnabled ? Color(226, 230, 236) : Color(118, 123, 130));
             text(cx, knobH + 15.0f, readout.c_str(), nullptr);
         }
     }
 
-    // Hand interaction to the KnobEventHandler.
-    bool onMouse(const MouseEvent& ev)   override { return mouseEvent(ev); }
-    bool onMotion(const MotionEvent& ev) override { return motionEvent(ev); }
-    bool onScroll(const ScrollEvent& ev) override { return scrollEvent(ev); }
+    // Hand interaction to the KnobEventHandler (a disabled knob ignores all of it).
+    bool onMouse(const MouseEvent& ev)   override { return fEnabled && mouseEvent(ev); }
+    bool onMotion(const MotionEvent& ev) override { return fEnabled && motionEvent(ev); }
+    bool onScroll(const ScrollEvent& ev) override { return fEnabled && scrollEvent(ev); }
 
 private:
     // KnobEventHandler::Callback — remap normalized → real and forward to the user callback.
@@ -181,6 +185,7 @@ private:
     std::function<std::string(float)> fFormat;
     Color                             fAccent { 79, 208, 224 };
     bool                              fHasFont = false;
+    bool                              fEnabled = true;
     float                             fMin = 0.0f, fMax = 1.0f;
     bool                              fLog = false;
 
