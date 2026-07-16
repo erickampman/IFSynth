@@ -282,7 +282,7 @@ private:
     // Module-category accent colours (PM-inspired, but Env/LFO/Mixer kept clearly distinct).
     static Color colSound()   { return Color(60, 200, 90); }   // oscillator (sound) — green
     static Color colFilter()  { return Color(170, 112, 226); } // filter — purple
-    static Color colEnv()     { return Color(232, 194, 64); }  // envelopes — amber
+    static Color colEnv()     { return Color(220, 206, 72); }  // envelopes — muted yellow
     static Color colLfo()     { return Color(233, 112, 158); } // LFOs — rose
     static Color colComb()    { return Color(242, 150, 46); }  // combiner (mixers, VCA/amp) — orange
     static Color colNeutral() { return Color(120, 190, 205); } // modulation routing — teal
