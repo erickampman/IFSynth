@@ -73,6 +73,9 @@ inline constexpr AUParameterAddress lpf1InputAddress =
    MODULE_PARAM_ADDRESS(ModuleParamKindButterworthLowPassFilter, ModuleInstance1, LPFParamItemInput);
 inline constexpr AUParameterAddress lpf1FreqModInputAddress =
    MODULE_PARAM_ADDRESS(ModuleParamKindButterworthLowPassFilter, ModuleInstance1, LPFParamItemModFreqInput);
+// Second freq-mod input, hardwired to the note pitch for key tracking (its level = FreqModLevel2).
+inline constexpr AUParameterAddress lpf1KeyTrackInputAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindButterworthLowPassFilter, ModuleInstance1, LPFParamItemModFreqInput2);
 inline constexpr AUParameterAddress lpf1QModInputAddress =
    MODULE_PARAM_ADDRESS(ModuleParamKindButterworthLowPassFilter, ModuleInstance1, LPFParamItemModQInput);
 

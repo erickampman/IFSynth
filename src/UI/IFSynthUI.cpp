@@ -65,6 +65,7 @@ public:
         fMix1Group = makeGroup("CV Mixer 1  (LFO 1 + Env 1)", accent);
         fMix2Group = makeGroup("CV Mixer 2  (LFO 2 + Env 2)", accent);
         fOscModGroup = makeGroup("IFS Osc Modulation  (source + depth)", accent);
+        fLpfModGroup = makeGroup("LPF Modulation", accent);
         fAmpGroup  = makeGroup("Amp", accent);
 
         fOscPad = std::make_unique<IFSControl>(fOscGroup.get(), this);
@@ -197,7 +198,7 @@ protected:
 private:
     // Panels declared before their child controls so the children are destroyed first.
     std::unique_ptr<GroupBox>      fOscGroup, fLpfGroup, fEnv1Group, fEnv2Group, fLfo1Group, fLfo2Group;
-    std::unique_ptr<GroupBox>      fMix1Group, fMix2Group, fOscModGroup, fAmpGroup;
+    std::unique_ptr<GroupBox>      fMix1Group, fMix2Group, fOscModGroup, fLpfModGroup, fAmpGroup;
     std::unique_ptr<IFSControl>    fOscPad, fLfo1Pad, fLfo2Pad;
     std::unique_ptr<IFSEnvControl> fEnv1Pad, fEnv2Pad;
     std::unique_ptr<Knob>          fKnobs[kParamCount];
@@ -254,16 +255,18 @@ private:
         {
         case kParamOscPitchModDepth: case kParamOscBxModDepth: case kParamOscByModDepth:
         case kParamOscSq1ModDepth: case kParamOscSq2ModDepth:
+        case kParamLpfCutoffModDepth:
             return true;
         default: return false;
         }
     }
-    static bool isModSrcParam(uint32_t i) // source dropdowns (osc mods + VCA)
+    static bool isModSrcParam(uint32_t i) // source dropdowns (osc mods + LPF cutoff + VCA)
     {
         switch (i)
         {
         case kParamOscPitchModSrc: case kParamOscBxModSrc: case kParamOscByModSrc:
-        case kParamOscSq1ModSrc: case kParamOscSq2ModSrc: case kParamVCASource:
+        case kParamOscSq1ModSrc: case kParamOscSq2ModSrc:
+        case kParamLpfCutoffModSrc: case kParamVCASource:
             return true;
         default: return false;
         }
@@ -272,7 +275,10 @@ private:
     GroupBox* groupFor(uint32_t i) const
     {
         if (i == kParamGain)             return fAmpGroup.get();
-        if (i == kParamLpfCutoff || i == kParamLpfResonance) return fLpfGroup.get();
+        if (i == kParamLpfCutoff || i == kParamLpfResonance || i == kParamLpfKeyTrack)
+            return fLpfGroup.get();
+        if (i == kParamLpfCutoffModSrc || i == kParamLpfCutoffModDepth)
+            return fLpfModGroup.get();
         if (i <= kParamOscIterations)    return fOscGroup.get();
         if (i <= kParamEnvHoldMode)      return fEnv1Group.get();
         if (i <= kParamLfoIterations)    return fLfo1Group.get();
@@ -402,11 +408,15 @@ private:
         placeGroup(fLfo2Group.get(), colR, row2, colW, rowH);
         placeGroup(fMix1Group.get(), colL, mixY, colW, mixerH);
         placeGroup(fMix2Group.get(), colR, mixY, colW, mixerH);
-        // Bottom row: the (wide) IFS Osc modulation panel + a narrow Amp box in the lower right.
-        const int ampW = 184;
-        const int oscModW = W - 2 * m - gap - ampW;
-        placeGroup(fOscModGroup.get(), colL, modY, oscModW, modH);
-        placeGroup(fAmpGroup.get(),    colL + oscModW + gap, modY, ampW, modH);
+        // Bottom row: wide IFS Osc modulation panel, then the LPF modulation panel, then a narrow
+        // Amp box in the lower right.
+        const int ampW = 184, lpfModW = 150;
+        const int oscModW = W - 2 * m - 2 * gap - lpfModW - ampW;
+        const int lpfModX = colL + oscModW + gap;
+        const int ampX    = lpfModX + lpfModW + gap;
+        placeGroup(fOscModGroup.get(), colL,    modY, oscModW, modH);
+        placeGroup(fLpfModGroup.get(), lpfModX, modY, lpfModW, modH);
+        placeGroup(fAmpGroup.get(),    ampX,    modY, ampW,    modH);
 
         SubWidget* oscG[4]  = { fKnobs[kParamOscPitch].get(), fKnobs[kParamOscFine].get(),
                                 fKnobs[kParamOscSmoothing].get(), fDropdowns[kParamOscIterations].get() };
@@ -428,9 +438,10 @@ private:
                                 fDropdowns[kParamLfo2Iterations].get() };
         layoutPadPanel(fLfo2Group.get(), fLfo2Pad.get(), lfo2G, 3);
 
-        // Low-pass filter: two knobs (cutoff, resonance) across the panel.
-        SubWidget* lpf[2] = { fKnobs[kParamLpfCutoff].get(), fKnobs[kParamLpfResonance].get() };
-        layoutRow(fLpfGroup.get(), lpf, 2);
+        // Low-pass filter: cutoff, resonance, key-track knobs across the panel.
+        SubWidget* lpf[3] = { fKnobs[kParamLpfCutoff].get(), fKnobs[kParamLpfResonance].get(),
+                              fKnobs[kParamLpfKeyTrack].get() };
+        layoutRow(fLpfGroup.get(), lpf, 3);
 
         SubWidget* mix1[5] = { fToggles[kParamMix1EnableLFO].get(), fToggles[kParamMix1EnableEnv].get(),
                                fToggles[kParamMix1EnableCC].get(), fKnobs[kParamMix1CCNumber].get(),
@@ -443,7 +454,23 @@ private:
 
         layoutModPanel();
 
+        layoutLpfModPanel();
+
         layoutAmp();
+    }
+
+    // LPF cutoff modulation: one cell — a source dropdown over a depth fader.
+    void layoutLpfModPanel()
+    {
+        int cx, cy, cw, ch;
+        fLpfModGroup->contentBounds(cx, cy, cw, ch);
+        const int dropH = 46;
+        Dropdown* d = fDropdowns[kParamLpfCutoffModSrc].get();
+        d->setSize(static_cast<uint>(cw), static_cast<uint>(dropH));
+        d->setAbsolutePos(cx, cy);
+        Slider* s = fSliders[kParamLpfCutoffModDepth].get();
+        s->setSize(static_cast<uint>(cw), static_cast<uint>(ch - dropH - 4));
+        s->setAbsolutePos(cx, cy + dropH + 4);
     }
 
     // IFS Osc modulation: 5 cells, each a source dropdown over a depth fader.

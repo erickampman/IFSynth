@@ -195,6 +195,8 @@ private:
         // Low-pass filter
         case kParamLpfCutoff:     return MODULE_PARAM_ADDRESS(ModuleParamKindButterworthLowPassFilter, ModuleInstance1, LPFParamItemPitch);
         case kParamLpfResonance:  return MODULE_PARAM_ADDRESS(ModuleParamKindButterworthLowPassFilter, ModuleInstance1, LPFParamItemQ);
+        case kParamLpfKeyTrack:      return MODULE_PARAM_ADDRESS(ModuleParamKindButterworthLowPassFilter, ModuleInstance1, LPFParamItemFreqModLevel2);
+        case kParamLpfCutoffModDepth:return MODULE_PARAM_ADDRESS(ModuleParamKindButterworthLowPassFilter, ModuleInstance1, LPFParamItemFreqModLevel);
         default:                  return 0;
         }
     }
@@ -225,6 +227,7 @@ private:
         case kParamOscByModSrc:    destInput = ifsOsc1ByModInputAddress;      break;
         case kParamOscSq1ModSrc:   destInput = ifsOsc1Squash1ModInputAddress; break;
         case kParamOscSq2ModSrc:   destInput = ifsOsc1Squash2ModInputAddress; break;
+        case kParamLpfCutoffModSrc: destInput = lpf1FreqModInputAddress;      break;
         case kParamVCASource:
             // The amplitude VCA always has an env: 0 = Env 1, 1 = Env 2.
             fVoiceManager->setModSource(combine1Input2Address,

@@ -80,6 +80,9 @@ void VoiceManager::buildDefaultPatch(Voice& voice)
 	voice.connectModules(envModule, combineModule, combine1Input2Address);
     voice.connectModules(slewModule, ifsOscModule, ifsOsc1PitchInputAddress);
     voice.connectModules(pitchConverterModule, slewModule, slew1InputAddress);
+    // Key tracking: the same note-pitch signal feeds the LPF's 2nd freq-mod input; the Key Track
+    // knob (LPFParamItemFreqModLevel2) scales how much the cutoff follows the note (1 = 1:1).
+    voice.connectModules(slewModule, lpfModule, lpf1KeyTrackInputAddress);
 
     // CV mixer inputs: LFO1+Env1 → mixer 1, LFO2+Env2 → mixer 2. Env1 fans out (it also drives
     // the VCA). The mixers' outputs aren't patched to destinations yet, so nothing is pulled
