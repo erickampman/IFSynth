@@ -66,6 +66,16 @@ inline constexpr AUParameterAddress cvMixer2LFOInputAddress =
 inline constexpr AUParameterAddress cvMixer2EnvInputAddress =
    MODULE_PARAM_ADDRESS(ModuleParamKindCVMixer, ModuleInstance2, CVMixerParamItemEnvInput);
 
+// Low-pass filter (24 dB/oct), per voice, inserted between the IFS oscillator and the VCA.
+inline constexpr AUParameterAddress lpf1Address =
+   MODULE_PARAM_ADDRESS(ModuleParamKindButterworthLowPassFilter, ModuleInstance1, 0);
+inline constexpr AUParameterAddress lpf1InputAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindButterworthLowPassFilter, ModuleInstance1, LPFParamItemInput);
+inline constexpr AUParameterAddress lpf1FreqModInputAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindButterworthLowPassFilter, ModuleInstance1, LPFParamItemModFreqInput);
+inline constexpr AUParameterAddress lpf1QModInputAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindButterworthLowPassFilter, ModuleInstance1, LPFParamItemModQInput);
+
 inline constexpr AUParameterAddress adsr1Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindADSR, ModuleInstance1, 0);
 

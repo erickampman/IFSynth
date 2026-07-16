@@ -192,6 +192,9 @@ private:
         case kParamOscByModDepth:    return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemByModLevel);
         case kParamOscSq1ModDepth:   return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemSquash1ModLevel);
         case kParamOscSq2ModDepth:   return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemSquash2ModLevel);
+        // Low-pass filter
+        case kParamLpfCutoff:     return MODULE_PARAM_ADDRESS(ModuleParamKindButterworthLowPassFilter, ModuleInstance1, LPFParamItemPitch);
+        case kParamLpfResonance:  return MODULE_PARAM_ADDRESS(ModuleParamKindButterworthLowPassFilter, ModuleInstance1, LPFParamItemQ);
         default:                  return 0;
         }
     }

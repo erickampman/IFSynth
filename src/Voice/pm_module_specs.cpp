@@ -12,6 +12,7 @@
 #include "IFSEnvModule.hpp"
 #include "IFSLFOModule.hpp"
 #include "IFSOscModule.hpp"
+#include "LPFilterModule.hpp"
 #include "PitchConverterModule.hpp"
 #include "SinOscillatorModule.hpp"
 #include "SlewModule.hpp"
@@ -55,6 +56,10 @@ const std::vector<ModuleInitSpec>& getModuleInitSpecs() {
        ProcessCVMixerModule, MIDICVMixerModule, nullptr, nullptr, nullptr},
       {cvMixer2Address, &cvMixerConstantsGroup, InitCVMixerModule, DeinitCVMixerModule,
        ProcessCVMixerModule, MIDICVMixerModule, nullptr, nullptr, nullptr},
+      // 24 dB/oct LPF, inserted IFSOsc → LPF → Combine(in1) in buildDefaultPatch. No MIDI/param
+      // procs (all its params are plain scalars read each process); sample-rate proc resets state.
+      {lpf1Address, &lpfConstantsGroup, InitLPFilterModule, DeinitLPFilterModule,
+       ProcessLPFilterModule, nullptr, nullptr, nullptr, SampleRateLPFilterModule},
       {combine1Address, &combineConstantsGroup, nullptr, nullptr, ProcessCombineModule, nullptr,
        nullptr, nullptr, nullptr},
       {finalAddress, &finalConstantsGroup, InitFinalModule, DeinitFinalModule, ProcessFinalModule,

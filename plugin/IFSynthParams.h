@@ -85,6 +85,9 @@ enum ParamIndex {
    kParamOscSq2ModSrc,   kParamOscSq2ModDepth,
    // The amplitude VCA's envelope source (Env 1 / Env 2), no depth.
    kParamVCASource,
+   // Low-pass filter (24 dB/oct Butterworth, after the oscillator, before the VCA)
+   kParamLpfCutoff,
+   kParamLpfResonance,
    kParamCount
 };
 
@@ -179,6 +182,9 @@ static constexpr ParamSpec kParams[kParamCount] = {
    {"Squash 2",    "oscSq2Msrc", "",   0.0f,   6.0f,   0.0f,  false, true },
    {"Depth",       "oscSq2Mdpt", "",  -1.0f,   1.0f,   0.0f,  false, false},
    {"VCA env",     "vcaSrc",     "",   0.0f,   1.0f,   0.0f,  false, true },
+   // Low-pass filter. Cutoff is octaves above A440 (pitchToFrequency); Resonance is Q (1..20).
+   {"Cutoff",      "lpfCutoff",  "",   -6.0f,  5.4f,   5.0f,  false, false},
+   {"Resonance",   "lpfReso",    "",   1.0f,  20.0f,   1.0f,  false, false},
 };
 
 } // namespace ifsynth

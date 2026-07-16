@@ -1,8 +1,10 @@
-// IFSynthUI.cpp — UI side. Two columns of module panels (wide layout), each panel a compact
-// landscape tile: a shrunk fractal pad on the left + a single row of knobs/dropdowns on the
-// right. Left column: Oscillator, Envelope 1, Envelope 2. Right column: LFO 1, LFO 2, Output.
-// The pads edit fractal-shape params directly; scalars are knobs; enums are dropdowns. The UI
-// is the callback for all of them, routing by param index. (CV mixers come later.)
+// IFSynthUI.cpp — UI side. A grid of module panels (wide layout). Three module rows of two
+// panels each: Oscillator | Low-Pass Filter, Envelope 1 | Envelope 2, LFO 1 | LFO 2. Then a CV
+// mixer row (Mixer 1 | Mixer 2) and a bottom row: the wide IFS Osc modulation matrix + a narrow
+// Amp box in the lower right (VCA-envelope source over the master gain). Pad panels put a shrunk
+// fractal pad on the left + a single row of knobs/dropdowns on the right; the pads edit
+// fractal-shape params directly, scalars are knobs, enums are dropdowns. The UI is the callback
+// for all of them, routing by param index.
 
 #include "DistrhoUI.hpp"
 
@@ -55,6 +57,7 @@ public:
 
         const Color accent(120, 190, 205);
         fOscGroup  = makeGroup("IFS Oscillator", accent);
+        fLpfGroup  = makeGroup("Low-Pass Filter", accent);
         fEnv1Group = makeGroup("IFS Envelope 1", accent);
         fEnv2Group = makeGroup("IFS Envelope 2", accent);
         fLfo1Group = makeGroup("IFS LFO 1", accent);
@@ -62,8 +65,7 @@ public:
         fMix1Group = makeGroup("CV Mixer 1  (LFO 1 + Env 1)", accent);
         fMix2Group = makeGroup("CV Mixer 2  (LFO 2 + Env 2)", accent);
         fOscModGroup = makeGroup("IFS Osc Modulation  (source + depth)", accent);
-        fVcaModGroup = makeGroup("VCA Envelope", accent);
-        fOutGroup    = makeGroup("Output", accent);
+        fAmpGroup  = makeGroup("Amp", accent);
 
         fOscPad = std::make_unique<IFSControl>(fOscGroup.get(), this);
         fOscPad->setParamIds(kParamOscBx, kParamOscBy, kParamOscStartEndY, kParamOscSquash1, kParamOscSquash2);
@@ -194,8 +196,8 @@ protected:
 
 private:
     // Panels declared before their child controls so the children are destroyed first.
-    std::unique_ptr<GroupBox>      fOscGroup, fEnv1Group, fEnv2Group, fLfo1Group, fLfo2Group;
-    std::unique_ptr<GroupBox>      fMix1Group, fMix2Group, fOscModGroup, fVcaModGroup, fOutGroup;
+    std::unique_ptr<GroupBox>      fOscGroup, fLpfGroup, fEnv1Group, fEnv2Group, fLfo1Group, fLfo2Group;
+    std::unique_ptr<GroupBox>      fMix1Group, fMix2Group, fOscModGroup, fAmpGroup;
     std::unique_ptr<IFSControl>    fOscPad, fLfo1Pad, fLfo2Pad;
     std::unique_ptr<IFSEnvControl> fEnv1Pad, fEnv2Pad;
     std::unique_ptr<Knob>          fKnobs[kParamCount];
@@ -269,7 +271,8 @@ private:
 
     GroupBox* groupFor(uint32_t i) const
     {
-        if (i == kParamGain)             return fOutGroup.get();
+        if (i == kParamGain)             return fAmpGroup.get();
+        if (i == kParamLpfCutoff || i == kParamLpfResonance) return fLpfGroup.get();
         if (i <= kParamOscIterations)    return fOscGroup.get();
         if (i <= kParamEnvHoldMode)      return fEnv1Group.get();
         if (i <= kParamLfoIterations)    return fLfo1Group.get();
@@ -277,7 +280,7 @@ private:
         if (i <= kParamLfo2Iterations)   return fLfo2Group.get();
         if (i <= kParamMix1Mode)         return fMix1Group.get();
         if (i <= kParamMix2Mode)         return fMix2Group.get();
-        if (i == kParamVCASource)        return fVcaModGroup.get();
+        if (i == kParamVCASource)        return fAmpGroup.get();
         return fOscModGroup.get(); // the IFS Osc mod inputs
     }
 
@@ -390,19 +393,20 @@ private:
         const int mixY = m + 3 * (rowH + gap);
         const int modY = mixY + mixerH + gap;
 
+        // Three module rows, two panels each.
         placeGroup(fOscGroup.get(),  colL, row0, colW, rowH);
+        placeGroup(fLpfGroup.get(),  colR, row0, colW, rowH);
         placeGroup(fEnv1Group.get(), colL, row1, colW, rowH);
-        placeGroup(fEnv2Group.get(), colL, row2, colW, rowH);
-        placeGroup(fLfo1Group.get(), colR, row0, colW, rowH);
-        placeGroup(fLfo2Group.get(), colR, row1, colW, rowH);
-        placeGroup(fOutGroup.get(),  colR, row2, colW, rowH);
+        placeGroup(fEnv2Group.get(), colR, row1, colW, rowH);
+        placeGroup(fLfo1Group.get(), colL, row2, colW, rowH);
+        placeGroup(fLfo2Group.get(), colR, row2, colW, rowH);
         placeGroup(fMix1Group.get(), colL, mixY, colW, mixerH);
         placeGroup(fMix2Group.get(), colR, mixY, colW, mixerH);
-        // Bottom row: the (wide) IFS Osc modulation panel + a narrow VCA-envelope panel.
-        const int vcaW = 184;
-        const int oscModW = W - 2 * m - gap - vcaW;
+        // Bottom row: the (wide) IFS Osc modulation panel + a narrow Amp box in the lower right.
+        const int ampW = 184;
+        const int oscModW = W - 2 * m - gap - ampW;
         placeGroup(fOscModGroup.get(), colL, modY, oscModW, modH);
-        placeGroup(fVcaModGroup.get(), colL + oscModW + gap, modY, vcaW, modH);
+        placeGroup(fAmpGroup.get(),    colL + oscModW + gap, modY, ampW, modH);
 
         SubWidget* oscG[4]  = { fKnobs[kParamOscPitch].get(), fKnobs[kParamOscFine].get(),
                                 fKnobs[kParamOscSmoothing].get(), fDropdowns[kParamOscIterations].get() };
@@ -424,6 +428,10 @@ private:
                                 fDropdowns[kParamLfo2Iterations].get() };
         layoutPadPanel(fLfo2Group.get(), fLfo2Pad.get(), lfo2G, 3);
 
+        // Low-pass filter: two knobs (cutoff, resonance) across the panel.
+        SubWidget* lpf[2] = { fKnobs[kParamLpfCutoff].get(), fKnobs[kParamLpfResonance].get() };
+        layoutRow(fLpfGroup.get(), lpf, 2);
+
         SubWidget* mix1[5] = { fToggles[kParamMix1EnableLFO].get(), fToggles[kParamMix1EnableEnv].get(),
                                fToggles[kParamMix1EnableCC].get(), fKnobs[kParamMix1CCNumber].get(),
                                fDropdowns[kParamMix1Mode].get() };
@@ -435,7 +443,7 @@ private:
 
         layoutModPanel();
 
-        layoutOutput();
+        layoutAmp();
     }
 
     // IFS Osc modulation: 5 cells, each a source dropdown over a depth fader.
@@ -462,11 +470,23 @@ private:
             s->setSize(static_cast<uint>(cellW), static_cast<uint>(ch - dropH - 4));
             s->setAbsolutePos(x, cy + dropH + 4);
         }
+    }
 
-        // VCA envelope: a single source dropdown (no depth).
-        fVcaModGroup->contentBounds(cx, cy, cw, ch);
-        fDropdowns[kParamVCASource]->setSize(static_cast<uint>(cw), static_cast<uint>(dropH));
-        fDropdowns[kParamVCASource]->setAbsolutePos(cx, cy);
+    // Amp box (lower right): VCA-envelope source dropdown on top, master gain knob below it.
+    void layoutAmp()
+    {
+        int cx, cy, cw, ch;
+        fAmpGroup->contentBounds(cx, cy, cw, ch);
+        const int dropH = 46;
+        Dropdown* vca = fDropdowns[kParamVCASource].get();
+        vca->setSize(static_cast<uint>(cw), static_cast<uint>(dropH));
+        vca->setAbsolutePos(cx, cy);
+
+        const int gy = cy + dropH + 6;
+        const int gh = ch - dropH - 6;
+        const int gw = std::min(cw, gh);
+        fKnobs[kParamGain]->setSize(static_cast<uint>(gw), static_cast<uint>(gh));
+        fKnobs[kParamGain]->setAbsolutePos(cx + (cw - gw) / 2, gy);
     }
 
     // A pad-less panel: n controls evenly across the content area (used by the CV mixers).
@@ -507,19 +527,18 @@ private:
         }
     }
 
-    void layoutOutput()
-    {
-        int cx, cy, cw, ch;
-        fOutGroup->contentBounds(cx, cy, cw, ch);
-        const int gw = std::min(cw, ch);
-        fKnobs[kParamGain]->setSize(static_cast<uint>(gw), static_cast<uint>(ch));
-        fKnobs[kParamGain]->setAbsolutePos(cx + (cw - gw) / 2, cy);
-    }
-
     static std::function<std::string(float)> formatterFor(uint32_t index)
     {
         if (index == kParamLfoRate || index == kParamLfo2Rate) // octaves → Hz (0 = 1 Hz)
             return [](float v) { char b[16]; std::snprintf(b, sizeof(b), "%.2f Hz", std::exp2(v)); return std::string(b); };
+        if (index == kParamLpfCutoff) // octaves above A440 → cutoff frequency
+            return [](float v) {
+                const double f = 440.0 * std::exp2(v);
+                char b[16];
+                f >= 1000.0 ? std::snprintf(b, sizeof(b), "%.2f kHz", f / 1000.0)
+                            : std::snprintf(b, sizeof(b), "%.0f Hz", f);
+                return std::string(b);
+            };
         if (index == kParamMix1CCNumber || index == kParamMix2CCNumber)
             return [](float v) { char b[16]; std::snprintf(b, sizeof(b), "CC %d", static_cast<int>(v + 0.5f)); return std::string(b); };
         const std::string u = kParams[index].unit;

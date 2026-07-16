@@ -66,6 +66,8 @@ void VoiceManager::buildDefaultPatch(Voice& voice)
     // IFSEnv is the active amplitude envelope. ADSR stays instantiated (module specs) but is
     // left unconnected here.
     Module* envModule = voice.getModule(ifsEnv1Address);
+    // 24 dB/oct LPF between the oscillator and the VCA.
+    Module* lpfModule = voice.getModule(lpf1Address);
 	Module* combineModule = voice.getModule(combine1Address);
 	Module* finalModule = voice.getModule(finalAddress);
 
@@ -73,7 +75,8 @@ void VoiceManager::buildDefaultPatch(Voice& voice)
 	//					 upstream    -> downstream   (downstream param)
     ++(finalModule->activeCount);
 	voice.connectModules(combineModule, finalModule, finalInputAddress);
-	voice.connectModules(ifsOscModule, combineModule, combine1Input1Address);
+	voice.connectModules(ifsOscModule, lpfModule, lpf1InputAddress);
+	voice.connectModules(lpfModule, combineModule, combine1Input1Address);
 	voice.connectModules(envModule, combineModule, combine1Input2Address);
     voice.connectModules(slewModule, ifsOscModule, ifsOsc1PitchInputAddress);
     voice.connectModules(pitchConverterModule, slewModule, slew1InputAddress);

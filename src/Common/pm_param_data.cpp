@@ -111,6 +111,25 @@ const ModuleParamConstantsGroup cvMixerConstantsGroup = {
    cvMixerConstants,
 };
 
+// LPF — 24 dB/oct Butterworth. Cutoff default 5 octaves above A440 (~14 kHz, near-open); Q = 1
+// (flat Butterworth). Input + mod inputs are connection ports (value 0); mod levels default 0.
+static const ModuleParamConstants lpfConstants[] = {
+   {"input",         LPFParamItemInput,          0, 0, nullptr,  0.0f,  0.0f,  0.0f, 0}, // connection
+   {"frequency",     LPFParamItemPitch,          0, 0, nullptr, -6.0f,  5.4f,  5.0f, 0},
+   {"freqModLevel",  LPFParamItemFreqModLevel,   0, 0, nullptr, -8.0f,  8.0f,  0.0f, 0},
+   {"q",             LPFParamItemQ,              0, 0, nullptr,  1.0f, 20.0f,  1.0f, 0},
+   {"freqModInput",  LPFParamItemModFreqInput,   0, 0, nullptr,  0.0f,  0.0f,  0.0f, 0}, // connection
+   {"freqModInput2", LPFParamItemModFreqInput2,  0, 0, nullptr,  0.0f,  0.0f,  0.0f, 0}, // connection
+   {"freqModLevel2", LPFParamItemFreqModLevel2,  0, 0, nullptr, -8.0f,  8.0f,  0.0f, 0},
+   {"qModInput",     LPFParamItemModQInput,      0, 0, nullptr,  0.0f,  0.0f,  0.0f, 0}, // connection
+   {"qModLevel",     LPFParamItemModQInputLevel, 0, 0, nullptr,-19.0f, 19.0f,  0.0f, 0},
+};
+const ModuleParamConstantsGroup lpfConstantsGroup = {
+   const_cast<char*>("lpf"),
+   sizeof(lpfConstants) / sizeof(lpfConstants[0]),
+   lpfConstants,
+};
+
 // ADSR — 7 params. Times in seconds; sustain is a level 0..1.
 static const ModuleParamConstants adsrConstants[] = {
    {"attack",    ADSRParamItemAttack,    0, 0, nullptr, 0.001f, 10.0f, 0.01f, 0},

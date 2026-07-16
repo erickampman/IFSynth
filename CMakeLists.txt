@@ -18,6 +18,7 @@ add_library(pm_framework STATIC
     src/Module/SinOscillatorModule.cpp
     src/Module/IFSCore.cpp
     src/Module/IFSOscModule.cpp
+    src/Module/LPFilterModule.cpp
     src/Module/IFSEnvModule.cpp
     src/Module/IFSLFOModule.cpp
     src/Module/CVMixerModule.cpp

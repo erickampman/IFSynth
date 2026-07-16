@@ -199,6 +199,21 @@ enum CVMixerParamItem : NSUInteger {
    CVMixerParamItemMode,         // 0 = add, 1 = multiply
 };
 
+// 24 dB/oct Butterworth low-pass. Item 1 is the audio input; Pitch is the (absolute) cutoff in
+// octaves through the shared PitchConverter (0 = base A440); Q adds resonance. The Freq/Q mod
+// inputs + their levels exist for a future LPF-mod panel (dormant until connected).
+enum LPFParamItem : NSUInteger {
+   LPFParamItemInput = 1,       // audio input
+   LPFParamItemPitch,           // cutoff, octaves (0 = 440 Hz)
+   LPFParamItemFreqModLevel,    // first freq mod depth
+   LPFParamItemQ,               // resonance, 1..20
+   LPFParamItemModFreqInput,    // first freq modulation input (connection)
+   LPFParamItemModFreqInput2,   // second freq modulation input (connection)
+   LPFParamItemFreqModLevel2,   // second freq mod depth
+   LPFParamItemModQInput,       // q modulation input (connection)
+   LPFParamItemModQInputLevel,  // q mod depth
+};
+
 enum ADSRParamItem : NSUInteger {
    ADSRParamItemAttack = 1,
    ADSRParamItemDecay,
