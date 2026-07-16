@@ -83,74 +83,87 @@ public:
     void setEnabled(bool e) { if (fEnabled != e) { fEnabled = e; repaint(); } }
     bool isEnabled() const  { return fEnabled; }
 
+    // Fixed sphere diameter (px) so every knob renders the same size regardless of its cell.
+    // 0 = auto-fit to the box. A matching text scale keeps label/readout proportional.
+    void setDiameter(float d, float textScale = 1.0f)
+    {
+        fDiameter = d;
+        fTextScale = textScale < 0.6f ? 0.6f : textScale;
+        repaint();
+    }
+
 protected:
     void onNanoDisplay() override
     {
-        const float w  = getWidth();
-        const float h  = getHeight();
-        // Reserve a fixed band at the bottom for the label + readout so text is never clipped;
-        // the knob scales to the space above it.
-        const float kTextBand = 30.0f;
-        const float knobH = h - kTextBand;
-        const float cx = w * 0.5f;
-        const float cy = knobH * 0.5f;
-        const float r  = std::fmin(w, knobH) * 0.32f;
+        const float w = getWidth();
+        const float h = getHeight();
 
-        const float frac     = getNormalizedValue();      // 0..1 (= control position)
+        // A compact label / sphere / value unit, centred vertically so text hugs the sphere even
+        // in a tall cell (PM style: caption on top, value box on the bottom).
+        const float labelBand = 16.0f * fTextScale;
+        const float valueBand = 18.0f * fTextScale;
+        const float cx        = w * 0.5f;
+
+        // Uniform diameter when set; otherwise fit. Never overflow the cell.
+        float d = fDiameter > 0.0f ? fDiameter : (h - labelBand - valueBand);
+        d = std::fmin(d, std::fmin(w, h - labelBand - valueBand));
+        if (d < 0.0f) d = 0.0f;
+        const float r     = d * 0.5f;
+        const float unitH = labelBand + d + valueBand;
+        const float top   = std::fmax(0.0f, (h - unitH) * 0.5f);
+        const float cy    = top + labelBand + r;
+
+        const float frac     = getNormalizedValue();
         const float valAngle = kArcStart + frac * kArcSweep;
 
-        // value-ring track (dim, full sweep)
-        beginPath();
-        arc(cx, cy, r + 6, kArcStart, kArcStart + kArcSweep, CW);
-        strokeColor(Color(52, 56, 63));
-        strokeWidth(4.0f);
-        stroke();
+        const Color base = fEnabled ? fAccent : Color(104, 108, 116);
+        const float I    = fEnabled ? 1.0f : 0.45f; // dim when disabled
 
-        // value-ring fill (accent, up to current value; greyed when disabled)
-        beginPath();
-        arc(cx, cy, r + 6, kArcStart, valAngle, CW);
-        strokeColor(fEnabled ? fAccent : Color(74, 78, 86));
-        strokeWidth(4.0f);
-        stroke();
+        // Outer glow: bright at the centre, fading to transparent at the rim (blends into panel).
+        Paint glow = radialGradient(cx, cy, r * 0.15f, r,
+                                    withA(base, 0.80f * I), withA(base, 0.0f));
+        beginPath(); circle(cx, cy, r); fillPaint(glow); fill();
 
-        // knob body (bevelled radial gradient)
-        Paint body = radialGradient(cx, cy - r * 0.3f, r * 0.2f, r, Color(64, 68, 76), Color(34, 37, 43));
-        beginPath();
-        circle(cx, cy, r);
-        fillPaint(body);
-        fill();
+        // Brighter core.
+        Paint core = radialGradient(cx, cy, 0.0f, r * 0.62f,
+                                    withA(lighten(base, 0.35f), 0.85f * I), withA(base, 0.0f));
+        beginPath(); circle(cx, cy, r * 0.64f); fillPaint(core); fill();
 
-        // rim
-        beginPath();
-        circle(cx, cy, r);
-        strokeColor(Color(18, 20, 24));
-        strokeWidth(1.5f);
-        stroke();
+        // Faint rim + top-left specular highlight for a spherical read.
+        beginPath(); circle(cx, cy, r);
+        strokeColor(withA(Color(255, 255, 255), 0.16f * I)); strokeWidth(1.2f); stroke();
+        beginPath(); circle(cx - r * 0.30f, cy - r * 0.32f, r * 0.16f);
+        fillColor(withA(Color(255, 255, 255), 0.22f * I)); fill();
 
-        // indicator line (center → value angle)
-        const float ix = cx + std::cos(valAngle) * (r - 3);
-        const float iy = cy + std::sin(valAngle) * (r - 3);
-        beginPath();
-        moveTo(cx + std::cos(valAngle) * (r * 0.35f), cy + std::sin(valAngle) * (r * 0.35f));
-        lineTo(ix, iy);
-        strokeColor(fEnabled ? Color(233, 236, 240) : Color(120, 125, 132));
-        strokeWidth(2.5f);
-        stroke();
+        // Position indicator: a bright dot near the rim at the value angle.
+        const float ix = cx + std::cos(valAngle) * (r * 0.72f);
+        const float iy = cy + std::sin(valAngle) * (r * 0.72f);
+        beginPath(); circle(ix, iy, std::fmax(2.0f, r * 0.13f));
+        fillColor(fEnabled ? Color(244, 247, 250) : Color(150, 154, 160)); fill();
 
-        // label + value readout (skip if the shared font failed to load)
         if (fHasFont)
         {
             const float real = getRealValue();
             fontFace(NANOVG_DEJAVU_SANS_TTF);
-            textAlign(ALIGN_CENTER | ALIGN_TOP);
-            fontSize(13.0f);
-            fillColor(fEnabled ? Color(176, 182, 190) : Color(108, 113, 120));
-            text(cx, knobH + 1.0f, fLabel.c_str(), nullptr);
 
+            // Label on top, tinted toward the module accent.
+            textAlign(ALIGN_CENTER | ALIGN_TOP);
+            fontSize(12.0f * fTextScale);
+            fillColor(fEnabled ? lighten(fAccent, 0.45f) : Color(112, 117, 124));
+            text(cx, top, fLabel.c_str(), nullptr);
+
+            // Value readout in a subtle box just below the sphere.
             const std::string readout = fFormat ? fFormat(real) : defaultFormat(real);
-            fontSize(12.0f);
-            fillColor(fEnabled ? Color(226, 230, 236) : Color(118, 123, 130));
-            text(cx, knobH + 15.0f, readout.c_str(), nullptr);
+            const float bh = valueBand - 2.0f;
+            const float bw = std::fmin(w - 4.0f, 64.0f * fTextScale);
+            const float bx = cx - bw * 0.5f, by = top + labelBand + d + 1.0f;
+            beginPath(); roundedRect(bx, by, bw, bh, 3.0f);
+            fillColor(Color(20, 22, 27)); fill();
+            strokeColor(Color(46, 50, 58)); strokeWidth(1.0f); stroke();
+            textAlign(ALIGN_CENTER | ALIGN_MIDDLE);
+            fontSize(11.5f * fTextScale);
+            fillColor(fEnabled ? Color(224, 228, 234) : Color(120, 125, 132));
+            text(cx, by + bh * 0.5f, readout.c_str(), nullptr);
         }
     }
 
@@ -186,8 +199,20 @@ private:
     Color                             fAccent { 79, 208, 224 };
     bool                              fHasFont = false;
     bool                              fEnabled = true;
+    float                             fDiameter = 0.0f;   // 0 = auto-fit
+    float                             fTextScale = 1.0f;
     float                             fMin = 0.0f, fMax = 1.0f;
     bool                              fLog = false;
+
+    // Colour helpers (DPF Color components are floats in [0,1]).
+    static Color withA(Color c, float a) { c.alpha = a; return c; }
+    static Color lighten(Color c, float f)
+    {
+        c.red   += (1.0f - c.red)   * f;
+        c.green += (1.0f - c.green) * f;
+        c.blue  += (1.0f - c.blue)  * f;
+        return c;
+    }
 
     static constexpr float kArcStart = 0.75f * 3.14159265358979f; // 135°
     static constexpr float kArcSweep = 1.50f * 3.14159265358979f; // 270° sweep, gap at bottom

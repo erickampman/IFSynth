@@ -55,18 +55,19 @@ public:
     {
         setGeometryConstraints(780, 480, false, false);
 
-        const Color accent(120, 190, 205);
-        fOscGroup  = makeGroup("IFS Oscillator", accent);
-        fLpfGroup  = makeGroup("Low-Pass Filter", accent);
-        fEnv1Group = makeGroup("IFS Envelope 1", accent);
-        fEnv2Group = makeGroup("IFS Envelope 2", accent);
-        fLfo1Group = makeGroup("IFS LFO 1", accent);
-        fLfo2Group = makeGroup("IFS LFO 2", accent);
-        fMix1Group = makeGroup("CV Mixer 1  (LFO 1 + Env 1)", accent);
-        fMix2Group = makeGroup("CV Mixer 2  (LFO 2 + Env 2)", accent);
-        fOscModGroup = makeGroup("IFS Osc Modulation  (source + depth)", accent);
-        fLpfModGroup = makeGroup("LPF Modulation", accent);
-        fAmpGroup  = makeGroup("Amp", accent);
+        // Per-module accent colours, following PM's category scheme (sound=green, filter=purple,
+        // control signals=amber, combiner=orange, modulation=teal).
+        fOscGroup  = makeGroup("IFS Oscillator", colSound());
+        fLpfGroup  = makeGroup("Low-Pass Filter", colFilter());
+        fEnv1Group = makeGroup("IFS Envelope 1", colCtrl());
+        fEnv2Group = makeGroup("IFS Envelope 2", colCtrl());
+        fLfo1Group = makeGroup("IFS LFO 1", colCtrl());
+        fLfo2Group = makeGroup("IFS LFO 2", colCtrl());
+        fMix1Group = makeGroup("CV Mixer 1  (LFO 1 + Env 1)", colComb());
+        fMix2Group = makeGroup("CV Mixer 2  (LFO 2 + Env 2)", colComb());
+        fOscModGroup = makeGroup("IFS Osc Modulation  (source + depth)", colNeutral());
+        fLpfModGroup = makeGroup("LPF Modulation", colNeutral());
+        fAmpGroup  = makeGroup("Amp", colComb());
 
         fOscPad = std::make_unique<IFSControl>(fOscGroup.get(), this);
         fOscPad->setParamIds(kParamOscBx, kParamOscBy, kParamOscStartEndY, kParamOscSquash1, kParamOscSquash2);
@@ -122,6 +123,7 @@ public:
             auto knob = std::make_unique<Knob>(groupFor(i), this);
             knob->setId(i);
             knob->setLabel(s.name);
+            knob->setAccentColor(accentFor(i));
             knob->configure(s.min, s.max, s.logarithmic, s.def);
             knob->setRealValue(s.def, false);
             knob->setFormatter(formatterFor(i));
@@ -277,6 +279,27 @@ private:
         }
     }
 
+    // Module-category accent colours (PM scheme).
+    static Color colSound()   { return Color(60, 200, 90); }   // oscillator (sound)
+    static Color colFilter()  { return Color(170, 112, 226); } // filter
+    static Color colCtrl()    { return Color(232, 194, 64); }  // control signals (env/lfo)
+    static Color colComb()    { return Color(242, 150, 46); }  // combiner (mixers, VCA/amp)
+    static Color colNeutral() { return Color(120, 190, 205); } // modulation routing
+
+    // Same dispatch as groupFor, but returns the module's accent colour (for knobs).
+    Color accentFor(uint32_t i) const
+    {
+        if (i == kParamGain || i == kParamVoiceMode) return colComb();
+        if (i == kParamLpfCutoff || i == kParamLpfResonance || i == kParamLpfKeyTrack)
+            return colFilter();
+        if (i == kParamLpfCutoffModSrc || i == kParamLpfCutoffModDepth) return colNeutral();
+        if (i <= kParamOscIterations)  return colSound();
+        if (i <= kParamLfo2Iterations) return colCtrl();  // env1/lfo1/env2/lfo2 block
+        if (i <= kParamMix2Mode)       return colComb();
+        if (i == kParamVCASource)      return colComb();
+        return colNeutral(); // osc mod
+    }
+
     GroupBox* groupFor(uint32_t i) const
     {
         if (i == kParamGain || i == kParamVoiceMode) return fAmpGroup.get();
@@ -410,9 +433,22 @@ private:
         const int mixY = m + 3 * (rowH + gap);
         const int modY = mixY + mixerH + gap;
 
-        // Three module rows, two panels each.
-        placeGroup(fOscGroup.get(),  colL, row0, colW, rowH);
-        placeGroup(fLpfGroup.get(),  colR, row0, colW, rowH);
+        // Uniform knob size + text scale, scaled to the window (independent of cell size).
+        const float scale = std::fmin(static_cast<float>(W) / DISTRHO_UI_DEFAULT_WIDTH,
+                                      static_cast<float>(H) / DISTRHO_UI_DEFAULT_HEIGHT);
+        const float knobD = std::fmax(30.0f, 58.0f * scale);
+        const float txtScale = std::fmax(0.72f, std::fmin(1.12f, scale));
+        for (uint32_t i = 0; i < kParamCount; ++i)
+            if (fKnobs[i]) fKnobs[i]->setDiameter(knobD, txtScale);
+
+        // Top row is asymmetric: the Oscillator (pad + 5 controls) is wider than the LPF.
+        const int topAvail = W - 2 * m - gap;
+        const int oscW = static_cast<int>(topAvail * 0.64f);
+        const int lpfW = topAvail - oscW;
+
+        // Three module rows, two panels each (row 0 wide/narrow, rows 1-2 equal).
+        placeGroup(fOscGroup.get(),  colL, row0, oscW, rowH);
+        placeGroup(fLpfGroup.get(),  colL + oscW + gap, row0, lpfW, rowH);
         placeGroup(fEnv1Group.get(), colL, row1, colW, rowH);
         placeGroup(fEnv2Group.get(), colR, row1, colW, rowH);
         placeGroup(fLfo1Group.get(), colL, row2, colW, rowH);
