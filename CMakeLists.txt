@@ -65,6 +65,22 @@ target_link_libraries(IFSynth-ui PUBLIC pm_framework)
 set_target_properties(IFSynth-dsp IFSynth-ui PROPERTIES
     CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
 
+# --- install: symlink the built .clap into the user CLAP dir ---------------
+# Not part of the default `all` build (avoids touching outside the build tree on every
+# rebuild); run explicitly with `cmake --build build --target install-clap`.
+if(APPLE)
+    set(IFSYNTH_CLAP_DIR "$ENV{HOME}/Library/Audio/Plug-Ins/CLAP")
+else()
+    set(IFSYNTH_CLAP_DIR "$ENV{HOME}/.clap")
+endif()
+add_custom_target(install-clap
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${IFSYNTH_CLAP_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
+        "${CMAKE_BINARY_DIR}/bin/IFSynth.clap"
+        "${IFSYNTH_CLAP_DIR}/IFSynth.clap"
+    DEPENDS IFSynth-clap
+    COMMENT "Symlinking IFSynth.clap into ${IFSYNTH_CLAP_DIR}")
+
 # --- self-tests (the framework; headless, no DAW) --------------------------
 add_executable(pm-selftest test/pm_selftest.cpp)
 target_link_libraries(pm-selftest PRIVATE pm_framework)
