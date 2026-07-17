@@ -93,6 +93,7 @@ enum ParamIndex {
    // LPF cutoff modulation: a source select (0=None,1..6) + bipolar depth (own bordered panel).
    kParamLpfCutoffModSrc,
    kParamLpfCutoffModDepth,
+   kParamSpread,      // output stereo width (0 = mono, 1 = full); pairs with Osc Detune
    kParamCount
 };
 
@@ -195,6 +196,7 @@ static constexpr ParamSpec kParams[kParamCount] = {
    {"Key Track",   "lpfKeyTrk",  "",   0.0f,   1.0f,   0.0f,  false, false},
    {"Cutoff",      "lpfCMsrc",   "",   0.0f,   6.0f,   0.0f,  false, true },
    {"Depth",       "lpfCMdpt",   "",  -1.0f,   1.0f,   0.0f,  false, false},
+   {"Spread",      "spread",     "",   0.0f,   1.0f,   1.0f,  false, false},
 };
 
 } // namespace ifsynth

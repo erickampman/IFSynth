@@ -290,7 +290,7 @@ private:
     // Same dispatch as groupFor, but returns the module's accent colour (for knobs).
     Color accentFor(uint32_t i) const
     {
-        if (i == kParamGain || i == kParamVoiceMode) return colComb();
+        if (i == kParamGain || i == kParamVoiceMode || i == kParamSpread) return colComb();
         if (i == kParamLpfCutoff || i == kParamLpfResonance || i == kParamLpfKeyTrack)
             return colFilter();
         if (i == kParamLpfCutoffModSrc || i == kParamLpfCutoffModDepth) return colNeutral();
@@ -306,7 +306,7 @@ private:
 
     GroupBox* groupFor(uint32_t i) const
     {
-        if (i == kParamGain || i == kParamVoiceMode) return fAmpGroup.get();
+        if (i == kParamGain || i == kParamVoiceMode || i == kParamSpread) return fAmpGroup.get();
         if (i == kParamLpfCutoff || i == kParamLpfResonance || i == kParamLpfKeyTrack)
             return fLpfGroup.get();
         if (i == kParamLpfCutoffModSrc || i == kParamLpfCutoffModDepth)
@@ -551,8 +551,8 @@ private:
         }
     }
 
-    // Amp box (lower right): VCA-envelope source + Voices dropdowns side by side on top, master
-    // Gain knob centred below.
+    // Amp box (lower right): VCA-envelope source + Voices dropdowns side by side on top, then the
+    // master Gain and Spread knobs side by side below.
     void layoutAmp()
     {
         int cx, cy, cw, ch;
@@ -564,11 +564,12 @@ private:
         fDropdowns[kParamVoiceMode]->setSize(static_cast<uint>(cw - half), static_cast<uint>(dropH));
         fDropdowns[kParamVoiceMode]->setAbsolutePos(cx + half, cy);
 
-        const int gy = cy + dropH + 6;
-        const int gh = ch - dropH - 6;
-        const int gw = std::min(cw, gh);
-        fKnobs[kParamGain]->setSize(static_cast<uint>(gw), static_cast<uint>(gh));
-        fKnobs[kParamGain]->setAbsolutePos(cx + (cw - gw) / 2, gy);
+        const int ky = cy + dropH + 6;
+        const int kh = ch - dropH - 6;
+        fKnobs[kParamGain]->setSize(static_cast<uint>(half), static_cast<uint>(kh));
+        fKnobs[kParamGain]->setAbsolutePos(cx, ky);
+        fKnobs[kParamSpread]->setSize(static_cast<uint>(cw - half), static_cast<uint>(kh));
+        fKnobs[kParamSpread]->setAbsolutePos(cx + half, ky);
     }
 
     // A pad-less panel: n controls evenly across the content area (used by the CV mixers).
@@ -623,6 +624,8 @@ private:
             };
         if (index == kParamMix1CCNumber || index == kParamMix2CCNumber)
             return [](float v) { char b[16]; std::snprintf(b, sizeof(b), "CC %d", static_cast<int>(v + 0.5f)); return std::string(b); };
+        if (index == kParamSpread) // stereo width as a percentage
+            return [](float v) { char b[8]; std::snprintf(b, sizeof(b), "%.0f%%", v * 100.0f); return std::string(b); };
         const std::string u = kParams[index].unit;
         const bool isTime = u == "s";
         return [isTime, u](float v) {

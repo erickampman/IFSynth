@@ -93,7 +93,8 @@ protected:
     {
         float* outL = outputs[0];
         float* outR = outputs[1];
-        const float gain = fValues[kParamGain];
+        const float gain  = fValues[kParamGain];
+        const float width = fValues[kParamSpread];
 
         uint32_t pos = 0, ev = 0;
         while (pos < frames)
@@ -106,7 +107,7 @@ protected:
             if (ev < midiEventCount && midiEvents[ev].frame < frames)
                 next = midiEvents[ev].frame;
 
-            renderSegment(outL, outR, pos, next, gain);
+            renderSegment(outL, outR, pos, next, gain, width);
             pos = next;
         }
     }
@@ -275,8 +276,8 @@ private:
     // everything else is a module param.
     void applyParam(uint32_t index, float value)
     {
-        if (index == kParamGain || !fVoiceManager)
-            return;
+        if (index == kParamGain || index == kParamSpread || !fVoiceManager)
+            return; // gain + spread are applied on the output bus in run()
         if (index == kParamSlewRate)  { applySlew(); return; }
         if (index == kParamVoiceMode) { applyVoiceMode(value); return; }
         if (applyModRouting(index, value))
@@ -321,7 +322,8 @@ private:
     }
 
     // Render [start,end) by chunking to the module block size; VoiceManager zeroes + sums voices.
-    void renderSegment(float* outL, float* outR, uint32_t start, uint32_t end, float gain)
+    // Applies master gain, then a mid/side stereo-width (Spread): width 1 = unchanged, 0 = mono.
+    void renderSegment(float* outL, float* outR, uint32_t start, uint32_t end, float gain, float width)
     {
         for (uint32_t p = start; p < end;)
         {
@@ -329,8 +331,10 @@ private:
             fVoiceManager->process(chunk, outL + p, outR + p);
             for (uint32_t i = p; i < p + chunk; ++i)
             {
-                outL[i] *= gain;
-                outR[i] *= gain;
+                const float l = outL[i] * gain, r = outR[i] * gain;
+                const float mid = 0.5f * (l + r), side = 0.5f * (l - r) * width;
+                outL[i] = mid + side;
+                outR[i] = mid - side;
             }
             p += chunk;
         }
