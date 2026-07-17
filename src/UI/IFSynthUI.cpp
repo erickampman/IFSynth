@@ -435,13 +435,15 @@ private:
         const int H = static_cast<int>(getHeight());
         const int m = 8, gap = 8;
         const int colW = (W - 2 * m - gap) / 2;
-        // All five rows (3 module rows + mixer row + modulation row) share one height, so the
-        // panel stack reads as one consistent grid instead of some rows looking squashed next
-        // to others. 170px comfortably fits the tallest per-row content (a dropdown + fader in
-        // the modulation row); hosts vary in how closely they honour the requested window
-        // size, so any leftover height beyond what 5 uniform rows need is simply left unused
-        // below the last row rather than stretched into any one row.
-        const int rowH = 349; // 170 * 1.5 * 1.2 * 0.95
+        // All five rows (3 module rows + mixer row + modulation row) share one height and are
+        // derived from the ACTUAL canvas height so the stack fills the window exactly on any
+        // host. This self-corrects for the Retina-vs-logical pixel difference: macOS hands us a
+        // physical-pixel canvas (~1800 tall → rowH ~350), Linux a logical one (900 → rowH ~170),
+        // and the shared `scale` below sizes knobs/text by the same factor. A previously
+        // hard-coded 349px row assumed the macOS height and overflowed the default window on
+        // hosts that report logical pixels (Linux), pushing the bottom rows off-screen. The
+        // aspect ratio is locked (see the constructor), so rows never stretch disproportionately.
+        const int rowH = (H - 2 * m - 4 * gap) / 5;
         const int colL = m, colR = m + colW + gap;
         const int row0 = m, row1 = m + rowH + gap, row2 = m + 2 * (rowH + gap);
         const int mixY = m + 3 * (rowH + gap);
