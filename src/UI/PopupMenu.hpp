@@ -38,7 +38,7 @@ public:
                  int x, int boxBottom, int boxTop, int width, int windowH)
     {
         fTag = tag; fItems = items; fCurrent = current; fHover = -1;
-        const int h = static_cast<int>(items.size()) * kRowH + 2 * kPad;
+        const int h = static_cast<int>(items.size()) * fRowH + 2 * fPad;
         int y = boxBottom;
         if (y + h > windowH)   // not enough room below → open above the box
             y = boxTop - h;
@@ -52,6 +52,14 @@ public:
     }
 
     uint32_t tag() const { return fTag; }
+    // Scales font size AND row height/padding together — scaling font alone (without the row
+    // it sits in) is what causes menu text to overlap adjacent rows.
+    void setUiScale(float s)
+    {
+        fUiScale = s;
+        fRowH = static_cast<int>(24 * s);
+        fPad  = static_cast<int>(4 * s);
+    }
 
 protected:
     void onNanoDisplay() override
@@ -63,19 +71,19 @@ protected:
 
         for (int i = 0; i < static_cast<int>(fItems.size()); ++i)
         {
-            const float ry = kPad + i * kRowH;
+            const float ry = fPad + i * fRowH;
             if (i == fHover)
             {
-                beginPath(); rect(2, ry, w - 4, kRowH);
+                beginPath(); rect(2, ry, w - 4, fRowH);
                 fillColor(Color(63, 185, 207, 60)); fill();
             }
             if (fHasFont)
             {
                 fontFace(NANOVG_DEJAVU_SANS_TTF);
                 textAlign(ALIGN_LEFT | ALIGN_MIDDLE);
-                fontSize(13.0f);
+                fontSize(13.0f * fUiScale);
                 fillColor(i == fCurrent ? Color(120, 210, 225) : Color(226, 230, 236));
-                text(12.0f, ry + kRowH * 0.5f, fItems[i].c_str(), nullptr);
+                text(12.0f * fUiScale, ry + fRowH * 0.5f, fItems[i].c_str(), nullptr);
             }
         }
     }
@@ -108,9 +116,9 @@ private:
     int rowAt(double mx, double my) const
     {
         if (mx < 0 || mx > getWidth()) return -1;
-        const double ry = my - kPad;
+        const double ry = my - fPad;
         if (ry < 0) return -1;
-        const int idx = static_cast<int>(ry / kRowH);
+        const int idx = static_cast<int>(ry / fRowH);
         return (idx >= 0 && idx < static_cast<int>(fItems.size())) ? idx : -1;
     }
 
@@ -120,8 +128,9 @@ private:
     int                      fHover = -1;
     uint32_t                 fTag = 0;
     bool                     fHasFont = false;
+    float                    fUiScale = 1.0f;
 
-    static constexpr int kRowH = 24, kPad = 4;
+    int fRowH = 24, fPad = 4;
 
     DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PopupMenu)
 };

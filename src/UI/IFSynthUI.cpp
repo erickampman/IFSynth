@@ -53,7 +53,12 @@ public:
     IFSynthUI()
         : UI(DISTRHO_UI_DEFAULT_WIDTH, DISTRHO_UI_DEFAULT_HEIGHT)
     {
-        setGeometryConstraints(780, 480, false, false);
+        // Lock the aspect ratio to the design ratio (980:900) so no host can hand the plugin
+        // a disproportionate canvas — layout() stretches rows/pads to fill whatever it's
+        // given, so an unconstrained host resize (previously keepAspectRatio=false, with a
+        // minimum pair that didn't even match 980:900) is what let a host open the window
+        // taller than intended.
+        setGeometryConstraints(780, 716, true, false);
 
         // Per-module accent colours, following PM's category scheme (sound=green, filter=purple,
         // control signals=amber, combiner=orange, modulation=teal).
@@ -212,6 +217,7 @@ private:
     std::unique_ptr<Toggle>        fToggles[kParamCount];
     std::unique_ptr<Slider>        fSliders[kParamCount];
     std::unique_ptr<PopupMenu>     fMenu;
+    float                          fUiScale = 1.0f; // set each layout() pass; read by the dropH helpers below
 
     static bool isPadParam(uint32_t i)
     {
@@ -428,22 +434,46 @@ private:
         const int W = static_cast<int>(getWidth());
         const int H = static_cast<int>(getHeight());
         const int m = 8, gap = 8;
-        const int mixerH = 120; // short pad-less mixer row
-        const int modH = 178;   // modulation matrix row (dropdown + fader per cell)
         const int colW = (W - 2 * m - gap) / 2;
-        const int rowH = (H - 2 * m - 4 * gap - mixerH - modH) / 3;
+        // All five rows (3 module rows + mixer row + modulation row) share one height, so the
+        // panel stack reads as one consistent grid instead of some rows looking squashed next
+        // to others. 170px comfortably fits the tallest per-row content (a dropdown + fader in
+        // the modulation row); hosts vary in how closely they honour the requested window
+        // size, so any leftover height beyond what 5 uniform rows need is simply left unused
+        // below the last row rather than stretched into any one row.
+        const int rowH = 349; // 170 * 1.5 * 1.2 * 0.95
         const int colL = m, colR = m + colW + gap;
         const int row0 = m, row1 = m + rowH + gap, row2 = m + 2 * (rowH + gap);
         const int mixY = m + 3 * (rowH + gap);
-        const int modY = mixY + mixerH + gap;
+        const int modY = mixY + rowH + gap;
 
         // Uniform knob size + text scale, scaled to the window (independent of cell size).
+        // No tight upper clamp on text scale: a host can hand us a canvas much larger than the
+        // design size, and text needs to keep pace with that or it reads as "tiny" next to
+        // knobs/pads that already scale freely.
         const float scale = std::fmin(static_cast<float>(W) / DISTRHO_UI_DEFAULT_WIDTH,
                                       static_cast<float>(H) / DISTRHO_UI_DEFAULT_HEIGHT);
         const float knobD = std::fmax(30.0f, 54.0f * scale);
-        const float txtScale = std::fmax(0.72f, std::fmin(1.12f, scale));
+        const float txtScale = std::fmax(0.72f, std::fmin(2.0f, scale));
+        fUiScale = txtScale; // stashed for layoutModPanel/layoutLpfModPanel/layoutAmp's dropH
         for (uint32_t i = 0; i < kParamCount; ++i)
             if (fKnobs[i]) fKnobs[i]->setDiameter(knobD, txtScale);
+
+        // Group titles / dropdown labels / popup menu text aren't part of the knob widget, so
+        // they need the same scale applied explicitly. setUiScale scales each widget's own
+        // internal box/label geometry along with its font, so text can't overflow its box.
+        GroupBox* allGroups[] = { fOscGroup.get(), fLpfGroup.get(), fEnv1Group.get(), fEnv2Group.get(),
+                                   fLfo1Group.get(), fLfo2Group.get(), fMix1Group.get(), fMix2Group.get(),
+                                   fOscModGroup.get(), fLpfModGroup.get(), fAmpGroup.get() };
+        for (GroupBox* g : allGroups)
+            g->setUiScale(txtScale);
+        for (uint32_t i = 0; i < kParamCount; ++i)
+            if (fDropdowns[i]) fDropdowns[i]->setUiScale(txtScale);
+        for (uint32_t i = 0; i < kParamCount; ++i)
+            if (fSliders[i]) fSliders[i]->setUiScale(txtScale);
+        for (uint32_t i = 0; i < kParamCount; ++i)
+            if (fToggles[i]) fToggles[i]->setUiScale(txtScale);
+        fMenu->setUiScale(txtScale);
 
         // Top row is asymmetric: the Oscillator (pad + 5 controls) is wider than the LPF.
         const int topAvail = W - 2 * m - gap;
@@ -457,17 +487,20 @@ private:
         placeGroup(fEnv2Group.get(), colR, row1, colW, rowH);
         placeGroup(fLfo1Group.get(), colL, row2, colW, rowH);
         placeGroup(fLfo2Group.get(), colR, row2, colW, rowH);
-        placeGroup(fMix1Group.get(), colL, mixY, colW, mixerH);
-        placeGroup(fMix2Group.get(), colR, mixY, colW, mixerH);
+        placeGroup(fMix1Group.get(), colL, mixY, colW, rowH);
+        placeGroup(fMix2Group.get(), colR, mixY, colW, rowH);
         // Bottom row: wide IFS Osc modulation panel, then the LPF modulation panel, then a narrow
         // Amp box in the lower right.
-        const int ampW = 224, lpfModW = 150;
+        // Same class of bug as dropH: this is a fixed external allocation, but the Amp group's
+        // content (two dropdowns + a knob) scales with fUiScale, so the box must too or its
+        // content overflows the right edge once the window is scaled up.
+        const int ampW = static_cast<int>(224 * fUiScale), lpfModW = 150;
         const int oscModW = W - 2 * m - 2 * gap - lpfModW - ampW;
         const int lpfModX = colL + oscModW + gap;
         const int ampX    = lpfModX + lpfModW + gap;
-        placeGroup(fOscModGroup.get(), colL,    modY, oscModW, modH);
-        placeGroup(fLpfModGroup.get(), lpfModX, modY, lpfModW, modH);
-        placeGroup(fAmpGroup.get(),    ampX,    modY, ampW,    modH);
+        placeGroup(fOscModGroup.get(), colL,    modY, oscModW, rowH);
+        placeGroup(fLpfModGroup.get(), lpfModX, modY, lpfModW, rowH);
+        placeGroup(fAmpGroup.get(),    ampX,    modY, ampW,    rowH);
 
         SubWidget* oscG[6]  = { fKnobs[kParamOscPitch].get(), fKnobs[kParamOscFine].get(),
                                 fKnobs[kParamOscDetune].get(), fKnobs[kParamSlewRate].get(),
@@ -516,7 +549,7 @@ private:
     {
         int cx, cy, cw, ch;
         fLpfModGroup->contentBounds(cx, cy, cw, ch);
-        const int dropH = 46;
+        const int dropH = static_cast<int>(46 * fUiScale);
         Dropdown* d = fDropdowns[kParamLpfCutoffModSrc].get();
         d->setSize(static_cast<uint>(cw), static_cast<uint>(dropH));
         d->setAbsolutePos(cx, cy);
@@ -538,7 +571,7 @@ private:
         };
         int cx, cy, cw, ch;
         fOscModGroup->contentBounds(cx, cy, cw, ch);
-        const int n = 5, cellW = cw / n, dropH = 46;
+        const int n = 5, cellW = cw / n, dropH = static_cast<int>(46 * fUiScale);
         for (int i = 0; i < n; ++i)
         {
             const int x = cx + i * cellW;
@@ -557,7 +590,7 @@ private:
     {
         int cx, cy, cw, ch;
         fAmpGroup->contentBounds(cx, cy, cw, ch);
-        const int dropH = 46;
+        const int dropH = static_cast<int>(46 * fUiScale);
         const int half = cw / 2;
         fDropdowns[kParamVCASource]->setSize(static_cast<uint>(half), static_cast<uint>(dropH));
         fDropdowns[kParamVCASource]->setAbsolutePos(cx, cy);
@@ -598,8 +631,11 @@ private:
         group->contentBounds(cx, cy, cw, ch);
         const int gap = 8;
         const int padW = static_cast<int>(cw * 0.42);
-        pad->setSize(static_cast<uint>(padW), static_cast<uint>(ch));
-        pad->setAbsolutePos(cx, cy);
+        // Fixed 2:1 landscape, independent of row height — hosts vary in whether they honour
+        // setGeometryConstraints' keepAspectRatio, so this can't rely on a well-shaped `ch`.
+        const int padH = std::min(ch, static_cast<int>(padW * 0.5f));
+        pad->setSize(static_cast<uint>(padW), static_cast<uint>(padH));
+        pad->setAbsolutePos(cx, cy + (ch - padH) / 2);
 
         const int kx = cx + padW + gap, kw = cw - padW - gap;
         const int cellW = n > 0 ? kw / n : kw;

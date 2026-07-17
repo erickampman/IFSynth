@@ -32,6 +32,14 @@ public:
 
     void setTitle(const std::string& title) { fTitle = title; }
     void setAccentColor(Color color)        { fAccent = color; }
+    // Scales font size AND the title-strip/padding geometry together — scaling font alone
+    // (without the strip it sits in) is what causes titles to overflow into the content area.
+    void setUiScale(float s)
+    {
+        fUiScale     = s;
+        fPadding     = static_cast<int>(10 * s);
+        fTitleHeight = static_cast<int>(28 * s);
+    }
 
     // Register a control (already parented to this box) for row layout.
     void addControl(SubWidget* control) { fControls.push_back(control); }
@@ -40,10 +48,10 @@ public:
     // For panels that lay their children out themselves rather than via relayout().
     void contentBounds(int& x, int& y, int& w, int& h) const
     {
-        x = getAbsoluteX() + kPadding;
-        y = getAbsoluteY() + kTitleHeight;
-        w = static_cast<int>(getWidth())  - 2 * kPadding;
-        h = static_cast<int>(getHeight()) - kTitleHeight - kPadding;
+        x = getAbsoluteX() + fPadding;
+        y = getAbsoluteY() + fTitleHeight;
+        w = static_cast<int>(getWidth())  - 2 * fPadding;
+        h = static_cast<int>(getHeight()) - fTitleHeight - fPadding;
     }
 
     // Lay the registered controls out evenly across the content area.
@@ -53,10 +61,10 @@ public:
         if (n == 0)
             return;
 
-        const int contentX = getAbsoluteX() + kPadding;
-        const int contentY = getAbsoluteY() + kTitleHeight;
-        const int contentW = static_cast<int>(getWidth())  - 2 * kPadding;
-        const int contentH = static_cast<int>(getHeight()) - kTitleHeight - kPadding;
+        const int contentX = getAbsoluteX() + fPadding;
+        const int contentY = getAbsoluteY() + fTitleHeight;
+        const int contentW = static_cast<int>(getWidth())  - 2 * fPadding;
+        const int contentH = static_cast<int>(getHeight()) - fTitleHeight - fPadding;
         if (contentW <= 0 || contentH <= 0)
             return;
 
@@ -92,9 +100,9 @@ protected:
         {
             fontFace(NANOVG_DEJAVU_SANS_TTF);
             textAlign(ALIGN_LEFT | ALIGN_MIDDLE);
-            fontSize(13.0f);
+            fontSize(13.0f * fUiScale);
             fillColor(fAccent);
-            text(12.0f, kTitleHeight * 0.5f + 3.0f, fTitle.c_str(), nullptr);
+            text(12.0f * fUiScale, fTitleHeight * 0.5f + 3.0f, fTitle.c_str(), nullptr);
         }
     }
 
@@ -103,9 +111,10 @@ private:
     std::string             fTitle;
     Color                   fAccent { 150, 200, 210 };
     bool                    fHasFont = false;
+    float                   fUiScale = 1.0f;
 
-    static constexpr int kPadding     = 10;
-    static constexpr int kTitleHeight = 28;
+    int fPadding     = 10;
+    int fTitleHeight = 28;
 
     DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GroupBox)
 };

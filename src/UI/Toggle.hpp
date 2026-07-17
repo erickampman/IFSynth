@@ -29,6 +29,7 @@ public:
 
     void setLabel(const std::string& label) { fLabel = label; }
     void setState(bool on)                  { fOn = on; repaint(); }
+    void setUiScale(float s)                { fUiScale = s; }
     bool state() const { return fOn; }
 
 protected:
@@ -43,7 +44,7 @@ protected:
         {
             fontFace(NANOVG_DEJAVU_SANS_TTF);
             textAlign(ALIGN_CENTER | ALIGN_BOTTOM);
-            fontSize(13.0f);
+            fontSize(13.0f * fUiScale);
             fillColor(Color(176, 182, 190));
             text(w * 0.5f, by - 6.0f, fLabel.c_str(), nullptr);
         }
@@ -79,6 +80,7 @@ private:
     std::string fLabel;
     bool        fOn = false;
     bool        fHasFont = false;
+    float       fUiScale = 1.0f;
 
     DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Toggle)
 };

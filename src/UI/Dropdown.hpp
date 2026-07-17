@@ -32,6 +32,15 @@ public:
     void setLabel(const std::string& label)          { fLabel = label; }
     void setChoices(const std::vector<std::string>& c){ fChoices = c; }
     void setIndex(int i)                              { fIndex = i; repaint(); }
+    // Scales font size AND the label/box geometry together — scaling font alone (without the
+    // box it sits in) is what causes text to overflow into neighbouring widgets.
+    void setUiScale(float s)
+    {
+        fUiScale = s;
+        fBoxH   = static_cast<int>(26 * s);
+        fInset  = static_cast<int>(12 * s);
+        fLabelH = static_cast<int>(16 * s);
+    }
 
     int index() const { return fIndex; }
     const std::vector<std::string>& choices() const { return fChoices; }
@@ -39,26 +48,26 @@ public:
     // The box rectangle in window-absolute coords, so the UI can position the popup below it.
     void boxRect(int& x, int& y, int& w, int& h) const
     {
-        x = getAbsoluteX() + kInset;
+        x = getAbsoluteX() + fInset;
         y = getAbsoluteY() + boxTop();
-        w = static_cast<int>(getWidth()) - 2 * kInset;
-        h = kBoxH;
+        w = static_cast<int>(getWidth()) - 2 * fInset;
+        h = fBoxH;
     }
 
 protected:
     void onNanoDisplay() override
     {
         const float w  = getWidth();
-        const float bx = kInset, bw = w - 2 * kInset, by = boxTop(), bh = kBoxH;
+        const float bx = fInset, bw = w - 2 * fInset, by = boxTop(), bh = fBoxH;
 
         if (fHasFont)
         {
             // Label sits in the reserved band above the box (always inside bounds).
             fontFace(NANOVG_DEJAVU_SANS_TTF);
             textAlign(ALIGN_CENTER | ALIGN_TOP);
-            fontSize(13.0f);
+            fontSize(13.0f * fUiScale);
             fillColor(Color(176, 182, 190));
-            text(w * 0.5f, by - kLabelH + 1.0f, fLabel.c_str(), nullptr);
+            text(w * 0.5f, by - fLabelH + 1.0f, fLabel.c_str(), nullptr);
         }
 
         beginPath(); roundedRect(bx, by, bw, bh, 4.0f);
@@ -68,7 +77,7 @@ protected:
         if (fHasFont && fIndex >= 0 && fIndex < static_cast<int>(fChoices.size()))
         {
             textAlign(ALIGN_LEFT | ALIGN_MIDDLE);
-            fontSize(13.0f);
+            fontSize(13.0f * fUiScale);
             fillColor(Color(226, 230, 236));
             text(bx + 10.0f, by + bh * 0.5f, fChoices[fIndex].c_str(), nullptr);
         }
@@ -96,8 +105,8 @@ private:
     // widget keeps the label inside its bounds.
     float boxTop() const
     {
-        const float rem = getHeight() - (kLabelH + kBoxH);
-        return (rem > 0.0f ? rem * 0.5f : 0.0f) + kLabelH;
+        const float rem = getHeight() - (fLabelH + fBoxH);
+        return (rem > 0.0f ? rem * 0.5f : 0.0f) + fLabelH;
     }
 
     Callback*                fCallback;
@@ -105,8 +114,9 @@ private:
     std::vector<std::string> fChoices;
     int                      fIndex = 0;
     bool                     fHasFont = false;
+    float                    fUiScale = 1.0f;
 
-    static constexpr int kBoxH = 26, kInset = 12, kLabelH = 16;
+    int fBoxH = 26, fInset = 12, fLabelH = 16;
 
     DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Dropdown)
 };

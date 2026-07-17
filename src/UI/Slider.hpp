@@ -33,6 +33,9 @@ public:
 
     void setLabel(const std::string& label) { fLabel = label; }
     void setRange(float min, float max)     { fMin = min; fMax = max; }
+    // Scales font size AND the reserved label/readout margins together — scaling font alone
+    // is what causes text to overflow into the track above/below it.
+    void setUiScale(float s)                { fUiScale = s; }
     void setValue(float v, bool sendCb = false)
     {
         fValue = clampf(v, fMin, fMax);
@@ -47,13 +50,13 @@ protected:
     {
         const float w = getWidth(), h = getHeight();
         const float tx = w * 0.5f;
-        const float top = 18.0f, bot = h - 16.0f; // reserve label (top) + readout (bottom)
+        const float top = 18.0f * fUiScale, bot = h - 16.0f * fUiScale; // reserve label (top) + readout (bottom)
 
         if (fHasFont)
         {
             fontFace(NANOVG_DEJAVU_SANS_TTF);
             textAlign(ALIGN_CENTER | ALIGN_TOP);
-            fontSize(13.0f);
+            fontSize(13.0f * fUiScale);
             fillColor(Color(176, 182, 190));
             text(tx, 1.0f, fLabel.c_str(), nullptr);
         }
@@ -77,7 +80,7 @@ protected:
         {
             const std::string s = fFormat ? fFormat(fValue) : defaultFormat(fValue);
             textAlign(ALIGN_CENTER | ALIGN_TOP);
-            fontSize(12.0f);
+            fontSize(12.0f * fUiScale);
             fillColor(Color(226, 230, 236));
             text(tx, bot + 1.0f, s.c_str(), nullptr);
         }
@@ -121,6 +124,7 @@ private:
     float fMin = -1.0f, fMax = 1.0f, fValue = 0.0f;
     bool  fDragging = false;
     bool  fHasFont = false;
+    float fUiScale = 1.0f;
 
     static float clampf(float v, float lo, float hi) { return v < lo ? lo : (v > hi ? hi : v); }
     float valToY(float v, float top, float bot) const
@@ -130,7 +134,7 @@ private:
     }
     void applyY(double y)
     {
-        const float top = 18.0f, bot = getHeight() - 16.0f;
+        const float top = 18.0f * fUiScale, bot = getHeight() - 16.0f * fUiScale;
         const float frac = clampf(static_cast<float>((bot - y) / (bot - top)), 0.0f, 1.0f);
         fValue = fMin + frac * (fMax - fMin);
         fCallback->sliderValueChanged(this, fValue);
