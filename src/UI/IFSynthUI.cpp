@@ -23,6 +23,7 @@
 #include "IFSynthParams.h"
 #include "Knob.hpp"
 #include "PopupMenu.hpp"
+#include "PresetDump.hpp" // dev-only JSON patch dumper (no-op unless IFSYNTH_PRESET_DUMP=1)
 #include "Slider.hpp"
 #include "Toggle.hpp"
 
@@ -140,6 +141,9 @@ public:
         pushPadDefaults();
         layout();
         updateGlideEnabled();
+#if IFSYNTH_PRESET_DUMP
+        for (uint32_t i = 0; i < kParamCount; ++i) fMirror[i] = kParams[i].def;
+#endif
     }
 
 protected:
@@ -153,6 +157,7 @@ protected:
         if (fToggles[index])   fToggles[index]->setState(value > 0.5f);
         if (fSliders[index])   fSliders[index]->setValue(value, false);
         routeToPad(index, value);
+        recordMirror(index, value);
         if (index == kParamVoiceMode) updateGlideEnabled();
     }
 
@@ -163,22 +168,23 @@ protected:
         editParameter(id, true);
         setParameterValue(id, on ? 1.0f : 0.0f);
         editParameter(id, false);
+        recordMirror(id, on ? 1.0f : 0.0f);
     }
 
     /* -- slider -> host --------------------------------------------------- */
     void sliderDragStarted(Slider* s) override  { editParameter(s->getId(), true); }
     void sliderDragFinished(Slider* s) override { editParameter(s->getId(), false); }
-    void sliderValueChanged(Slider* s, float v) override { setParameterValue(s->getId(), v); }
+    void sliderValueChanged(Slider* s, float v) override { setParameterValue(s->getId(), v); recordMirror(s->getId(), v); }
 
     /* -- knob -> host ----------------------------------------------------- */
     void knobDragStarted(Knob* k) override  { editParameter(k->getId(), true); }
     void knobDragFinished(Knob* k) override { editParameter(k->getId(), false); }
-    void knobValueChanged(Knob* k, float v) override { setParameterValue(k->getId(), v); }
+    void knobValueChanged(Knob* k, float v) override { setParameterValue(k->getId(), v); recordMirror(k->getId(), v); }
 
     /* -- pad -> host (all pads share IFSControl::Callback) ---------------- */
     void ifsDragStarted(uint32_t id) override  { editParameter(id, true); }
     void ifsDragFinished(uint32_t id) override { editParameter(id, false); }
-    void ifsValueChanged(uint32_t id, float v) override { setParameterValue(id, v); }
+    void ifsValueChanged(uint32_t id, float v) override { setParameterValue(id, v); recordMirror(id, v); }
 
     /* -- dropdown + menu -------------------------------------------------- */
     void dropdownClicked(Dropdown* d) override
@@ -194,6 +200,7 @@ protected:
         editParameter(id, true);
         setParameterValue(id, static_cast<float>(index));
         editParameter(id, false);
+        recordMirror(id, static_cast<float>(index));
         if (fDropdowns[id]) fDropdowns[id]->setIndex(index);
         routeToPad(id, static_cast<float>(index));
         if (id == kParamVoiceMode) updateGlideEnabled();
@@ -205,6 +212,21 @@ protected:
         beginPath(); rect(0, 0, getWidth(), getHeight()); fillColor(24, 26, 31); fill();
     }
     void onResize(const ResizeEvent& ev) override { UI::onResize(ev); layout(); }
+
+#if IFSYNTH_PRESET_DUMP
+    // Dev-only: press 'P' to write the current patch as JSON to $HOME.
+    bool onKeyboard(const KeyboardEvent& ev) override
+    {
+        if (ev.press && ev.key == 'p')
+        {
+            const std::string path = dumpPresetToFile(fMirror);
+            std::fprintf(stderr, "[IFSynth] patch %s %s\n",
+                         path.empty() ? "dump FAILED" : "dumped to", path.c_str());
+            return true;
+        }
+        return UI::onKeyboard(ev);
+    }
+#endif
 
 private:
     // Panels declared before their child controls so the children are destroyed first.
@@ -385,6 +407,14 @@ private:
         default: break;
         }
     }
+
+    // Patch-value mirror for the dev-only JSON dumper: no-op (and no member) in release builds.
+#if IFSYNTH_PRESET_DUMP
+    float fMirror[kParamCount];
+    void recordMirror(uint32_t id, float v) { if (id < kParamCount) fMirror[id] = v; }
+#else
+    void recordMirror(uint32_t, float) {}
+#endif
 
     // Glide only does anything in mono (index 0 of the Voices dropdown); grey it out otherwise.
     void updateGlideEnabled()

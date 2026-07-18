@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD 20)          # PM framework uses std::numbers / std::span
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(IFSYNTH_WERROR "Treat warnings as errors (framework + tests)" OFF)
+option(IFSYNTH_PRESET_DUMP "Dev-only: press 'P' in the UI to dump the patch as JSON to \$HOME" OFF)
 
 # --- PM framework port -----------------------------------------------------
 # Vendored PolygraphModular framework + our shim/MIDI layer, as a static lib. Compiled with
@@ -64,6 +65,10 @@ target_link_libraries(IFSynth-ui PUBLIC pm_framework)
 # DPF may default to an older standard; the DSP glue includes C++20 framework headers.
 set_target_properties(IFSynth-dsp IFSynth-ui PROPERTIES
     CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
+# Dev-only JSON patch dumper (keystroke → file); compiled out of release builds.
+if(IFSYNTH_PRESET_DUMP)
+    target_compile_definitions(IFSynth-ui PRIVATE IFSYNTH_PRESET_DUMP=1)
+endif()
 
 # --- install: symlink the built .clap into the user CLAP dir ---------------
 # Not part of the default `all` build (avoids touching outside the build tree on every
