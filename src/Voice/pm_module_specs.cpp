@@ -13,6 +13,7 @@
 #include "IFSLFOModule.hpp"
 #include "IFSOscModule.hpp"
 #include "LPFilterModule.hpp"
+#include "LevelModule.hpp"
 #include "PitchConverterModule.hpp"
 #include "SinOscillatorModule.hpp"
 #include "SlewModule.hpp"
@@ -64,6 +65,9 @@ const std::vector<ModuleInitSpec>& getModuleInitSpecs() {
        nullptr, nullptr, nullptr},
       // Combine 2 — oscillator mixer (Add mode, set in buildDefaultPatch): SinOsc + IFSOsc.
       {combine2Address, &combineConstantsGroup, nullptr, nullptr, ProcessCombineModule, nullptr,
+       nullptr, nullptr, nullptr},
+      // Level — scales the sine osc's audible path (raw sine still feeds IFS sync).
+      {level1Address, &levelConstantsGroup, nullptr, nullptr, ProcessLevelModule, nullptr,
        nullptr, nullptr, nullptr},
       {finalAddress, &finalConstantsGroup, InitFinalModule, DeinitFinalModule, ProcessFinalModule,
        MIDIFinalModule, nullptr, nullptr, SampleRateFinalModule},

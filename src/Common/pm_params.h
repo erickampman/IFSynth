@@ -127,7 +127,13 @@ enum SinOscParamItem : NSUInteger {
    SinOscParamItemModSync,
    SinOscParamItemModSyncType,
    SinOscParamItemDetune,   // stereo detune, cents (splits L/R by ±half); 0 = mono
-   SinOscParamItemLevel,    // output mix level
+};
+
+// Level — a simple gain stage: output = input × level. Used to scale the sine osc's audible mix
+// level *after* its raw output has been tapped for the IFS hard-sync input.
+enum LevelParamItem : NSUInteger {
+   LevelParamItemInput = 1, // connection
+   LevelParamItemLevel,     // 0..1
 };
 
 // IFS fractal oscillator — trimmed v1 set (PM's modulation matrix is deferred). PitchInput is a

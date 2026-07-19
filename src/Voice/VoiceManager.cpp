@@ -68,6 +68,7 @@ void VoiceManager::buildDefaultPatch(Voice& voice)
     Module* envModule = voice.getModule(ifsEnv1Address);
     // 24 dB/oct LPF after the osc mixer, before the VCA.
     Module* lpfModule = voice.getModule(lpf1Address);
+    Module* sinLevelModule = voice.getModule(level1Address);  // scales the audible sine
     Module* oscMixModule = voice.getModule(combine2Address); // osc mixer (Add): sine + IFS
 	Module* combineModule = voice.getModule(combine1Address);
 	Module* finalModule = voice.getModule(finalAddress);
@@ -76,8 +77,10 @@ void VoiceManager::buildDefaultPatch(Voice& voice)
 	//					 upstream    -> downstream   (downstream param)
     ++(finalModule->activeCount);
 	voice.connectModules(combineModule, finalModule, finalInputAddress);
-    // Osc mixer: (SinOsc × sineLevel) + (IFSOsc × ifsLevel) → LPF → VCA.
-    voice.connectModules(sinOscModule, oscMixModule, combine2Input1Address);
+    // Osc mixer: (SinOsc → Level(sineLevel)) + (IFSOsc × ifsLevel) → LPF → VCA. The sine's audible
+    // level is a Level stage, NOT its raw output, so the raw sine still drives IFS sync at level 0.
+    voice.connectModules(sinOscModule, sinLevelModule, level1InputAddress);
+    voice.connectModules(sinLevelModule, oscMixModule, combine2Input1Address);
     voice.connectModules(ifsOscModule, oscMixModule, combine2Input2Address);
     voice.connectModules(oscMixModule, lpfModule, lpf1InputAddress);
 	voice.connectModules(lpfModule, combineModule, combine1Input1Address);

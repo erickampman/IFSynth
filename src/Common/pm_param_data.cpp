@@ -15,8 +15,15 @@ static const ModuleParamConstants sinOscConstants[] = {
    {"modSync",       SinOscParamItemModSync,       0, 0, nullptr, 0.0f, 0.0f, 0.0f, 0},
    {"modSyncType",   SinOscParamItemModSyncType,   0, 0, nullptr, 0.0f, 2.0f, 0.0f, 0},
    {"detune",        SinOscParamItemDetune,        0, 0, nullptr, 0.0f, 25.0f, 0.0f, 0},
-   {"level",         SinOscParamItemLevel,         0, 0, nullptr, 0.0f, 1.0f,  1.0f, 0}, // unity; plugin sets mix
 };
+
+// Level — gain stage (output = input × level). Default unity; the plugin sets the sine mix level.
+static const ModuleParamConstants levelConstants[] = {
+   {"input", LevelParamItemInput, 0, 0, nullptr, 0.0f, 0.0f, 0.0f, 0}, // connection
+   {"level", LevelParamItemLevel, 0, 0, nullptr, 0.0f, 1.0f, 1.0f, 0},
+};
+const ModuleParamConstantsGroup levelConstantsGroup = {
+   const_cast<char*>("level"), sizeof(levelConstants) / sizeof(levelConstants[0]), levelConstants};
 
 const ModuleParamConstantsGroup sinOscConstantsGroup = {
    const_cast<char*>("sinOsc"),

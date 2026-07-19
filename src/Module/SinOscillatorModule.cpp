@@ -120,7 +120,8 @@ const KPBuffPair* ProcessSinOscillator(uint64_t processCallID, uint32_t count, M
     // Stereo detune (cents → octaves), split ±half: L flattened, R sharpened. Keeps the sine's
     // L/R apart so it can drive per-channel hard sync (and preserves the detune shimmer).
     const AUValue detuneHalf = 0.5f * module->paramByEnum(SinOscParamItemDetune) * (float)CENTS_TO_PITCH;
-    const AUValue levelParam = module->paramByEnum(SinOscParamItemLevel);
+    // NB: the sine outputs at unity — its audible mix level is applied downstream by a Level
+    // module, so the (raw) sine still drives the IFS hard-sync input when its mix level is 0.
 
     // Sync configuration — read once per block.
     bool hasSyncInput = module->isInputConnected(SinOscParamItemModSync);
@@ -228,8 +229,8 @@ const KPBuffPair* ProcessSinOscillator(uint64_t processCallID, uint32_t count, M
             prevSyncR = sR;
         }
 
-        *outL = sampleL * levelParam;
-        *outR = sampleR * levelParam;
+        *outL = sampleL;
+        *outR = sampleR;
     }
 
     return &module->output;

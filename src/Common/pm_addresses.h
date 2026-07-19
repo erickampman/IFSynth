@@ -103,6 +103,12 @@ inline constexpr AUParameterAddress combine1Input1Address =
 inline constexpr AUParameterAddress combine1Input2Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindCombine, ModuleInstance1, CombineParamItemInput2);
 
+// Level — scales the sine osc's audible mix level (its raw output separately drives IFS sync).
+inline constexpr AUParameterAddress level1Address =
+   MODULE_PARAM_ADDRESS(ModuleParamKindLevel, ModuleInstance1, 0);
+inline constexpr AUParameterAddress level1InputAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindLevel, ModuleInstance1, LevelParamItemInput);
+
 // Combine 2 — the oscillator mixer (Add): SinOsc + IFSOsc summed, then into the LPF.
 inline constexpr AUParameterAddress combine2Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindCombine, ModuleInstance2, 0);
