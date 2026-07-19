@@ -55,13 +55,13 @@ protected:
     void onNanoDisplay() override
     {
         const float w = getWidth(), h = getHeight();
-        beginPath(); roundedRect(0, 0, w, h, 4.0f);
+        beginPath(); roundedRect(0, 0, w, h, h * 0.22f);
         fillColor(Color(70, 44, 44)); fill();
         strokeColor(Color(205, 120, 120)); strokeWidth(1.0f); stroke();
         if (fHasFont)
         {
             fontFace(NANOVG_DEJAVU_SANS_TTF); textAlign(ALIGN_CENTER | ALIGN_MIDDLE);
-            fontSize(11.0f); fillColor(Color(235, 205, 205));
+            fontSize(h * 0.6f); fillColor(Color(235, 205, 205)); // scale text with the button
             text(w * 0.5f, h * 0.5f, "DUMP", nullptr);
         }
     }
@@ -514,6 +514,10 @@ private:
         const int W = static_cast<int>(getWidth());
         const int H = static_cast<int>(getHeight());
         const int m = 8, gap = 8;
+        // Compute the window scale first so the (dev) DUMP strip + button scale with the canvas —
+        // on Retina the host hands us a ~2x physical-pixel canvas, so fixed sizes render tiny.
+        const float scale = std::fmin(static_cast<float>(W) / DISTRHO_UI_DEFAULT_WIDTH,
+                                      static_cast<float>(H) / DISTRHO_UI_DEFAULT_HEIGHT);
         const int colW = (W - 2 * m - gap) / 2;
         // All five rows (3 module rows + mixer row + modulation row) share one height and are
         // derived from the ACTUAL canvas height so the stack fills the window exactly on any
@@ -524,7 +528,7 @@ private:
         // hosts that report logical pixels (Linux), pushing the bottom rows off-screen. The
         // aspect ratio is locked (see the constructor), so rows never stretch disproportionately.
 #if IFSYNTH_PRESET_DUMP
-        const int topPad = 22; // dev builds: headroom strip at the top for the DUMP button
+        const int topPad = static_cast<int>(24 * scale); // dev: top strip for the DUMP button
 #else
         const int topPad = 0;
 #endif
@@ -535,12 +539,9 @@ private:
         const int mixY = top0 + 3 * (rowH + gap);
         const int modY = mixY + rowH + gap;
 
-        // Uniform knob size + text scale, scaled to the window (independent of cell size).
-        // No tight upper clamp on text scale: a host can hand us a canvas much larger than the
-        // design size, and text needs to keep pace with that or it reads as "tiny" next to
-        // knobs/pads that already scale freely.
-        const float scale = std::fmin(static_cast<float>(W) / DISTRHO_UI_DEFAULT_WIDTH,
-                                      static_cast<float>(H) / DISTRHO_UI_DEFAULT_HEIGHT);
+        // Uniform knob size + text scale (scale computed above). No tight upper clamp on text
+        // scale: a host can hand us a canvas much larger than the design size, and text needs to
+        // keep pace with that or it reads as "tiny" next to knobs/pads that already scale freely.
         const float knobD = std::fmax(30.0f, 54.0f * scale);
         const float txtScale = std::fmax(0.72f, std::fmin(2.0f, scale));
         fUiScale = txtScale; // stashed for layoutModPanel/layoutLpfModPanel/layoutAmp's dropH
@@ -632,7 +633,12 @@ private:
         layoutAmp();
 
 #if IFSYNTH_PRESET_DUMP
-        if (fDumpBtn) { fDumpBtn->setSize(58, 18); fDumpBtn->setAbsolutePos(W - 58 - m, m + 2); }
+        if (fDumpBtn)
+        {
+            const int bw = static_cast<int>(58 * scale), bh = static_cast<int>(18 * scale);
+            fDumpBtn->setSize(static_cast<uint>(bw), static_cast<uint>(bh));
+            fDumpBtn->setAbsolutePos(W - bw - m, (topPad - bh) / 2 + m / 2);
+        }
 #endif
     }
 
