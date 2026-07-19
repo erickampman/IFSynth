@@ -42,6 +42,46 @@ using DGL_NAMESPACE::Slider;
 using DGL_NAMESPACE::SubWidget;
 using DGL_NAMESPACE::Toggle;
 
+#if IFSYNTH_PRESET_DUMP
+// Dev-only "DUMP" button: a plain left-click writes the patch JSON. A button (not a keystroke or
+// modifier-click) so it works identically in every host on macOS and Linux — Ctrl-click is a
+// right-click on macOS, and hosts often don't forward key events to a plugin UI at all.
+class DumpButton : public NanoSubWidget
+{
+public:
+    DumpButton(Widget* parent, std::function<void()> onClick)
+        : NanoSubWidget(parent), fOnClick(std::move(onClick)) { fHasFont = loadSharedResources(); }
+protected:
+    void onNanoDisplay() override
+    {
+        const float w = getWidth(), h = getHeight();
+        beginPath(); roundedRect(0, 0, w, h, 4.0f);
+        fillColor(Color(70, 44, 44)); fill();
+        strokeColor(Color(205, 120, 120)); strokeWidth(1.0f); stroke();
+        if (fHasFont)
+        {
+            fontFace(NANOVG_DEJAVU_SANS_TTF); textAlign(ALIGN_CENTER | ALIGN_MIDDLE);
+            fontSize(11.0f); fillColor(Color(235, 205, 205));
+            text(w * 0.5f, h * 0.5f, "DUMP", nullptr);
+        }
+    }
+    bool onMouse(const MouseEvent& ev) override
+    {
+        if (ev.button == 1 && ev.press
+            && ev.pos.getX() >= 0 && ev.pos.getX() < getWidth()
+            && ev.pos.getY() >= 0 && ev.pos.getY() < getHeight())
+        {
+            fOnClick();
+            return true;
+        }
+        return false;
+    }
+private:
+    std::function<void()> fOnClick;
+    bool fHasFont = false;
+};
+#endif
+
 class IFSynthUI : public UI,
                   public Knob::Callback,
                   public IFSControl::Callback,
@@ -136,6 +176,13 @@ public:
             fKnobs[i] = std::move(knob);
         }
 
+#if IFSYNTH_PRESET_DUMP
+        fDumpBtn = std::make_unique<DumpButton>(this, [this] {
+            const std::string p = dumpPresetToFile(fMirror);
+            std::fprintf(stderr, "[IFSynth] patch %s %s\n",
+                         p.empty() ? "dump FAILED" : "dumped to", p.c_str());
+        });
+#endif
         fMenu = std::make_unique<PopupMenu>(this, this); // created last → draws on top
 
         pushPadDefaults();
@@ -239,6 +286,9 @@ private:
     std::unique_ptr<Toggle>        fToggles[kParamCount];
     std::unique_ptr<Slider>        fSliders[kParamCount];
     std::unique_ptr<PopupMenu>     fMenu;
+#if IFSYNTH_PRESET_DUMP
+    std::unique_ptr<DumpButton>    fDumpBtn;
+#endif
     float                          fUiScale = 1.0f; // set each layout() pass; read by the dropH helpers below
 
     static bool isPadParam(uint32_t i)
@@ -574,6 +624,10 @@ private:
         layoutLpfModPanel();
 
         layoutAmp();
+
+#if IFSYNTH_PRESET_DUMP
+        if (fDumpBtn) { fDumpBtn->setSize(58, 18); fDumpBtn->setAbsolutePos(W - 58 - m, m + 2); }
+#endif
     }
 
     // LPF cutoff modulation: one cell — a source dropdown over a depth fader.
