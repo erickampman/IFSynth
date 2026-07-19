@@ -523,10 +523,16 @@ private:
         // hard-coded 349px row assumed the macOS height and overflowed the default window on
         // hosts that report logical pixels (Linux), pushing the bottom rows off-screen. The
         // aspect ratio is locked (see the constructor), so rows never stretch disproportionately.
-        const int rowH = (H - 2 * m - 4 * gap) / 5;
+#if IFSYNTH_PRESET_DUMP
+        const int topPad = 22; // dev builds: headroom strip at the top for the DUMP button
+#else
+        const int topPad = 0;
+#endif
+        const int rowH = (H - 2 * m - 4 * gap - topPad) / 5;
         const int colL = m, colR = m + colW + gap;
-        const int row0 = m, row1 = m + rowH + gap, row2 = m + 2 * (rowH + gap);
-        const int mixY = m + 3 * (rowH + gap);
+        const int top0 = m + topPad;
+        const int row0 = top0, row1 = top0 + rowH + gap, row2 = top0 + 2 * (rowH + gap);
+        const int mixY = top0 + 3 * (rowH + gap);
         const int modY = mixY + rowH + gap;
 
         // Uniform knob size + text scale, scaled to the window (independent of cell size).
