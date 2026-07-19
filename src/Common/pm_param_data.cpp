@@ -3,7 +3,7 @@
 // SinOsc — 11 params. All defaults 0 (→ produces A440 with no pitch input connected).
 // name / item / unit / flags / valueStrings / min / max / def / info
 static const ModuleParamConstants sinOscConstants[] = {
-   {"pitch",         SinOscParamItemPitch,         0, 0, nullptr, -24.0f, 24.0f, 0.0f, 0},
+   {"pitch",         SinOscParamItemPitch,         0, 0, nullptr, -48.0f, 48.0f, 0.0f, 0},
    {"cents",         SinOscParamItemPitchFine,     0, 0, nullptr, -100.0f, 100.0f, 0.0f, 0},
    {"pitchInput",    SinOscParamItemPitchInput,    0, 0, nullptr, 0.0f, 0.0f, 0.0f, 0},
    {"modPitch",      SinOscParamItemModPitch,      0, 0, nullptr, 0.0f, 0.0f, 0.0f, 0},

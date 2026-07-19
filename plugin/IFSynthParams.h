@@ -203,8 +203,9 @@ static constexpr ParamSpec kParams[kParamCount] = {
    {"Cutoff",      "lpfCMsrc",   "",   0.0f,   6.0f,   0.0f,  false, true },
    {"Depth",       "lpfCMdpt",   "",  -1.0f,   1.0f,   0.0f,  false, false},
    {"Spread",      "spread",     "",   0.0f,   1.0f,   1.0f,  false, false},
-   // Sine oscillator (master)
-   {"Pitch",       "sinPitch",   "st", -24.0f, 24.0f,  0.0f,  false, false},
+   // Sine oscillator (master). Pitch is an interval selector (index → semitones in the DSP),
+   // default 3 = unison; see the applyParam mapping.
+   {"Pitch",       "sinPitch",   "",   0.0f,   6.0f,   3.0f,  false, true },
    {"Fine",        "sinFine",    "ct", -100.0f,100.0f, 0.0f,  false, false},
    {"Detune",      "sinDetune",  "ct", 0.0f,   25.0f,  0.0f,  false, false},
    // Amp mix levels + IFS hard-sync mode

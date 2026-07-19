@@ -196,8 +196,8 @@ private:
         case kParamLpfResonance:  return MODULE_PARAM_ADDRESS(ModuleParamKindButterworthLowPassFilter, ModuleInstance1, LPFParamItemQ);
         case kParamLpfKeyTrack:      return MODULE_PARAM_ADDRESS(ModuleParamKindButterworthLowPassFilter, ModuleInstance1, LPFParamItemFreqModLevel2);
         case kParamLpfCutoffModDepth:return MODULE_PARAM_ADDRESS(ModuleParamKindButterworthLowPassFilter, ModuleInstance1, LPFParamItemFreqModLevel);
-        // Sine oscillator (master) + osc mix levels + IFS hard-sync mode
-        case kParamSinPitch:      return MODULE_PARAM_ADDRESS(ModuleParamKindSinOsc, ModuleInstance1, SinOscParamItemPitch);
+        // Sine oscillator (master) + osc mix levels + IFS hard-sync mode. (SinPitch is an interval
+        // dropdown handled specially in applyParam, so it has no direct address here.)
         case kParamSinFine:       return MODULE_PARAM_ADDRESS(ModuleParamKindSinOsc, ModuleInstance1, SinOscParamItemPitchFine);
         case kParamSinDetune:     return MODULE_PARAM_ADDRESS(ModuleParamKindSinOsc, ModuleInstance1, SinOscParamItemDetune);
         case kParamSinLevel:      return MODULE_PARAM_ADDRESS(ModuleParamKindLevel, ModuleInstance1, LevelParamItemLevel);
@@ -286,6 +286,17 @@ private:
             return; // spread is applied on the output bus in run()
         if (index == kParamSlewRate)  { applySlew(); return; }
         if (index == kParamVoiceMode) { applyVoiceMode(value); return; }
+        if (index == kParamSinPitch)
+        {
+            // Interval dropdown → semitone offset on the sine osc (the master).
+            static constexpr float kSinIntervals[] = { -36, -24, -12, 0, 7, 12, 19 };
+            int i = static_cast<int>(value + 0.5f);
+            if (i < 0) i = 0; else if (i > 6) i = 6;
+            fVoiceManager->setParameter(
+                MODULE_PARAM_ADDRESS(ModuleParamKindSinOsc, ModuleInstance1, SinOscParamItemPitch),
+                kSinIntervals[i]);
+            return;
+        }
         if (applyModRouting(index, value))
             return;
         const AUParameterAddress a = vmAddress(index);

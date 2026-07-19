@@ -337,6 +337,7 @@ private:
         case kParamMix1Mode: case kParamMix2Mode:
         case kParamVoiceMode:
         case kParamIfsSyncMode:
+        case kParamSinPitch:
             return true;
         default: return isModSrcParam(i); // mod source + VCA dropdowns
         }
@@ -431,6 +432,7 @@ private:
         if (i == kParamMix1Mode || i == kParamMix2Mode) return {"Add", "Multiply"};
         if (i == kParamVoiceMode) return {"Mono", "10 Voices"};
         if (i == kParamIfsSyncMode) return {"Off", "Up", "Down", "Both"};
+        if (i == kParamSinPitch) return {"-3 oct", "-2 oct", "-1 oct", "0", "+5th", "+1 oct", "+1 oct +5th"};
         if (i == kParamVCASource) return {"Env 1", "Env 2"};
         if (isModSrcParam(i)) return {"None", "LFO 1", "LFO 2", "Env 1", "Env 2", "CV Mix 1", "CV Mix 2"};
         return {"1", "2", "3", "4", "5", "6", "7", "8"}; // env/lfo iterations
@@ -666,8 +668,8 @@ private:
                                 fDropdowns[kParamIfsSyncMode].get() };
         layoutPadPanel(fOscGroup.get(), fOscPad.get(), oscG, 7);
 
-        // Sine Osc: Pitch, Fine, Detune knobs (no pad).
-        SubWidget* sinG[3] = { fKnobs[kParamSinPitch].get(), fKnobs[kParamSinFine].get(),
+        // Sine Osc: Pitch (interval dropdown) + Fine, Detune knobs (no pad).
+        SubWidget* sinG[3] = { fDropdowns[kParamSinPitch].get(), fKnobs[kParamSinFine].get(),
                                fKnobs[kParamSinDetune].get() };
         layoutRow(fSinGroup.get(), sinG, 3);
 
