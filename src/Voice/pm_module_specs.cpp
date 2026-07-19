@@ -62,6 +62,9 @@ const std::vector<ModuleInitSpec>& getModuleInitSpecs() {
        ProcessLPFilterModule, nullptr, nullptr, nullptr, SampleRateLPFilterModule},
       {combine1Address, &combineConstantsGroup, nullptr, nullptr, ProcessCombineModule, nullptr,
        nullptr, nullptr, nullptr},
+      // Combine 2 — oscillator mixer (Add mode, set in buildDefaultPatch): SinOsc + IFSOsc.
+      {combine2Address, &combineConstantsGroup, nullptr, nullptr, ProcessCombineModule, nullptr,
+       nullptr, nullptr, nullptr},
       {finalAddress, &finalConstantsGroup, InitFinalModule, DeinitFinalModule, ProcessFinalModule,
        MIDIFinalModule, nullptr, nullptr, SampleRateFinalModule},
    };

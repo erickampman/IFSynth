@@ -31,6 +31,9 @@ inline constexpr AUParameterAddress ifsOsc1Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, 0);
 inline constexpr AUParameterAddress ifsOsc1PitchInputAddress =
    MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemPitchInput);
+// Hard-sync input (the sine osc's output feeds this; per-channel zero-crossing resets phase).
+inline constexpr AUParameterAddress ifsOsc1SyncInputAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemSyncInput);
 // IFSOsc mod-input ports (a source's output connects here; depth is the matching ModLevel).
 inline constexpr AUParameterAddress ifsOsc1PitchModInputAddress =
    MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemPitchModInput);
@@ -99,6 +102,16 @@ inline constexpr AUParameterAddress combine1Input1Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindCombine, ModuleInstance1, CombineParamItemInput1);
 inline constexpr AUParameterAddress combine1Input2Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindCombine, ModuleInstance1, CombineParamItemInput2);
+
+// Combine 2 — the oscillator mixer (Add): SinOsc + IFSOsc summed, then into the LPF.
+inline constexpr AUParameterAddress combine2Address =
+   MODULE_PARAM_ADDRESS(ModuleParamKindCombine, ModuleInstance2, 0);
+inline constexpr AUParameterAddress combine2Input1Address =
+   MODULE_PARAM_ADDRESS(ModuleParamKindCombine, ModuleInstance2, CombineParamItemInput1);
+inline constexpr AUParameterAddress combine2Input2Address =
+   MODULE_PARAM_ADDRESS(ModuleParamKindCombine, ModuleInstance2, CombineParamItemInput2);
+inline constexpr AUParameterAddress combine2TypeAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindCombine, ModuleInstance2, CombineParamItemType);
 
 inline constexpr AUParameterAddress finalAddress =
    MODULE_PARAM_ADDRESS(ModuleParamKindFinalOutput, ModuleInstance1, 0);

@@ -10,8 +10,7 @@
 namespace ifsynth {
 
 enum ParamIndex {
-   kParamGain = 0,
-   kParamVoiceMode,  // 0 = Mono (1 voice + legato note-stack + glide), 1 = 10-voice poly
+   kParamVoiceMode = 0, // 0 = Mono (1 voice + legato note-stack + glide), 1 = 10-voice poly
    kParamSlewRate,   // pitch glide — drives the Slew module's Rise and Fall together
    // IFS oscillator
    kParamOscPitch,
@@ -94,6 +93,14 @@ enum ParamIndex {
    kParamLpfCutoffModSrc,
    kParamLpfCutoffModDepth,
    kParamSpread,      // output stereo width (0 = mono, 1 = full); pairs with Osc Detune
+   // Sine oscillator (hard-sync master)
+   kParamSinPitch,
+   kParamSinFine,
+   kParamSinDetune,   // stereo detune (cents), drives per-channel IFS sync
+   // Amp mix levels (replace the old global gain) + IFS hard-sync mode
+   kParamSinLevel,    // sine osc output level
+   kParamIfsLevel,    // IFS osc output level
+   kParamIfsSyncMode, // 0 Off, 1 Up, 2 Down, 3 Both
    kParamCount
 };
 
@@ -109,7 +116,6 @@ struct ParamSpec {
 };
 
 static constexpr ParamSpec kParams[kParamCount] = {
-   {"Gain",        "gain",       "",   0.0f,   1.0f,   0.5f,  false, false},
    {"Voices",      "voices",     "",   0.0f,   1.0f,   1.0f,  false, true },
    {"Glide",       "glide",      "s",  0.0001f, 2.0f,  0.01f, true,  false},
    // IFS oscillator
@@ -197,6 +203,14 @@ static constexpr ParamSpec kParams[kParamCount] = {
    {"Cutoff",      "lpfCMsrc",   "",   0.0f,   6.0f,   0.0f,  false, true },
    {"Depth",       "lpfCMdpt",   "",  -1.0f,   1.0f,   0.0f,  false, false},
    {"Spread",      "spread",     "",   0.0f,   1.0f,   1.0f,  false, false},
+   // Sine oscillator (master)
+   {"Pitch",       "sinPitch",   "st", -24.0f, 24.0f,  0.0f,  false, false},
+   {"Fine",        "sinFine",    "ct", -100.0f,100.0f, 0.0f,  false, false},
+   {"Detune",      "sinDetune",  "ct", 0.0f,   25.0f,  0.0f,  false, false},
+   // Amp mix levels + IFS hard-sync mode
+   {"Sine",        "sinLevel",   "",   0.0f,   1.0f,   0.0f,  false, false},
+   {"IFS",         "ifsLevel",   "",   0.0f,   1.0f,   0.5f,  false, false},
+   {"Sync",        "ifsSync",    "",   0.0f,   3.0f,   0.0f,  false, true },
 };
 
 } // namespace ifsynth

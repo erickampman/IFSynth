@@ -107,6 +107,7 @@ public:
         // Per-module accent colours, following PM's category scheme (sound=green, filter=purple,
         // control signals=amber, combiner=orange, modulation=teal).
         fOscGroup  = makeGroup("IFS Oscillator", colSound());
+        fSinGroup  = makeGroup("Sine Osc", colSound());
         fLpfGroup  = makeGroup("Low-Pass Filter", colFilter());
         // Env / LFO / Mixer are tab groups: the two instances share a rect + title, and a TabBar
         // switches which is visible, so the shared title is the module name (tabs say 1/2).
@@ -291,7 +292,7 @@ protected:
 
 private:
     // Panels declared before their child controls so the children are destroyed first.
-    std::unique_ptr<GroupBox>      fOscGroup, fLpfGroup, fEnv1Group, fEnv2Group, fLfo1Group, fLfo2Group;
+    std::unique_ptr<GroupBox>      fOscGroup, fSinGroup, fLpfGroup, fEnv1Group, fEnv2Group, fLfo1Group, fLfo2Group;
     std::unique_ptr<GroupBox>      fMix1Group, fMix2Group, fOscModGroup, fLpfModGroup, fAmpGroup;
     std::unique_ptr<IFSControl>    fOscPad, fLfo1Pad, fLfo2Pad;
     std::unique_ptr<IFSEnvControl> fEnv1Pad, fEnv2Pad;
@@ -335,6 +336,7 @@ private:
         case kParamLfo2Iterations:
         case kParamMix1Mode: case kParamMix2Mode:
         case kParamVoiceMode:
+        case kParamIfsSyncMode:
             return true;
         default: return isModSrcParam(i); // mod source + VCA dropdowns
         }
@@ -383,7 +385,10 @@ private:
     // Same dispatch as groupFor, but returns the module's accent colour (for knobs).
     Color accentFor(uint32_t i) const
     {
-        if (i == kParamGain || i == kParamVoiceMode || i == kParamSpread) return colComb();
+        if (i == kParamVoiceMode || i == kParamSpread || i == kParamSinLevel || i == kParamIfsLevel)
+            return colComb();
+        if (i == kParamSinPitch || i == kParamSinFine || i == kParamSinDetune || i == kParamIfsSyncMode)
+            return colSound();
         if (i == kParamLpfCutoff || i == kParamLpfResonance || i == kParamLpfKeyTrack)
             return colFilter();
         if (i == kParamLpfCutoffModSrc || i == kParamLpfCutoffModDepth) return colNeutral();
@@ -399,7 +404,11 @@ private:
 
     GroupBox* groupFor(uint32_t i) const
     {
-        if (i == kParamGain || i == kParamVoiceMode || i == kParamSpread) return fAmpGroup.get();
+        if (i == kParamVoiceMode || i == kParamSpread || i == kParamSinLevel || i == kParamIfsLevel)
+            return fAmpGroup.get();
+        if (i == kParamSinPitch || i == kParamSinFine || i == kParamSinDetune)
+            return fSinGroup.get();
+        if (i == kParamIfsSyncMode) return fOscGroup.get();
         if (i == kParamLpfCutoff || i == kParamLpfResonance || i == kParamLpfKeyTrack)
             return fLpfGroup.get();
         if (i == kParamLpfCutoffModSrc || i == kParamLpfCutoffModDepth)
@@ -421,6 +430,7 @@ private:
         if (i == kParamEnvHoldMode || i == kParamEnv2HoldMode) return {"None", "Blue", "Green", "Loop"};
         if (i == kParamMix1Mode || i == kParamMix2Mode) return {"Add", "Multiply"};
         if (i == kParamVoiceMode) return {"Mono", "10 Voices"};
+        if (i == kParamIfsSyncMode) return {"Off", "Up", "Down", "Both"};
         if (i == kParamVCASource) return {"Env 1", "Env 2"};
         if (isModSrcParam(i)) return {"None", "LFO 1", "LFO 2", "Env 1", "Env 2", "CV Mix 1", "CV Mix 2"};
         return {"1", "2", "3", "4", "5", "6", "7", "8"}; // env/lfo iterations
@@ -600,8 +610,9 @@ private:
         // Group titles / dropdown labels / popup menu text aren't part of the knob widget, so
         // they need the same scale applied explicitly. setUiScale scales each widget's own
         // internal box/label geometry along with its font, so text can't overflow its box.
-        GroupBox* allGroups[] = { fOscGroup.get(), fLpfGroup.get(), fEnv1Group.get(), fEnv2Group.get(),
-                                   fLfo1Group.get(), fLfo2Group.get(), fMix1Group.get(), fMix2Group.get(),
+        GroupBox* allGroups[] = { fOscGroup.get(), fSinGroup.get(), fLpfGroup.get(),
+                                   fEnv1Group.get(), fEnv2Group.get(), fLfo1Group.get(), fLfo2Group.get(),
+                                   fMix1Group.get(), fMix2Group.get(),
                                    fOscModGroup.get(), fLpfModGroup.get(), fAmpGroup.get() };
         for (GroupBox* g : allGroups)
             g->setUiScale(txtScale);
@@ -613,47 +624,52 @@ private:
             if (fToggles[i]) fToggles[i]->setUiScale(txtScale);
         fMenu->setUiScale(txtScale);
 
-        // Top row is asymmetric: the Oscillator (pad + 5 controls) is wider than the LPF.
-        const int topAvail = W - 2 * m - gap;
-        const int oscW = static_cast<int>(topAvail * 0.64f);
-        const int lpfW = topAvail - oscW;
+        // Row 0: IFS Oscillator, full width (pad + 6 controls + Sync).
+        placeGroup(fOscGroup.get(), colL, row0, W - 2 * m, rowH);
 
-        // Row 0: Osc (wide) | LPF (narrow).
-        placeGroup(fOscGroup.get(), colL, row0, oscW, rowH);
-        placeGroup(fLpfGroup.get(), colL + oscW + gap, row0, lpfW, rowH);
+        // Row 1: Sine Osc | LPF | Amp.
+        const int ampW = static_cast<int>(300 * fUiScale);
+        const int sinW = static_cast<int>(300 * fUiScale);
+        const int r1LpfW = W - 2 * m - 2 * gap - sinW - ampW;
+        const int r1LpfX = colL + sinW + gap;
+        const int ampX   = W - m - ampW;
+        placeGroup(fSinGroup.get(), colL,   row1, sinW,   rowH);
+        placeGroup(fLpfGroup.get(), r1LpfX, row1, r1LpfW, rowH);
+        placeGroup(fAmpGroup.get(), ampX,   row1, ampW,   rowH);
 
-        // Row 1: LFO tab group (left) + Env tab group (right). Each pair overlays a single rect;
-        // the TabBar shows one and hides the other.
-        placeGroup(fLfo1Group.get(), colL, row1, colW, rowH);
-        placeGroup(fLfo2Group.get(), colL, row1, colW, rowH);
-        placeGroup(fEnv1Group.get(), colR, row1, colW, rowH);
-        placeGroup(fEnv2Group.get(), colR, row1, colW, rowH);
+        // Row 2: LFO tab group (left) + Env tab group (right). Each pair overlays one rect; the
+        // TabBar switches which is visible.
+        placeGroup(fLfo1Group.get(), colL, mixY, colW, rowH);
+        placeGroup(fLfo2Group.get(), colL, mixY, colW, rowH);
+        placeGroup(fEnv1Group.get(), colR, mixY, colW, rowH);
+        placeGroup(fEnv2Group.get(), colR, mixY, colW, rowH);
 
-        // Row 2: CV Mixer tab group (narrow — its content is sparse, so it needn't match the
-        // column width above it) + the wide IFS Osc modulation panel + the LPF modulation panel.
+        // Row 3: CV Mixer tab group (narrow) + IFS Osc modulation (wide) + LPF modulation.
         const int mixW    = static_cast<int>(300 * fUiScale);
         const int lpfModW = static_cast<int>(150 * fUiScale);
         const int lpfModX = W - m - lpfModW;
         const int oscModX = colL + mixW + gap;
         const int oscModW = lpfModX - gap - oscModX;
-        placeGroup(fMix1Group.get(),   colL,    mixY, mixW,    rowH);
-        placeGroup(fMix2Group.get(),   colL,    mixY, mixW,    rowH);
-        placeGroup(fOscModGroup.get(), oscModX, mixY, oscModW, rowH);
-        placeGroup(fLpfModGroup.get(), lpfModX, mixY, lpfModW, rowH);
-
-        // Row 3: Amp box (right); the left of this row is free for now.
-        const int ampW = static_cast<int>(224 * fUiScale);
-        placeGroup(fAmpGroup.get(), W - m - ampW, modY, ampW, rowH);
+        placeGroup(fMix1Group.get(),   colL,    modY, mixW,    rowH);
+        placeGroup(fMix2Group.get(),   colL,    modY, mixW,    rowH);
+        placeGroup(fOscModGroup.get(), oscModX, modY, oscModW, rowH);
+        placeGroup(fLpfModGroup.get(), lpfModX, modY, lpfModW, rowH);
 
         // Tab bars in each tab group's title strip (top-right).
-        placeTab(fLfoTab.get(), colL, row1, colW, scale);
-        placeTab(fEnvTab.get(), colR, row1, colW, scale);
-        placeTab(fMixTab.get(), colL, mixY, mixW, scale);
+        placeTab(fLfoTab.get(), colL, mixY, colW, scale);
+        placeTab(fEnvTab.get(), colR, mixY, colW, scale);
+        placeTab(fMixTab.get(), colL, modY, mixW, scale);
 
-        SubWidget* oscG[6]  = { fKnobs[kParamOscPitch].get(), fKnobs[kParamOscFine].get(),
+        SubWidget* oscG[7]  = { fKnobs[kParamOscPitch].get(), fKnobs[kParamOscFine].get(),
                                 fKnobs[kParamOscDetune].get(), fKnobs[kParamSlewRate].get(),
-                                fKnobs[kParamOscSmoothing].get(), fDropdowns[kParamOscIterations].get() };
-        layoutPadPanel(fOscGroup.get(), fOscPad.get(), oscG, 6);
+                                fKnobs[kParamOscSmoothing].get(), fDropdowns[kParamOscIterations].get(),
+                                fDropdowns[kParamIfsSyncMode].get() };
+        layoutPadPanel(fOscGroup.get(), fOscPad.get(), oscG, 7);
+
+        // Sine Osc: Pitch, Fine, Detune knobs (no pad).
+        SubWidget* sinG[3] = { fKnobs[kParamSinPitch].get(), fKnobs[kParamSinFine].get(),
+                               fKnobs[kParamSinDetune].get() };
+        layoutRow(fSinGroup.get(), sinG, 3);
 
         SubWidget* env1G[4] = { fKnobs[kParamEnvDuration].get(), fKnobs[kParamEnvSmoothing].get(),
                                 fDropdowns[kParamEnvHoldMode].get(), fDropdowns[kParamEnvIterations].get() };
@@ -741,8 +757,8 @@ private:
         }
     }
 
-    // Amp box (lower right): VCA-envelope source + Voices dropdowns side by side on top, then the
-    // master Gain and Spread knobs side by side below.
+    // Amp box: VCA-envelope source + Voices dropdowns side by side on top, then the Sine / IFS
+    // mix levels + Spread knobs across the bottom.
     void layoutAmp()
     {
         int cx, cy, cw, ch;
@@ -756,10 +772,14 @@ private:
 
         const int ky = cy + dropH + 6;
         const int kh = ch - dropH - 6;
-        fKnobs[kParamGain]->setSize(static_cast<uint>(half), static_cast<uint>(kh));
-        fKnobs[kParamGain]->setAbsolutePos(cx, ky);
-        fKnobs[kParamSpread]->setSize(static_cast<uint>(cw - half), static_cast<uint>(kh));
-        fKnobs[kParamSpread]->setAbsolutePos(cx + half, ky);
+        const int cellW = cw / 3;
+        Knob* levels[3] = { fKnobs[kParamSinLevel].get(), fKnobs[kParamIfsLevel].get(),
+                            fKnobs[kParamSpread].get() };
+        for (int i = 0; i < 3; ++i)
+        {
+            levels[i]->setSize(static_cast<uint>(cellW), static_cast<uint>(kh));
+            levels[i]->setAbsolutePos(cx + i * cellW, ky);
+        }
     }
 
     // A pad-less panel: n controls evenly across the content area (used by the CV mixers).

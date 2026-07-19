@@ -33,7 +33,30 @@ struct IFSOscState {
 
     IFSShapeParams pendingShape; // written by paramProc, consumed by the render
     IFSShapeParams activeShape;  // shape of the currently active table
+    float prevSyncL = 0.0f, prevSyncR = 0.0f; // last sync-input sample (zero-crossing detection)
 };
+
+// Advance a phase by one sample; if hard sync is on and the sync input crosses zero (per mode),
+// reset the phase sub-sample-accurately to the start of the IFS cycle. prevS is updated in place.
+static inline void advanceSync(double& phase, double delta, bool syncOn, OscSyncType type,
+                               float& prevS, float curS)
+{
+    phase += delta;
+    if (phase >= 1.0) phase -= 1.0;
+    if (syncOn)
+    {
+        bool reset = false;
+        switch (type)
+        {
+        case OscSyncTypeDown: reset = (prevS > 0.0f) && (curS <= 0.0f); break;
+        case OscSyncTypeUp:   reset = (prevS < 0.0f) && (curS >= 0.0f); break;
+        case OscSyncTypeBoth: reset = ((prevS > 0.0f) && (curS <= 0.0f))
+                                   || ((prevS < 0.0f) && (curS >= 0.0f)); break;
+        }
+        if (reset) { const float t = prevS / (prevS - curS); phase = (1.0 - t) * delta; }
+        prevS = curS;
+    }
+}
 
 // Snapshot the module's shape params into pendingShape.
 static void applyShapeParams(IFSOscState* st, Module* module)
@@ -98,6 +121,10 @@ const void ResetIFSOscModule(Module* module)
 {
     module->mOmegaL = 0.0;
     module->mOmegaR = 0.0;
+    if (module->state) {
+        auto* st = static_cast<IFSOscState*>(module->state);
+        st->prevSyncL = st->prevSyncR = 0.0f;
+    }
 }
 
 const void SampleRateIFSOscModule(Module* /*module*/, double /*newSampleRate*/)
@@ -200,6 +227,18 @@ const KPBuffPair* ProcessIFSOscModule(uint64_t processCallID, uint32_t count, Mo
     const float* pmrPtr = pitchModPair->second->data;
     const float pitchModLevel = module->paramByEnum(IFSOscParamItemPitchModLevel);
 
+    // Hard sync (per-channel): the IFS osc is the slave; on a zero crossing of the sync input
+    // (the sine master, stereo) the corresponding channel's phase resets, so the L/R detune of
+    // the sine drives the L/R sync rate and the stereo width survives. Output mix level too.
+    const int  syncMode = static_cast<int>(module->paramByEnum(IFSOscParamItemSyncMode));
+    const bool syncOn   = syncMode >= 1 && module->isInputConnected(IFSOscParamItemSyncInput);
+    const OscSyncType syncType = syncMode == 1 ? OscSyncTypeUp
+                               : syncMode == 2 ? OscSyncTypeDown : OscSyncTypeBoth;
+    auto syncPair = module->retrieveInput(IFSOscParamItemSyncInput, processCallID, count);
+    const float* syncLPtr = syncPair->first->data;
+    const float* syncRPtr = syncPair->second->data;
+    const float  levelParam = module->paramByEnum(IFSOscParamItemLevel);
+
     // Shape mods (per-chunk; switch to the eval path if any is connected).
     const bool bxConn = module->isInputConnected(IFSOscParamItemBxModInput);
     const bool byConn = module->isInputConnected(IFSOscParamItemByModInput);
@@ -235,9 +274,9 @@ const KPBuffPair* ProcessIFSOscModule(uint64_t processCallID, uint32_t count, Mo
                 --st->crossfadePos;
                 crossfading = st->crossfadePos > 0;
             }
-            outL[i] = sampleL; outR[i] = sampleR;
-            phaseL += deltaL; if (phaseL >= 1.0) phaseL -= 1.0;
-            phaseR += deltaR; if (phaseR >= 1.0) phaseR -= 1.0;
+            outL[i] = sampleL * levelParam; outR[i] = sampleR * levelParam;
+            advanceSync(phaseL, deltaL, syncOn, syncType, st->prevSyncL, syncLPtr[i]);
+            advanceSync(phaseR, deltaR, syncOn, syncType, st->prevSyncR, syncRPtr[i]);
         }
         return &module->output;
     }
@@ -269,10 +308,10 @@ const KPBuffPair* ProcessIFSOscModule(uint64_t processCallID, uint32_t count, Mo
         for (uint32_t j = i0; j < i1; ++j) {
             deltaL = pitchConverter->pitchToFrequency(pilPtr[j] + freqParam + fineParam - detuneHalf + pmlPtr[j] * pitchModLevel) * freqScale;
             deltaR = pitchConverter->pitchToFrequency(pirPtr[j] + freqParam + fineParam + detuneHalf + pmrPtr[j] * pitchModLevel) * freqScale;
-            outL[j] = evaluateIFSSmoothed(static_cast<float>(phaseL), verts);
-            outR[j] = evaluateIFSSmoothed(static_cast<float>(phaseR), verts);
-            phaseL += deltaL; if (phaseL >= 1.0) phaseL -= 1.0;
-            phaseR += deltaR; if (phaseR >= 1.0) phaseR -= 1.0;
+            outL[j] = evaluateIFSSmoothed(static_cast<float>(phaseL), verts) * levelParam;
+            outR[j] = evaluateIFSSmoothed(static_cast<float>(phaseR), verts) * levelParam;
+            advanceSync(phaseL, deltaL, syncOn, syncType, st->prevSyncL, syncLPtr[j]);
+            advanceSync(phaseR, deltaR, syncOn, syncType, st->prevSyncR, syncRPtr[j]);
         }
     }
     // Force a fresh wavetable render when we next fall back to the non-modulated path.

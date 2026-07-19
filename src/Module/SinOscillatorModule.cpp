@@ -117,6 +117,10 @@ const KPBuffPair* ProcessSinOscillator(uint64_t processCallID, uint32_t count, M
     freqParam *= SEMITONES_TO_PITCH;
     // fine is in cents. Pitch is in 1 per octave. Convert.
     fineParam *= CENTS_TO_PITCH;
+    // Stereo detune (cents → octaves), split ±half: L flattened, R sharpened. Keeps the sine's
+    // L/R apart so it can drive per-channel hard sync (and preserves the detune shimmer).
+    const AUValue detuneHalf = 0.5f * module->paramByEnum(SinOscParamItemDetune) * (float)CENTS_TO_PITCH;
+    const AUValue levelParam = module->paramByEnum(SinOscParamItemLevel);
 
     // Sync configuration — read once per block.
     bool hasSyncInput = module->isInputConnected(SinOscParamItemModSync);
@@ -152,8 +156,8 @@ const KPBuffPair* ProcessSinOscillator(uint64_t processCallID, uint32_t count, M
          ++ilptr, ++irptr, ++mlptr, ++mrptr, ++m2lptr, ++m2rptr,
          ++nlptr, ++nrptr, ++slptr, ++srptr, ++outL, ++outR)
     {
-        deltaL = pitchConverter->pitchToFrequency(*ilptr + freqParam + fineParam + *mlptr * fmLevelParam + *m2lptr * fmLevel2Param) * freqScale;
-        deltaR = pitchConverter->pitchToFrequency(*irptr + freqParam + fineParam + *mrptr * fmLevelParam + *m2rptr * fmLevel2Param) * freqScale;
+        deltaL = pitchConverter->pitchToFrequency(*ilptr + freqParam + fineParam - detuneHalf + *mlptr * fmLevelParam + *m2lptr * fmLevel2Param) * freqScale;
+        deltaR = pitchConverter->pitchToFrequency(*irptr + freqParam + fineParam + detuneHalf + *mrptr * fmLevelParam + *m2rptr * fmLevel2Param) * freqScale;
 
         // Raw waveform value before any BLEP residual is applied.
         const double pmL = *nlptr * MOD_PHASE_ATTENUATOR * pmLevelParam;
@@ -224,8 +228,8 @@ const KPBuffPair* ProcessSinOscillator(uint64_t processCallID, uint32_t count, M
             prevSyncR = sR;
         }
 
-        *outL = sampleL;
-        *outR = sampleR;
+        *outL = sampleL * levelParam;
+        *outR = sampleR * levelParam;
     }
 
     return &module->output;

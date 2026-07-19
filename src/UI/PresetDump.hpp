@@ -24,7 +24,6 @@ struct PresetKey { const char* module; const char* item; };
 
 // One entry per param, index-aligned to ParamIndex. Item names follow the PM module constants.
 static constexpr PresetKey kPresetKeys[kParamCount] = {
-   /*Gain*/            {"Global",  "gain"},
    /*VoiceMode*/       {"Global",  "voiceMode"},
    /*SlewRate*/        {"Global",  "glide"},
    /*OscPitch*/        {"IFSOsc1", "pitch"},
@@ -102,11 +101,18 @@ static constexpr PresetKey kPresetKeys[kParamCount] = {
    /*LpfCutoffModSrc*/ {"LPF1",    "cutoffModSrc"},
    /*LpfCutoffModDepth*/{"LPF1",   "cutoffModLevel"},
    /*Spread*/          {"Global",  "spread"},
+   /*SinPitch*/        {"SinOsc1", "pitch"},
+   /*SinFine*/         {"SinOsc1", "fine"},
+   /*SinDetune*/       {"SinOsc1", "detune"},
+   /*SinLevel*/        {"Global",  "sinLevel"},
+   /*IfsLevel*/        {"Global",  "ifsLevel"},
+   /*IfsSyncMode*/     {"IFSOsc1", "syncMode"},
 };
 
 // Emit modules in this order (signal-flow-ish); every module in kPresetKeys must appear here.
 static constexpr const char* kPresetModuleOrder[] = {
-   "Global", "IFSOsc1", "LPF1", "IFSEnv1", "IFSEnv2", "IFSLFO1", "IFSLFO2", "CVMixer1", "CVMixer2",
+   "Global", "SinOsc1", "IFSOsc1", "LPF1", "IFSEnv1", "IFSEnv2", "IFSLFO1", "IFSLFO2",
+   "CVMixer1", "CVMixer2",
 };
 
 // Build the module-nested JSON for `values` (kParamCount entries). Values are stringified like PM

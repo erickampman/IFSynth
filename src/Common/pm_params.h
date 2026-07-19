@@ -126,6 +126,8 @@ enum SinOscParamItem : NSUInteger {
    SinOscParamItemFreqModLevel2,
    SinOscParamItemModSync,
    SinOscParamItemModSyncType,
+   SinOscParamItemDetune,   // stereo detune, cents (splits L/R by ±half); 0 = mono
+   SinOscParamItemLevel,    // output mix level
 };
 
 // IFS fractal oscillator — trimmed v1 set (PM's modulation matrix is deferred). PitchInput is a
@@ -154,6 +156,9 @@ enum IFSOscParamItem : NSUInteger {
    IFSOscParamItemSquash2ModInput,
    IFSOscParamItemSquash2ModLevel,
    IFSOscParamItemDetune,         // stereo detune, cents (splits L/R by ±half); 0 = mono
+   IFSOscParamItemSyncInput,      // connection: hard-sync source (stereo, from the sine osc)
+   IFSOscParamItemSyncMode,       // 0 Off, 1 Up, 2 Down, 3 Both (zero-crossing of the sync input)
+   IFSOscParamItemLevel,          // output mix level
 };
 
 // IFS fractal envelope — 3-transform shape (blue + green interior points), phase over Duration.

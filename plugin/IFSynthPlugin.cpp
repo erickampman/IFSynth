@@ -93,8 +93,7 @@ protected:
     {
         float* outL = outputs[0];
         float* outR = outputs[1];
-        const float gain  = fValues[kParamGain];
-        const float width = fValues[kParamSpread];
+        const float width = fValues[kParamSpread]; // level is now per-osc (in the engine)
 
         uint32_t pos = 0, ev = 0;
         while (pos < frames)
@@ -107,7 +106,7 @@ protected:
             if (ev < midiEventCount && midiEvents[ev].frame < frames)
                 next = midiEvents[ev].frame;
 
-            renderSegment(outL, outR, pos, next, gain, width);
+            renderSegment(outL, outR, pos, next, width);
             pos = next;
         }
     }
@@ -197,6 +196,13 @@ private:
         case kParamLpfResonance:  return MODULE_PARAM_ADDRESS(ModuleParamKindButterworthLowPassFilter, ModuleInstance1, LPFParamItemQ);
         case kParamLpfKeyTrack:      return MODULE_PARAM_ADDRESS(ModuleParamKindButterworthLowPassFilter, ModuleInstance1, LPFParamItemFreqModLevel2);
         case kParamLpfCutoffModDepth:return MODULE_PARAM_ADDRESS(ModuleParamKindButterworthLowPassFilter, ModuleInstance1, LPFParamItemFreqModLevel);
+        // Sine oscillator (master) + osc mix levels + IFS hard-sync mode
+        case kParamSinPitch:      return MODULE_PARAM_ADDRESS(ModuleParamKindSinOsc, ModuleInstance1, SinOscParamItemPitch);
+        case kParamSinFine:       return MODULE_PARAM_ADDRESS(ModuleParamKindSinOsc, ModuleInstance1, SinOscParamItemPitchFine);
+        case kParamSinDetune:     return MODULE_PARAM_ADDRESS(ModuleParamKindSinOsc, ModuleInstance1, SinOscParamItemDetune);
+        case kParamSinLevel:      return MODULE_PARAM_ADDRESS(ModuleParamKindSinOsc, ModuleInstance1, SinOscParamItemLevel);
+        case kParamIfsLevel:      return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemLevel);
+        case kParamIfsSyncMode:   return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemSyncMode);
         default:                  return 0;
         }
     }
@@ -276,8 +282,8 @@ private:
     // everything else is a module param.
     void applyParam(uint32_t index, float value)
     {
-        if (index == kParamGain || index == kParamSpread || !fVoiceManager)
-            return; // gain + spread are applied on the output bus in run()
+        if (index == kParamSpread || !fVoiceManager)
+            return; // spread is applied on the output bus in run()
         if (index == kParamSlewRate)  { applySlew(); return; }
         if (index == kParamVoiceMode) { applyVoiceMode(value); return; }
         if (applyModRouting(index, value))
@@ -322,8 +328,9 @@ private:
     }
 
     // Render [start,end) by chunking to the module block size; VoiceManager zeroes + sums voices.
-    // Applies master gain, then a mid/side stereo-width (Spread): width 1 = unchanged, 0 = mono.
-    void renderSegment(float* outL, float* outR, uint32_t start, uint32_t end, float gain, float width)
+    // Applies a mid/side stereo-width (Spread): width 1 = unchanged, 0 = mono. Output level is set
+    // per-oscillator in the engine (the Amp Sine/IFS levels), so there is no master gain here.
+    void renderSegment(float* outL, float* outR, uint32_t start, uint32_t end, float width)
     {
         for (uint32_t p = start; p < end;)
         {
@@ -331,7 +338,7 @@ private:
             fVoiceManager->process(chunk, outL + p, outR + p);
             for (uint32_t i = p; i < p + chunk; ++i)
             {
-                const float l = outL[i] * gain, r = outR[i] * gain;
+                const float l = outL[i], r = outR[i];
                 const float mid = 0.5f * (l + r), side = 0.5f * (l - r) * width;
                 outL[i] = mid + side;
                 outR[i] = mid - side;

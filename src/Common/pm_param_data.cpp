@@ -14,6 +14,8 @@ static const ModuleParamConstants sinOscConstants[] = {
    {"freqModLevel2", SinOscParamItemFreqModLevel2, 0, 0, nullptr, 0.0f, 1.0f, 0.0f, 0},
    {"modSync",       SinOscParamItemModSync,       0, 0, nullptr, 0.0f, 0.0f, 0.0f, 0},
    {"modSyncType",   SinOscParamItemModSyncType,   0, 0, nullptr, 0.0f, 2.0f, 0.0f, 0},
+   {"detune",        SinOscParamItemDetune,        0, 0, nullptr, 0.0f, 25.0f, 0.0f, 0},
+   {"level",         SinOscParamItemLevel,         0, 0, nullptr, 0.0f, 1.0f,  1.0f, 0}, // unity; plugin sets mix
 };
 
 const ModuleParamConstantsGroup sinOscConstantsGroup = {
@@ -46,6 +48,9 @@ static const ModuleParamConstants ifsOscConstants[] = {
    {"sq2ModIn",    IFSOscParamItemSquash2ModInput, 0, 0, nullptr, 0.0f, 0.0f, 0.0f, 0},
    {"sq2ModLvl",   IFSOscParamItemSquash2ModLevel, 0, 0, nullptr, -1.0f, 1.0f, 0.0f, 0},
    {"detune",      IFSOscParamItemDetune,          0, 0, nullptr,  0.0f, 25.0f, 0.0f, 0},
+   {"syncIn",      IFSOscParamItemSyncInput,       0, 0, nullptr,  0.0f,  0.0f, 0.0f, 0}, // connection
+   {"syncMode",    IFSOscParamItemSyncMode,        0, 0, nullptr,  0.0f,  3.0f, 0.0f, 0}, // 0=Off
+   {"level",       IFSOscParamItemLevel,           0, 0, nullptr,  0.0f,  1.0f, 1.0f, 0}, // unity; plugin sets mix
 };
 const ModuleParamConstantsGroup ifsOscConstantsGroup = {
    const_cast<char*>("ifsOsc"),

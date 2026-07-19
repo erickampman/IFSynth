@@ -60,14 +60,15 @@ void VoiceManager::buildDefaultPatch(Voice& voice)
 	// finalAddress
     Module* pitchConverterModule = voice.getModule(pitchConverter1Address);
     Module* slewModule = voice.getModule(slew1Address);
-    // IFSOsc is the active source. SinOsc stays instantiated (see the module specs) but is left
-    // unconnected here — available as a second source / future phase-mod source.
+    // Two oscillators: the Sine (master) and the IFS (slave, hard-synced to the sine).
+    Module* sinOscModule = voice.getModule(sinOsc1Address);
     Module* ifsOscModule = voice.getModule(ifsOsc1Address);
     // IFSEnv is the active amplitude envelope. ADSR stays instantiated (module specs) but is
     // left unconnected here.
     Module* envModule = voice.getModule(ifsEnv1Address);
-    // 24 dB/oct LPF between the oscillator and the VCA.
+    // 24 dB/oct LPF after the osc mixer, before the VCA.
     Module* lpfModule = voice.getModule(lpf1Address);
+    Module* oscMixModule = voice.getModule(combine2Address); // osc mixer (Add): sine + IFS
 	Module* combineModule = voice.getModule(combine1Address);
 	Module* finalModule = voice.getModule(finalAddress);
 
@@ -75,11 +76,21 @@ void VoiceManager::buildDefaultPatch(Voice& voice)
 	//					 upstream    -> downstream   (downstream param)
     ++(finalModule->activeCount);
 	voice.connectModules(combineModule, finalModule, finalInputAddress);
-	voice.connectModules(ifsOscModule, lpfModule, lpf1InputAddress);
+    // Osc mixer: (SinOsc × sineLevel) + (IFSOsc × ifsLevel) → LPF → VCA.
+    voice.connectModules(sinOscModule, oscMixModule, combine2Input1Address);
+    voice.connectModules(ifsOscModule, oscMixModule, combine2Input2Address);
+    voice.connectModules(oscMixModule, lpfModule, lpf1InputAddress);
 	voice.connectModules(lpfModule, combineModule, combine1Input1Address);
 	voice.connectModules(envModule, combineModule, combine1Input2Address);
+    // Both oscillators track the note pitch (via the shared Slew).
     voice.connectModules(slewModule, ifsOscModule, ifsOsc1PitchInputAddress);
+    voice.connectModules(slewModule, sinOscModule, sinOsc1PitchInputAddress);
     voice.connectModules(pitchConverterModule, slewModule, slew1InputAddress);
+    // Hard sync: the (detuned) sine master drives the IFS osc's sync input; per-channel
+    // zero-crossings reset the IFS phase, preserving the L/R detune.
+    voice.connectModules(sinOscModule, ifsOscModule, ifsOsc1SyncInputAddress);
+    // The osc mixer sums (rather than the default multiply).
+    voice.setParameter(combine2TypeAddress, static_cast<float>(ParamItemCombineType_Add));
     // Key tracking: the same note-pitch signal feeds the LPF's 2nd freq-mod input; the Key Track
     // knob (LPFParamItemFreqModLevel2) scales how much the cutoff follows the note (1 = 1:1).
     voice.connectModules(slewModule, lpfModule, lpf1KeyTrackInputAddress);
