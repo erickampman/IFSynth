@@ -622,31 +622,33 @@ private:
         placeGroup(fOscGroup.get(), colL, row0, oscW, rowH);
         placeGroup(fLpfGroup.get(), colL + oscW + gap, row0, lpfW, rowH);
 
-        // Row 1: Env tab group (left) + LFO tab group (right). Each pair overlays a single rect;
+        // Row 1: LFO tab group (left) + Env tab group (right). Each pair overlays a single rect;
         // the TabBar shows one and hides the other.
-        placeGroup(fEnv1Group.get(), colL, row1, colW, rowH);
-        placeGroup(fEnv2Group.get(), colL, row1, colW, rowH);
-        placeGroup(fLfo1Group.get(), colR, row1, colW, rowH);
-        placeGroup(fLfo2Group.get(), colR, row1, colW, rowH);
+        placeGroup(fLfo1Group.get(), colL, row1, colW, rowH);
+        placeGroup(fLfo2Group.get(), colL, row1, colW, rowH);
+        placeGroup(fEnv1Group.get(), colR, row1, colW, rowH);
+        placeGroup(fEnv2Group.get(), colR, row1, colW, rowH);
 
-        // Row 2: CV Mixer tab group (left half; right half free for now).
-        placeGroup(fMix1Group.get(), colL, mixY, colW, rowH);
-        placeGroup(fMix2Group.get(), colL, mixY, colW, rowH);
+        // Row 2: CV Mixer tab group (narrow — its content is sparse, so it needn't match the
+        // column width above it) + the wide IFS Osc modulation panel + the LPF modulation panel.
+        const int mixW    = static_cast<int>(300 * fUiScale);
+        const int lpfModW = static_cast<int>(150 * fUiScale);
+        const int lpfModX = W - m - lpfModW;
+        const int oscModX = colL + mixW + gap;
+        const int oscModW = lpfModX - gap - oscModX;
+        placeGroup(fMix1Group.get(),   colL,    mixY, mixW,    rowH);
+        placeGroup(fMix2Group.get(),   colL,    mixY, mixW,    rowH);
+        placeGroup(fOscModGroup.get(), oscModX, mixY, oscModW, rowH);
+        placeGroup(fLpfModGroup.get(), lpfModX, mixY, lpfModW, rowH);
 
-        // Bottom row: wide IFS Osc modulation panel, the LPF modulation panel, and the Amp box.
-        // ampW scales with fUiScale (its content does), so it doesn't overflow when scaled up.
-        const int ampW = static_cast<int>(224 * fUiScale), lpfModW = static_cast<int>(150 * fUiScale);
-        const int oscModW = W - 2 * m - 2 * gap - lpfModW - ampW;
-        const int lpfModX = colL + oscModW + gap;
-        const int ampX    = lpfModX + lpfModW + gap;
-        placeGroup(fOscModGroup.get(), colL,    modY, oscModW, rowH);
-        placeGroup(fLpfModGroup.get(), lpfModX, modY, lpfModW, rowH);
-        placeGroup(fAmpGroup.get(),    ampX,    modY, ampW,    rowH);
+        // Row 3: Amp box (right); the left of this row is free for now.
+        const int ampW = static_cast<int>(224 * fUiScale);
+        placeGroup(fAmpGroup.get(), W - m - ampW, modY, ampW, rowH);
 
         // Tab bars in each tab group's title strip (top-right).
-        placeTab(fEnvTab.get(), colL, row1, colW, scale);
-        placeTab(fLfoTab.get(), colR, row1, colW, scale);
-        placeTab(fMixTab.get(), colL, mixY, colW, scale);
+        placeTab(fLfoTab.get(), colL, row1, colW, scale);
+        placeTab(fEnvTab.get(), colR, row1, colW, scale);
+        placeTab(fMixTab.get(), colL, mixY, mixW, scale);
 
         SubWidget* oscG[6]  = { fKnobs[kParamOscPitch].get(), fKnobs[kParamOscFine].get(),
                                 fKnobs[kParamOscDetune].get(), fKnobs[kParamSlewRate].get(),
