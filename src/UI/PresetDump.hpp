@@ -104,6 +104,7 @@ static constexpr PresetKey kPresetKeys[kParamCount] = {
    /*SinPitch*/        {"SinOsc1", "pitch"},
    /*SinFine*/         {"SinOsc1", "fine"},
    /*SinDetune*/       {"SinOsc1", "detune"},
+   /*SinWaveform*/     {"SinOsc1", "waveform"},
    /*SinLevel*/        {"Global",  "sinLevel"},
    /*IfsLevel*/        {"Global",  "ifsLevel"},
    /*IfsSyncMode*/     {"IFSOsc1", "syncMode"},

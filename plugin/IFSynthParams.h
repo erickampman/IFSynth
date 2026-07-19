@@ -97,6 +97,7 @@ enum ParamIndex {
    kParamSinPitch,
    kParamSinFine,
    kParamSinDetune,   // stereo detune (cents), drives per-channel IFS sync
+   kParamSinWaveform, // 0 Sine, 1 Triangle, 2 Saw (band-limited)
    // Amp mix levels (replace the old global gain) + IFS hard-sync mode
    kParamSinLevel,    // sine osc output level
    kParamIfsLevel,    // IFS osc output level
@@ -208,6 +209,7 @@ static constexpr ParamSpec kParams[kParamCount] = {
    {"Pitch",       "sinPitch",   "",   0.0f,   6.0f,   3.0f,  false, true },
    {"Fine",        "sinFine",    "ct", -100.0f,100.0f, 0.0f,  false, false},
    {"Detune",      "sinDetune",  "ct", 0.0f,   25.0f,  0.0f,  false, false},
+   {"Wave",        "sinWave",    "",   0.0f,   2.0f,   0.0f,  false, true },
    // Amp mix levels + IFS hard-sync mode
    {"Sine",        "sinLevel",   "",   0.0f,   1.0f,   0.0f,  false, false},
    {"IFS",         "ifsLevel",   "",   0.0f,   1.0f,   0.5f,  false, false},

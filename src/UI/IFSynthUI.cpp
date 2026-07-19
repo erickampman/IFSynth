@@ -107,7 +107,7 @@ public:
         // Per-module accent colours, following PM's category scheme (sound=green, filter=purple,
         // control signals=amber, combiner=orange, modulation=teal).
         fOscGroup  = makeGroup("IFS Oscillator", colSound());
-        fSinGroup  = makeGroup("Sine Osc", colSound());
+        fSinGroup  = makeGroup("Osc 2", colSound());
         fLpfGroup  = makeGroup("Low-Pass Filter", colFilter());
         // Env / LFO / Mixer are tab groups: the two instances share a rect + title, and a TabBar
         // switches which is visible, so the shared title is the module name (tabs say 1/2).
@@ -338,6 +338,7 @@ private:
         case kParamVoiceMode:
         case kParamIfsSyncMode:
         case kParamSinPitch:
+        case kParamSinWaveform:
             return true;
         default: return isModSrcParam(i); // mod source + VCA dropdowns
         }
@@ -388,7 +389,8 @@ private:
     {
         if (i == kParamVoiceMode || i == kParamSpread || i == kParamSinLevel || i == kParamIfsLevel)
             return colComb();
-        if (i == kParamSinPitch || i == kParamSinFine || i == kParamSinDetune || i == kParamIfsSyncMode)
+        if (i == kParamSinPitch || i == kParamSinFine || i == kParamSinDetune
+            || i == kParamSinWaveform || i == kParamIfsSyncMode)
             return colSound();
         if (i == kParamLpfCutoff || i == kParamLpfResonance || i == kParamLpfKeyTrack)
             return colFilter();
@@ -407,7 +409,8 @@ private:
     {
         if (i == kParamVoiceMode || i == kParamSpread || i == kParamSinLevel || i == kParamIfsLevel)
             return fAmpGroup.get();
-        if (i == kParamSinPitch || i == kParamSinFine || i == kParamSinDetune)
+        if (i == kParamSinPitch || i == kParamSinFine || i == kParamSinDetune
+            || i == kParamSinWaveform)
             return fSinGroup.get();
         if (i == kParamIfsSyncMode) return fOscGroup.get();
         if (i == kParamLpfCutoff || i == kParamLpfResonance || i == kParamLpfKeyTrack)
@@ -433,6 +436,7 @@ private:
         if (i == kParamVoiceMode) return {"Mono", "10 Voices"};
         if (i == kParamIfsSyncMode) return {"Off", "Up", "Down", "Both"};
         if (i == kParamSinPitch) return {"-3 oct", "-2 oct", "-1 oct", "0", "+5th", "+1 oct", "+1 oct +5th"};
+        if (i == kParamSinWaveform) return {"Sine", "Triangle", "Saw"};
         if (i == kParamVCASource) return {"Env 1", "Env 2"};
         if (isModSrcParam(i)) return {"None", "LFO 1", "LFO 2", "Env 1", "Env 2", "CV Mix 1", "CV Mix 2"};
         return {"1", "2", "3", "4", "5", "6", "7", "8"}; // env/lfo iterations
@@ -668,10 +672,10 @@ private:
                                 fDropdowns[kParamIfsSyncMode].get() };
         layoutPadPanel(fOscGroup.get(), fOscPad.get(), oscG, 7);
 
-        // Sine Osc: Pitch (interval dropdown) + Fine, Detune knobs (no pad).
-        SubWidget* sinG[3] = { fDropdowns[kParamSinPitch].get(), fKnobs[kParamSinFine].get(),
-                               fKnobs[kParamSinDetune].get() };
-        layoutRow(fSinGroup.get(), sinG, 3);
+        // Osc 2: Wave + Pitch (dropdowns) then Fine, Detune knobs (no pad).
+        SubWidget* sinG[4] = { fDropdowns[kParamSinWaveform].get(), fDropdowns[kParamSinPitch].get(),
+                               fKnobs[kParamSinFine].get(), fKnobs[kParamSinDetune].get() };
+        layoutRow(fSinGroup.get(), sinG, 4);
 
         SubWidget* env1G[4] = { fKnobs[kParamEnvDuration].get(), fKnobs[kParamEnvSmoothing].get(),
                                 fDropdowns[kParamEnvHoldMode].get(), fDropdowns[kParamEnvIterations].get() };

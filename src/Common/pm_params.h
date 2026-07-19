@@ -127,6 +127,14 @@ enum SinOscParamItem : NSUInteger {
    SinOscParamItemModSync,
    SinOscParamItemModSyncType,
    SinOscParamItemDetune,   // stereo detune, cents (splits L/R by ±half); 0 = mono
+   SinOscParamItemWaveform, // 0 = Sine, 1 = Triangle, 2 = Saw (band-limited via PolyBLEP/BLAMP)
+};
+
+// Waveform selector values for SinOscParamItemWaveform.
+enum OscWaveform : int {
+   OscWaveformSine     = 0,
+   OscWaveformTriangle = 1,
+   OscWaveformSaw      = 2,
 };
 
 // Level — a simple gain stage: output = input × level. Used to scale the sine osc's audible mix

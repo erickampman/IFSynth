@@ -15,6 +15,55 @@
 
 #define MOD_PHASE_ATTENUATOR    0.5
 
+static constexpr double TWO_PI = 2.0 * std::numbers::pi_v<double>;
+
+// Wrap a phase to [0, 1).
+static inline double wrapPhase(double x) { return x - std::floor(x); }
+
+// PolyBLEP residual for an amplitude-step discontinuity (used by the sawtooth wrap).
+// t = phase in [0,1), dt = phase increment per sample.
+static inline double polyBlep(double t, double dt) {
+    if (t < dt)            { t /= dt;            return t + t - t * t - 1.0; }
+    else if (t > 1.0 - dt) { t = (t - 1.0) / dt; return t * t + t + t + 1.0; }
+    return 0.0;
+}
+
+// PolyBLAMP residual for a slope (first-derivative) discontinuity (used by the triangle corners).
+static inline double polyBlamp(double t, double dt) {
+    if (t < dt)            { t = t / dt - 1.0;       return -1.0 / 3.0 * t * t * t; }
+    else if (t > 1.0 - dt) { t = (t - 1.0) / dt + 1.0; return  1.0 / 3.0 * t * t * t; }
+    return 0.0;
+}
+
+// Naive (non-band-limited) waveform value at normalized phase ph in [0,1). Used for the
+// hard-sync amplitude step, where we want the ideal discontinuity magnitude.
+static inline float naiveWave(int wf, double ph) {
+    switch (wf) {
+        case OscWaveformTriangle: return (float)(1.0 - 4.0 * std::fabs(ph - 0.5));
+        case OscWaveformSaw:      return (float)(2.0 * ph - 1.0);
+        default:                  return (float)std::sin(ph * TWO_PI);
+    }
+}
+
+// Band-limited waveform value at phase ph in [0,1) with phase increment dt.
+static inline float blWave(int wf, double ph, double dt) {
+    switch (wf) {
+        case OscWaveformTriangle: {
+            // Naive triangle: trough (-1) at ph=0, peak (+1) at ph=0.5. Slope flips by +8 per
+            // unit phase at the trough and -8 at the peak; PolyBLAMP rounds both corners.
+            double v = 1.0 - 4.0 * std::fabs(ph - 0.5);
+            double p2 = ph + 0.5; if (p2 >= 1.0) p2 -= 1.0;
+            v +=  8.0 * dt * polyBlamp(ph, dt);
+            v += -8.0 * dt * polyBlamp(p2, dt);
+            return (float)v;
+        }
+        case OscWaveformSaw:
+            return (float)((2.0 * ph - 1.0) - polyBlep(ph, dt));
+        default:
+            return (float)std::sin(ph * TWO_PI);
+    }
+}
+
 /// Previous sync-input samples, needed for zero-crossing detection across blocks.
 /// Allocated in InitSinOscillator, freed in DeinitSinOscillator, zeroed in ResetSinOscillator.
 struct SinOscSyncState {
@@ -127,6 +176,9 @@ const KPBuffPair* ProcessSinOscillator(uint64_t processCallID, uint32_t count, M
     bool hasSyncInput = module->isInputConnected(SinOscParamItemModSync);
     OscSyncType syncType = static_cast<OscSyncType>((int)module->paramByEnum(SinOscParamItemModSyncType));
 
+    // Waveform: 0 = Sine, 1 = Triangle, 2 = Saw (band-limited). Read once per block.
+    int waveform = (int)(module->paramByEnum(SinOscParamItemWaveform) + 0.5f);
+
     auto pitchConverter = module->pitchConverter;
     float *ilptr, *irptr;
     float *opl;
@@ -160,11 +212,13 @@ const KPBuffPair* ProcessSinOscillator(uint64_t processCallID, uint32_t count, M
         deltaL = pitchConverter->pitchToFrequency(*ilptr + freqParam + fineParam - detuneHalf + *mlptr * fmLevelParam + *m2lptr * fmLevel2Param) * freqScale;
         deltaR = pitchConverter->pitchToFrequency(*irptr + freqParam + fineParam + detuneHalf + *mrptr * fmLevelParam + *m2rptr * fmLevel2Param) * freqScale;
 
-        // Raw waveform value before any BLEP residual is applied.
+        // Raw (band-limited) waveform value before any sync BLEP residual is applied.
         const double pmL = *nlptr * MOD_PHASE_ATTENUATOR * pmLevelParam;
         const double pmR = *nrptr * MOD_PHASE_ATTENUATOR * pmLevelParam;
-        float rawSampleL = std::sin((phaseL + pmL) * std::numbers::pi_v<double> * 2.0);
-        float rawSampleR = std::sin((phaseR + pmR) * std::numbers::pi_v<double> * 2.0);
+        const double phpL = wrapPhase(phaseL + pmL);
+        const double phpR = wrapPhase(phaseR + pmR);
+        float rawSampleL = blWave(waveform, phpL, deltaL);
+        float rawSampleR = blWave(waveform, phpR, deltaR);
 
         // Apply carry-over BLEP residual from the previous sync reset, then clear it.
         float sampleL = rawSampleL + blepResidualL;
@@ -206,11 +260,11 @@ const KPBuffPair* ProcessSinOscillator(uint64_t processCallID, uint32_t count, M
                 float tL = prevSyncL / (prevSyncL - sL);
                 phaseL = (1.0 - tL) * deltaL;
                 // PolyBLEP: 2-tap correction for the amplitude step at the sync point.
-                // step = (waveform value after reset) - (waveform value before reset).
+                // step = (waveform value after reset) - (waveform value before reset), using the
+                // naive waveform so the step is the ideal discontinuity for any waveform.
                 // Current sample gets a fraction of the step; the remainder is carried
                 // to the next sample via blepResidualL.
-                float newAmpL = std::sin((phaseL + pmL) * std::numbers::pi_v<double> * 2.0);
-                float stepL   = newAmpL - rawSampleL;
+                float stepL   = naiveWave(waveform, wrapPhase(phaseL + pmL)) - naiveWave(waveform, phpL);
                 float omtL    = 1.0f - tL;
                 sampleL      += omtL * omtL * 0.5f * stepL;
                 blepResidualL = -tL * tL * 0.5f * stepL;
@@ -218,8 +272,7 @@ const KPBuffPair* ProcessSinOscillator(uint64_t processCallID, uint32_t count, M
             if (syncResetR) {
                 float tR = prevSyncR / (prevSyncR - sR);
                 phaseR = (1.0 - tR) * deltaR;
-                float newAmpR = std::sin((phaseR + pmR) * std::numbers::pi_v<double> * 2.0);
-                float stepR   = newAmpR - rawSampleR;
+                float stepR   = naiveWave(waveform, wrapPhase(phaseR + pmR)) - naiveWave(waveform, phpR);
                 float omtR    = 1.0f - tR;
                 sampleR      += omtR * omtR * 0.5f * stepR;
                 blepResidualR = -tR * tR * 0.5f * stepR;
