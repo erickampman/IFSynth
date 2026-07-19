@@ -25,6 +25,7 @@
 #include "PopupMenu.hpp"
 #include "PresetDump.hpp" // dev-only JSON patch dumper (no-op unless IFSYNTH_PRESET_DUMP=1)
 #include "Slider.hpp"
+#include "TabBar.hpp"
 #include "Toggle.hpp"
 
 START_NAMESPACE_DISTRHO
@@ -40,6 +41,7 @@ using DGL_NAMESPACE::NanoSubWidget;
 using DGL_NAMESPACE::PopupMenu;
 using DGL_NAMESPACE::Slider;
 using DGL_NAMESPACE::SubWidget;
+using DGL_NAMESPACE::TabBar;
 using DGL_NAMESPACE::Toggle;
 
 #if IFSYNTH_PRESET_DUMP
@@ -88,7 +90,8 @@ class IFSynthUI : public UI,
                   public Dropdown::Callback,
                   public PopupMenu::Callback,
                   public Toggle::Callback,
-                  public Slider::Callback
+                  public Slider::Callback,
+                  public TabBar::Callback
 {
 public:
     IFSynthUI()
@@ -99,18 +102,20 @@ public:
         // given, so an unconstrained host resize (previously keepAspectRatio=false, with a
         // minimum pair that didn't even match 980:900) is what let a host open the window
         // taller than intended.
-        setGeometryConstraints(780, 716, true, false);
+        setGeometryConstraints(784, 576, true, false); // matches the 980:720 design ratio
 
         // Per-module accent colours, following PM's category scheme (sound=green, filter=purple,
         // control signals=amber, combiner=orange, modulation=teal).
         fOscGroup  = makeGroup("IFS Oscillator", colSound());
         fLpfGroup  = makeGroup("Low-Pass Filter", colFilter());
-        fEnv1Group = makeGroup("IFS Envelope 1", colEnv());
-        fEnv2Group = makeGroup("IFS Envelope 2", colEnv());
-        fLfo1Group = makeGroup("IFS LFO 1", colLfo());
-        fLfo2Group = makeGroup("IFS LFO 2", colLfo());
-        fMix1Group = makeGroup("CV Mixer 1  (LFO 1 + Env 1)", colComb());
-        fMix2Group = makeGroup("CV Mixer 2  (LFO 2 + Env 2)", colComb());
+        // Env / LFO / Mixer are tab groups: the two instances share a rect + title, and a TabBar
+        // switches which is visible, so the shared title is the module name (tabs say 1/2).
+        fEnv1Group = makeGroup("IFS Envelope", colEnv());
+        fEnv2Group = makeGroup("IFS Envelope", colEnv());
+        fLfo1Group = makeGroup("IFS LFO", colLfo());
+        fLfo2Group = makeGroup("IFS LFO", colLfo());
+        fMix1Group = makeGroup("CV Mixer", colComb());
+        fMix2Group = makeGroup("CV Mixer", colComb());
         fOscModGroup = makeGroup("IFS Osc Modulation  (source + depth)", colNeutral());
         fLpfModGroup = makeGroup("LPF Modulation", colNeutral());
         fAmpGroup  = makeGroup("Amp", colComb());
@@ -175,6 +180,15 @@ public:
             knob->setFormatter(formatterFor(i));
             fKnobs[i] = std::move(knob);
         }
+
+        // Tab bars for the Env / LFO / Mixer tab groups (created after the panels so they draw on
+        // top of the title strip). Instance 2 of each starts hidden.
+        fEnvTab = makeTab(kTabEnv, colEnv());
+        fLfoTab = makeTab(kTabLfo, colLfo());
+        fMixTab = makeTab(kTabMix, colComb());
+        fEnv2Group->hide();
+        fLfo2Group->hide();
+        fMix2Group->hide();
 
 #if IFSYNTH_PRESET_DUMP
         fDumpBtn = std::make_unique<DumpButton>(this, [this] {
@@ -285,6 +299,7 @@ private:
     std::unique_ptr<Dropdown>      fDropdowns[kParamCount];
     std::unique_ptr<Toggle>        fToggles[kParamCount];
     std::unique_ptr<Slider>        fSliders[kParamCount];
+    std::unique_ptr<TabBar>        fEnvTab, fLfoTab, fMixTab;
     std::unique_ptr<PopupMenu>     fMenu;
 #if IFSYNTH_PRESET_DUMP
     std::unique_ptr<DumpButton>    fDumpBtn;
@@ -481,6 +496,37 @@ private:
         return g;
     }
 
+    enum TabId { kTabEnv = 0, kTabLfo = 1, kTabMix = 2 };
+
+    std::unique_ptr<TabBar> makeTab(uint32_t id, Color accent)
+    {
+        auto t = std::make_unique<TabBar>(this, this);
+        t->setId(id);
+        t->setTabs({"1", "2"});
+        t->setAccentColor(accent);
+        t->setActive(0);
+        return t;
+    }
+
+    // TabBar::Callback — show the picked instance, hide the other. Hiding a GroupBox hides its
+    // whole child subtree (pad + knobs + dropdowns), so only the active tab is drawn/interactive.
+    void tabSelected(TabBar* bar, int index) override
+    {
+        switch (bar->getId())
+        {
+        case kTabEnv: showTab(fEnv1Group.get(), fEnv2Group.get(), index); break;
+        case kTabLfo: showTab(fLfo1Group.get(), fLfo2Group.get(), index); break;
+        case kTabMix: showTab(fMix1Group.get(), fMix2Group.get(), index); break;
+        default: break;
+        }
+        repaint();
+    }
+    static void showTab(GroupBox* a, GroupBox* b, int index)
+    {
+        if (index == 0) { a->show(); b->hide(); }
+        else            { a->hide(); b->show(); }
+    }
+
     void pushPadDefaults()
     {
         pushOscPad(fOscPad.get(), kParamOscBx);
@@ -532,12 +578,15 @@ private:
 #else
         const int topPad = 0;
 #endif
-        const int rowH = (H - 2 * m - 4 * gap - topPad) / 5;
+        // Four rows now that Env/LFO/Mixer are tab groups: Osc|LPF, Env-tabs|LFO-tabs,
+        // Mixer-tabs|(free), and the OscMod|LpfMod|Amp strip. Derived from the canvas height so it
+        // fills any size (Retina-safe); the aspect ratio is locked in the constructor.
+        const int rowH = (H - 2 * m - 3 * gap - topPad) / 4;
         const int colL = m, colR = m + colW + gap;
         const int top0 = m + topPad;
-        const int row0 = top0, row1 = top0 + rowH + gap, row2 = top0 + 2 * (rowH + gap);
-        const int mixY = top0 + 3 * (rowH + gap);
-        const int modY = mixY + rowH + gap;
+        const int row0 = top0, row1 = top0 + rowH + gap;
+        const int mixY = top0 + 2 * (rowH + gap);
+        const int modY = top0 + 3 * (rowH + gap);
 
         // Uniform knob size + text scale (scale computed above). No tight upper clamp on text
         // scale: a host can hand us a canvas much larger than the design size, and text needs to
@@ -569,27 +618,35 @@ private:
         const int oscW = static_cast<int>(topAvail * 0.64f);
         const int lpfW = topAvail - oscW;
 
-        // Three module rows, two panels each (row 0 wide/narrow, rows 1-2 equal).
-        placeGroup(fOscGroup.get(),  colL, row0, oscW, rowH);
-        placeGroup(fLpfGroup.get(),  colL + oscW + gap, row0, lpfW, rowH);
+        // Row 0: Osc (wide) | LPF (narrow).
+        placeGroup(fOscGroup.get(), colL, row0, oscW, rowH);
+        placeGroup(fLpfGroup.get(), colL + oscW + gap, row0, lpfW, rowH);
+
+        // Row 1: Env tab group (left) + LFO tab group (right). Each pair overlays a single rect;
+        // the TabBar shows one and hides the other.
         placeGroup(fEnv1Group.get(), colL, row1, colW, rowH);
-        placeGroup(fEnv2Group.get(), colR, row1, colW, rowH);
-        placeGroup(fLfo1Group.get(), colL, row2, colW, rowH);
-        placeGroup(fLfo2Group.get(), colR, row2, colW, rowH);
+        placeGroup(fEnv2Group.get(), colL, row1, colW, rowH);
+        placeGroup(fLfo1Group.get(), colR, row1, colW, rowH);
+        placeGroup(fLfo2Group.get(), colR, row1, colW, rowH);
+
+        // Row 2: CV Mixer tab group (left half; right half free for now).
         placeGroup(fMix1Group.get(), colL, mixY, colW, rowH);
-        placeGroup(fMix2Group.get(), colR, mixY, colW, rowH);
-        // Bottom row: wide IFS Osc modulation panel, then the LPF modulation panel, then a narrow
-        // Amp box in the lower right.
-        // Same class of bug as dropH: this is a fixed external allocation, but the Amp group's
-        // content (two dropdowns + a knob) scales with fUiScale, so the box must too or its
-        // content overflows the right edge once the window is scaled up.
-        const int ampW = static_cast<int>(224 * fUiScale), lpfModW = 150;
+        placeGroup(fMix2Group.get(), colL, mixY, colW, rowH);
+
+        // Bottom row: wide IFS Osc modulation panel, the LPF modulation panel, and the Amp box.
+        // ampW scales with fUiScale (its content does), so it doesn't overflow when scaled up.
+        const int ampW = static_cast<int>(224 * fUiScale), lpfModW = static_cast<int>(150 * fUiScale);
         const int oscModW = W - 2 * m - 2 * gap - lpfModW - ampW;
         const int lpfModX = colL + oscModW + gap;
         const int ampX    = lpfModX + lpfModW + gap;
         placeGroup(fOscModGroup.get(), colL,    modY, oscModW, rowH);
         placeGroup(fLpfModGroup.get(), lpfModX, modY, lpfModW, rowH);
         placeGroup(fAmpGroup.get(),    ampX,    modY, ampW,    rowH);
+
+        // Tab bars in each tab group's title strip (top-right).
+        placeTab(fEnvTab.get(), colL, row1, colW, scale);
+        placeTab(fLfoTab.get(), colR, row1, colW, scale);
+        placeTab(fMixTab.get(), colL, mixY, colW, scale);
 
         SubWidget* oscG[6]  = { fKnobs[kParamOscPitch].get(), fKnobs[kParamOscFine].get(),
                                 fKnobs[kParamOscDetune].get(), fKnobs[kParamSlewRate].get(),
@@ -720,6 +777,16 @@ private:
     {
         g->setAbsolutePos(x, y);
         g->setSize(static_cast<uint>(w), static_cast<uint>(h));
+    }
+
+    // Place a tab group's TabBar in the top-right of its panel title strip.
+    void placeTab(TabBar* t, int gx, int gy, int gw, float scale)
+    {
+        const int tabH  = static_cast<int>(20 * scale);
+        const int tabW  = static_cast<int>(56 * scale);
+        const int inset = static_cast<int>(8 * scale);
+        t->setSize(static_cast<uint>(tabW), static_cast<uint>(tabH));
+        t->setAbsolutePos(gx + gw - tabW - inset, gy + static_cast<int>(4 * scale));
     }
 
     // Landscape panel: shrunk pad on the left, a single row of n controls on the right.
