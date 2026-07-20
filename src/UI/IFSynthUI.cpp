@@ -30,6 +30,7 @@
 #include "PresetKeys.hpp"
 #include "Slider.hpp"
 #include "TabBar.hpp"
+#include "TitleText.hpp"
 #include "Toggle.hpp"
 
 START_NAMESPACE_DISTRHO
@@ -45,6 +46,7 @@ using DGL_NAMESPACE::Logo;
 using DGL_NAMESPACE::NanoSubWidget;
 using DGL_NAMESPACE::PopupMenu;
 using DGL_NAMESPACE::Slider;
+using DGL_NAMESPACE::TitleText;
 using DGL_NAMESPACE::SubWidget;
 using DGL_NAMESPACE::TabBar;
 using DGL_NAMESPACE::Toggle;
@@ -210,6 +212,14 @@ public:
         fLogo = std::make_unique<Logo>(this, EmbeddedResources::Unlikelyware_Final_ColorData,
                                         EmbeddedResources::Unlikelyware_Final_ColorDataSize);
 
+        // Wordmark: "IFS" + "ynth" in two accent colors, Almendra (embedded, matches the
+        // unlikelyware.com brand face). Sits between the logo and the Preset dropdown.
+        // Colors sampled directly from the logo: "IFS" = rightmost (tan/gold) band,
+        // "ynth" = middle (terracotta orange) band.
+        fTitleText = std::make_unique<TitleText>(this, EmbeddedResources::Almendra_RegularData,
+                                                  EmbeddedResources::Almendra_RegularDataSize,
+                                                  Color(222, 184, 135), Color(200, 109, 84));
+
         // Preset selector: not tied to a GroupBox (it applies to the whole patch), parented to
         // the UI itself like fMenu/fDumpBtn. Shares the generic Dropdown::Callback +
         // PopupMenu::Callback plumbing every other dropdown uses; menuSelected() below tells it
@@ -357,6 +367,7 @@ private:
     std::unique_ptr<Slider>        fSliders[kParamCount];
     std::unique_ptr<TabBar>        fEnvTab, fLfoTab, fMixTab;
     std::unique_ptr<Logo>          fLogo;
+    std::unique_ptr<TitleText>     fTitleText;
     std::unique_ptr<Dropdown>      fPresetDropdown;
     std::unique_ptr<PopupMenu>     fMenu;
     // Sentinel dropdown id, distinct from every real ParamIndex (which are all < kParamCount),
@@ -694,15 +705,24 @@ private:
         fMenu->setUiScale(txtScale);
         fPresetDropdown->setUiScale(txtScale);
 
-        // Logo, then the Preset dropdown right after it — both left-aligned in the top strip
-        // (the dev DUMP button, if present, takes the right side of the same strip — see below).
-        // The logo's width comes from its own aspect ratio (never stretched), so the dropdown's
-        // x position is read back from it rather than assumed.
+        // Logo, then the "IFSynth" wordmark, then the Preset dropdown — all left-aligned in the
+        // top strip (the dev DUMP button, if present, takes the right side — see below). The
+        // logo's width comes from its own aspect ratio (never stretched), so the wordmark's x
+        // position is read back from it rather than assumed. The wordmark itself gets a fixed
+        // reserved slot (NanoVG text measurement isn't safe to call outside onNanoDisplay, so
+        // this can't be measured-and-fitted the same way); tune titleW if it over/under-fills.
         fLogo->setHeightPreservingAspect(static_cast<float>(logoH));
         fLogo->setAbsolutePos(m, m + (topPad - logoH) / 2);
+
+        const int titleX = m + static_cast<int>(fLogo->getWidth()) + gap;
+        const int titleW = static_cast<int>(260 * scale);
+        fTitleText->setFontSize(48.0f * scale);
+        fTitleText->setSize(static_cast<uint>(titleW), static_cast<uint>(topPad));
+        fTitleText->setAbsolutePos(titleX, m);
+
         {
             const int pw = static_cast<int>(220 * scale);
-            const int px = m + static_cast<int>(fLogo->getWidth()) + gap;
+            const int px = titleX + titleW + gap;
             fPresetDropdown->setSize(static_cast<uint>(pw), static_cast<uint>(topPad));
             fPresetDropdown->setAbsolutePos(px, m / 2);
         }
