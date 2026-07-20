@@ -60,6 +60,21 @@ add_custom_command(
     COMMENT "Generating embedded presets from Presets/*.json")
 add_custom_target(generate_presets DEPENDS "${IFSYNTH_GENERATED_PRESETS_H}")
 
+# --- embedded resources: Resources/* compiled in as raw bytes ----------------------------
+# Uses DPF's own res2c.py (ships in the dpf/ submodule) to embed the logo PNG's raw file bytes;
+# NanoVG's createImageFromMemory() decodes it at UI-construction time. No filesystem dependency
+# on the resource file once built — same reasoning as the preset codegen above.
+set(IFSYNTH_RESOURCES_HPP "${CMAKE_BINARY_DIR}/generated/EmbeddedResources.hpp")
+set(IFSYNTH_RESOURCES_CPP "${CMAKE_BINARY_DIR}/generated/EmbeddedResources.cpp")
+file(GLOB IFSYNTH_RESOURCE_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/Resources/*")
+add_custom_command(
+    OUTPUT "${IFSYNTH_RESOURCES_HPP}" "${IFSYNTH_RESOURCES_CPP}"
+    COMMAND ${Python3_EXECUTABLE} "${CMAKE_SOURCE_DIR}/dpf/utils/res2c.py"
+            EmbeddedResources "${CMAKE_SOURCE_DIR}/Resources" "${CMAKE_BINARY_DIR}/generated"
+    DEPENDS ${IFSYNTH_RESOURCE_FILES} "${CMAKE_SOURCE_DIR}/dpf/utils/res2c.py"
+    COMMENT "Embedding Resources/* as compiled-in data")
+add_custom_target(generate_resources DEPENDS "${IFSYNTH_RESOURCES_HPP}" "${IFSYNTH_RESOURCES_CPP}")
+
 # --- the plugin: CLAP + OpenGL UI, built with DPF --------------------------
 # DPF (vendored submodule) owns the plugin wrapper and generates the .clap from our DSP + UI
 # subclasses; the DSP side drives pm_framework's VoiceManager. The four ADSR knobs route to
@@ -82,6 +97,9 @@ target_link_libraries(IFSynth-ui PUBLIC pm_framework)
 # Generated preset array (see the codegen step above) — must exist before IFSynthUI.cpp compiles.
 add_dependencies(IFSynth-ui generate_presets)
 target_include_directories(IFSynth-ui PRIVATE "${CMAKE_BINARY_DIR}/generated")
+# Embedded logo bytes — the generated .cpp defines the data the .hpp declares.
+add_dependencies(IFSynth-ui generate_resources)
+target_sources(IFSynth-ui PRIVATE "${IFSYNTH_RESOURCES_CPP}")
 # DPF may default to an older standard; the DSP glue includes C++20 framework headers.
 set_target_properties(IFSynth-dsp IFSynth-ui PROPERTIES
     CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)

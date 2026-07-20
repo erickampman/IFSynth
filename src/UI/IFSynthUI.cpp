@@ -17,12 +17,14 @@
 #include <vector>
 
 #include "Dropdown.hpp"
+#include "EmbeddedResources.hpp" // build-time codegen from Resources/* (see dpf/utils/res2c.py)
 #include "GeneratedPresets.h" // build-time codegen from Presets/*.json (see tools/gen_presets.py)
 #include "GroupBox.hpp"
 #include "IFSControl.hpp"
 #include "IFSEnvControl.hpp"
 #include "IFSynthParams.h"
 #include "Knob.hpp"
+#include "Logo.hpp"
 #include "PopupMenu.hpp"
 #include "PresetDump.hpp" // dev-only JSON patch dumper (no-op unless IFSYNTH_PRESET_DUMP=1)
 #include "PresetKeys.hpp"
@@ -39,6 +41,7 @@ using DGL_NAMESPACE::GroupBox;
 using DGL_NAMESPACE::IFSControl;
 using DGL_NAMESPACE::IFSEnvControl;
 using DGL_NAMESPACE::Knob;
+using DGL_NAMESPACE::Logo;
 using DGL_NAMESPACE::NanoSubWidget;
 using DGL_NAMESPACE::PopupMenu;
 using DGL_NAMESPACE::Slider;
@@ -202,6 +205,11 @@ public:
                          p.empty() ? "dump FAILED" : "dumped to", p.c_str());
         });
 #endif
+        // Logo: raw PNG bytes embedded at build time (see EmbeddedResources.hpp); decoded once
+        // here via NanoVG. Sits left of the preset dropdown in the top strip.
+        fLogo = std::make_unique<Logo>(this, EmbeddedResources::Unlikelyware_Final_ColorData,
+                                        EmbeddedResources::Unlikelyware_Final_ColorDataSize);
+
         // Preset selector: not tied to a GroupBox (it applies to the whole patch), parented to
         // the UI itself like fMenu/fDumpBtn. Shares the generic Dropdown::Callback +
         // PopupMenu::Callback plumbing every other dropdown uses; menuSelected() below tells it
@@ -348,6 +356,7 @@ private:
     std::unique_ptr<Toggle>        fToggles[kParamCount];
     std::unique_ptr<Slider>        fSliders[kParamCount];
     std::unique_ptr<TabBar>        fEnvTab, fLfoTab, fMixTab;
+    std::unique_ptr<Logo>          fLogo;
     std::unique_ptr<Dropdown>      fPresetDropdown;
     std::unique_ptr<PopupMenu>     fMenu;
     // Sentinel dropdown id, distinct from every real ParamIndex (which are all < kParamCount),
@@ -639,10 +648,11 @@ private:
         // hard-coded 349px row assumed the macOS height and overflowed the default window on
         // hosts that report logical pixels (Linux), pushing the bottom rows off-screen. The
         // aspect ratio is locked (see the constructor), so rows never stretch disproportionately.
-        // Always-on top strip for the Preset dropdown (plus the dev-only DUMP button, when built
-        // with IFSYNTH_PRESET_DUMP). Sized like a standalone dropdown elsewhere in this file
-        // (label + box).
-        const int topPad = static_cast<int>(46 * scale);
+        // Always-on top strip: logo, Preset dropdown, and (dev builds) the DUMP button. Sized to
+        // fit the logo's ~64 design-px height (the tallest thing in the strip) plus a little
+        // breathing room above/below.
+        const int logoH  = static_cast<int>(48 * scale);
+        const int topPad = logoH + static_cast<int>(6 * scale);
         // Four rows now that Env/LFO/Mixer are tab groups: Osc|LPF, Env-tabs|LFO-tabs,
         // Mixer-tabs|(free), and the OscMod|LpfMod|Amp strip. Derived from the canvas height so it
         // fills any size (Retina-safe); the aspect ratio is locked in the constructor.
@@ -684,12 +694,17 @@ private:
         fMenu->setUiScale(txtScale);
         fPresetDropdown->setUiScale(txtScale);
 
-        // Preset dropdown: top strip, left-aligned (the dev DUMP button, if present, takes the
-        // right side of the same strip — see below).
+        // Logo, then the Preset dropdown right after it — both left-aligned in the top strip
+        // (the dev DUMP button, if present, takes the right side of the same strip — see below).
+        // The logo's width comes from its own aspect ratio (never stretched), so the dropdown's
+        // x position is read back from it rather than assumed.
+        fLogo->setHeightPreservingAspect(static_cast<float>(logoH));
+        fLogo->setAbsolutePos(m, m + (topPad - logoH) / 2);
         {
             const int pw = static_cast<int>(220 * scale);
+            const int px = m + static_cast<int>(fLogo->getWidth()) + gap;
             fPresetDropdown->setSize(static_cast<uint>(pw), static_cast<uint>(topPad));
-            fPresetDropdown->setAbsolutePos(m, m / 2);
+            fPresetDropdown->setAbsolutePos(px, m / 2);
         }
 
         // Row 0: IFS Oscillator, full width (pad + 6 controls + Sync).
