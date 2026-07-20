@@ -1,0 +1,117 @@
+{
+  "app": { "name": "IFSynth", "version": "0.4.0" },
+  "plugin": { "format": "clap", "id": "com.example.ifsynth" },
+  "meta": { "author": "", "createdAt": "2026-07-20T18:44:36Z", "name": "Untitled" },
+  "schema": "ifsynth.preset",
+  "schemaVersion": 1,
+  "state": {
+    "parameterState": {
+      "Global": {
+        "voiceMode": "0",
+        "glide": "0.247056",
+        "vcaEnv": "1",
+        "spread": "1.000000",
+        "sinLevel": "0.639844",
+        "ifsLevel": "0.994063"
+      },
+      "SinOsc1": {
+        "pitch": "2",
+        "fine": "0.000000",
+        "detune": "8.164070",
+        "waveform": "2",
+        "pitchModSrc": "0",
+        "freqModLevel": "-0.200000"
+      },
+      "IFSOsc1": {
+        "pitch": "0.045001",
+        "fine": "-0.898546",
+        "detune": "15.644529",
+        "bx": "0.872265",
+        "by": "0.764185",
+        "startEndY": "-1.000000",
+        "ifs1Squash": "-0.002026",
+        "ifs2Squash": "-0.010985",
+        "smoothing": "0.422227",
+        "iterations": "1",
+        "pitchModSrc": "0",
+        "pitchModLevel": "0.386422",
+        "bxModSrc": "3",
+        "bxModLevel": "0.688437",
+        "byModSrc": "0",
+        "byModLevel": "0.615312",
+        "sq1ModSrc": "0",
+        "sq1ModLevel": "0.000000",
+        "sq2ModSrc": "0",
+        "sq2ModLevel": "0.000000",
+        "syncMode": "0"
+      },
+      "LPF1": {
+        "frequency": "2.432883",
+        "q": "1.582618",
+        "keyTrack": "0.707617",
+        "cutoffModSrc": "3",
+        "cutoffModLevel": "4.000000"
+      },
+      "IFSEnv1": {
+        "duration": "4.407783",
+        "blueX": "0.170259",
+        "blueY": "0.885150",
+        "greenX": "0.418910",
+        "greenY": "-0.337006",
+        "ifs1Squash": "0.326122",
+        "ifs2Squash": "-0.641092",
+        "ifs3Squash": "0.743723",
+        "smoothing": "0.900000",
+        "iterations": "3",
+        "holdMode": "0"
+      },
+      "IFSEnv2": {
+        "duration": "3.147233",
+        "blueX": "0.099847",
+        "blueY": "1.000000",
+        "greenX": "0.474197",
+        "greenY": "0.627805",
+        "ifs1Squash": "0.039730",
+        "ifs2Squash": "-0.035857",
+        "ifs3Squash": "0.013154",
+        "smoothing": "1.000000",
+        "iterations": "2",
+        "holdMode": "2"
+      },
+      "IFSLFO1": {
+        "frequency": "-1.911875",
+        "bx": "-0.083855",
+        "by": "1.000000",
+        "startEndY": "-1.000000",
+        "ifs1Squash": "0.006438",
+        "ifs2Squash": "-0.009615",
+        "smoothing": "1.000000",
+        "iterations": "0"
+      },
+      "IFSLFO2": {
+        "frequency": "0.277811",
+        "bx": "-0.050640",
+        "by": "0.726162",
+        "startEndY": "-0.654848",
+        "ifs1Squash": "0.461004",
+        "ifs2Squash": "-0.528913",
+        "smoothing": "0.000000",
+        "iterations": "3"
+      },
+      "CVMixer1": {
+        "enableLFO": "1",
+        "enableEnv": "1",
+        "enableCC": "0",
+        "ccNumber": "1",
+        "mode": "1"
+      },
+      "CVMixer2": {
+        "enableLFO": "1",
+        "enableEnv": "1",
+        "enableCC": "0",
+        "ccNumber": "1",
+        "mode": "0"
+      }
+    }
+  }
+}
