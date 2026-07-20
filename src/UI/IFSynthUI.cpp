@@ -118,6 +118,7 @@ public:
         fMix1Group = makeGroup("CV Mixer", colComb());
         fMix2Group = makeGroup("CV Mixer", colComb());
         fOscModGroup = makeGroup("IFS Osc Modulation  (source + depth)", colNeutral());
+        fOsc2ModGroup = makeGroup("Osc 2 Mod", colNeutral());
         fLpfModGroup = makeGroup("LPF Modulation", colNeutral());
         fAmpGroup  = makeGroup("Amp", colComb());
 
@@ -293,7 +294,7 @@ protected:
 private:
     // Panels declared before their child controls so the children are destroyed first.
     std::unique_ptr<GroupBox>      fOscGroup, fSinGroup, fLpfGroup, fEnv1Group, fEnv2Group, fLfo1Group, fLfo2Group;
-    std::unique_ptr<GroupBox>      fMix1Group, fMix2Group, fOscModGroup, fLpfModGroup, fAmpGroup;
+    std::unique_ptr<GroupBox>      fMix1Group, fMix2Group, fOscModGroup, fOsc2ModGroup, fLpfModGroup, fAmpGroup;
     std::unique_ptr<IFSControl>    fOscPad, fLfo1Pad, fLfo2Pad;
     std::unique_ptr<IFSEnvControl> fEnv1Pad, fEnv2Pad;
     std::unique_ptr<Knob>          fKnobs[kParamCount];
@@ -364,6 +365,7 @@ private:
         case kParamOscPitchModSrc: case kParamOscBxModSrc: case kParamOscByModSrc:
         case kParamOscSq1ModSrc: case kParamOscSq2ModSrc:
         case kParamLpfCutoffModSrc: case kParamVCASource:
+        case kParamOsc2PitchModSrc:
             return true;
         default: return false;
         }
@@ -388,6 +390,7 @@ private:
         if (i == kParamLpfCutoff || i == kParamLpfResonance || i == kParamLpfKeyTrack)
             return colFilter();
         if (i == kParamLpfCutoffModSrc || i == kParamLpfCutoffModDepth) return colNeutral();
+        if (i == kParamOsc2PitchModSrc || i == kParamOsc2PitchModDepth) return colNeutral();
         if (i <= kParamOscIterations)  return colSound();
         if (i <= kParamEnvHoldMode)    return colEnv();
         if (i <= kParamLfoIterations)  return colLfo();
@@ -410,6 +413,8 @@ private:
             return fLpfGroup.get();
         if (i == kParamLpfCutoffModSrc || i == kParamLpfCutoffModDepth)
             return fLpfModGroup.get();
+        if (i == kParamOsc2PitchModSrc || i == kParamOsc2PitchModDepth)
+            return fOsc2ModGroup.get();
         if (i <= kParamOscIterations)    return fOscGroup.get();
         if (i <= kParamEnvHoldMode)      return fEnv1Group.get();
         if (i <= kParamLfoIterations)    return fLfo1Group.get();
@@ -616,7 +621,7 @@ private:
         GroupBox* allGroups[] = { fOscGroup.get(), fSinGroup.get(), fLpfGroup.get(),
                                    fEnv1Group.get(), fEnv2Group.get(), fLfo1Group.get(), fLfo2Group.get(),
                                    fMix1Group.get(), fMix2Group.get(),
-                                   fOscModGroup.get(), fLpfModGroup.get(), fAmpGroup.get() };
+                                   fOscModGroup.get(), fOsc2ModGroup.get(), fLpfModGroup.get(), fAmpGroup.get() };
         for (GroupBox* g : allGroups)
             g->setUiScale(txtScale);
         for (uint32_t i = 0; i < kParamCount; ++i)
@@ -647,16 +652,19 @@ private:
         placeGroup(fEnv1Group.get(), colR, mixY, colW, rowH);
         placeGroup(fEnv2Group.get(), colR, mixY, colW, rowH);
 
-        // Row 3: CV Mixer tab group (narrow) + IFS Osc modulation (wide) + LPF modulation.
-        const int mixW    = static_cast<int>(300 * fUiScale);
-        const int lpfModW = static_cast<int>(150 * fUiScale);
-        const int lpfModX = W - m - lpfModW;
-        const int oscModX = colL + mixW + gap;
-        const int oscModW = lpfModX - gap - oscModX;
-        placeGroup(fMix1Group.get(),   colL,    modY, mixW,    rowHb);
-        placeGroup(fMix2Group.get(),   colL,    modY, mixW,    rowHb);
-        placeGroup(fOscModGroup.get(), oscModX, modY, oscModW, rowHb);
-        placeGroup(fLpfModGroup.get(), lpfModX, modY, lpfModW, rowHb);
+        // Row 3: CV Mixer (condensed) + IFS Osc modulation (wide, fills) + Osc 2 Mod + LPF modulation.
+        const int mixW     = static_cast<int>(238 * fUiScale);   // condensed to free room for Osc 2 Mod
+        const int lpfModW  = static_cast<int>(150 * fUiScale);
+        const int osc2ModW = static_cast<int>(150 * fUiScale);
+        const int lpfModX  = W - m - lpfModW;
+        const int osc2ModX = lpfModX - gap - osc2ModW;
+        const int oscModX  = colL + mixW + gap;
+        const int oscModW  = osc2ModX - gap - oscModX;
+        placeGroup(fMix1Group.get(),    colL,     modY, mixW,     rowHb);
+        placeGroup(fMix2Group.get(),    colL,     modY, mixW,     rowHb);
+        placeGroup(fOscModGroup.get(),  oscModX,  modY, oscModW,  rowHb);
+        placeGroup(fOsc2ModGroup.get(), osc2ModX, modY, osc2ModW, rowHb);
+        placeGroup(fLpfModGroup.get(),  lpfModX,  modY, lpfModW,  rowHb);
 
         // Tab bars in each tab group's title strip (top-right).
         placeTab(fLfoTab.get(), colL, mixY, colW, scale);
@@ -667,7 +675,8 @@ private:
                                 fKnobs[kParamOscDetune].get(), fKnobs[kParamSlewRate].get(),
                                 fKnobs[kParamOscSmoothing].get(), fDropdowns[kParamOscIterations].get(),
                                 fDropdowns[kParamIfsSyncMode].get() };
-        layoutPadPanel(fOscGroup.get(), fOscPad.get(), oscG, 7);
+        // Smaller pad fraction here (7 controls incl. Sync share the strip) so the Sync dropdown breathes.
+        layoutPadPanel(fOscGroup.get(), fOscPad.get(), oscG, 7, 0.34f);
 
         // Osc 2: Wave + Pitch dropdowns stacked in a left column; Fine, Detune knobs to the right.
         layoutOsc2Panel(fSinGroup.get(), fDropdowns[kParamSinWaveform].get(), fDropdowns[kParamSinPitch].get(),
@@ -707,6 +716,9 @@ private:
 
         layoutModPanel();
 
+        // Osc 2 pitch mod + LPF cutoff mod: identical single-cell panels (source dropdown + depth knob).
+        layoutModCell(fOsc2ModGroup.get(), fDropdowns[kParamOsc2PitchModSrc].get(),
+                      fKnobs[kParamOsc2PitchModDepth].get());
         layoutLpfModPanel();
 
         layoutAmp();
@@ -721,18 +733,23 @@ private:
 #endif
     }
 
+    // A single modulation cell: a source dropdown over a depth knob, filling the group.
+    void layoutModCell(GroupBox* group, Dropdown* src, Knob* depth)
+    {
+        int cx, cy, cw, ch;
+        group->contentBounds(cx, cy, cw, ch);
+        const int dropH = static_cast<int>(46 * fUiScale);
+        src->setSize(static_cast<uint>(cw), static_cast<uint>(dropH));
+        src->setAbsolutePos(cx, cy);
+        depth->setSize(static_cast<uint>(cw), static_cast<uint>(ch - dropH - 4));
+        depth->setAbsolutePos(cx, cy + dropH + 4);
+    }
+
     // LPF cutoff modulation: one cell — a source dropdown over a depth knob.
     void layoutLpfModPanel()
     {
-        int cx, cy, cw, ch;
-        fLpfModGroup->contentBounds(cx, cy, cw, ch);
-        const int dropH = static_cast<int>(46 * fUiScale);
-        Dropdown* d = fDropdowns[kParamLpfCutoffModSrc].get();
-        d->setSize(static_cast<uint>(cw), static_cast<uint>(dropH));
-        d->setAbsolutePos(cx, cy);
-        Knob* k = fKnobs[kParamLpfCutoffModDepth].get();
-        k->setSize(static_cast<uint>(cw), static_cast<uint>(ch - dropH - 4));
-        k->setAbsolutePos(cx, cy + dropH + 4);
+        layoutModCell(fLpfModGroup.get(), fDropdowns[kParamLpfCutoffModSrc].get(),
+                      fKnobs[kParamLpfCutoffModDepth].get());
     }
 
     // IFS Osc modulation: 5 cells, each a source dropdown over a depth fader.
@@ -863,12 +880,12 @@ private:
     }
 
     // Landscape panel: shrunk pad on the left, a single row of n controls on the right.
-    void layoutPadPanel(GroupBox* group, NanoSubWidget* pad, SubWidget* grid[], int n)
+    void layoutPadPanel(GroupBox* group, NanoSubWidget* pad, SubWidget* grid[], int n, float padFrac = 0.42f)
     {
         int cx, cy, cw, ch;
         group->contentBounds(cx, cy, cw, ch);
         const int gap = 8;
-        const int padW = static_cast<int>(cw * 0.42);
+        const int padW = static_cast<int>(cw * padFrac);
         // Fixed 2:1 landscape, independent of row height — hosts vary in whether they honour
         // setGeometryConstraints' keepAspectRatio, so this can't rely on a well-shaped `ch`.
         const int padH = std::min(ch, static_cast<int>(padW * 0.5f));

@@ -26,6 +26,9 @@ inline constexpr AUParameterAddress sinOsc1Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindSinOsc, ModuleInstance1, 0);
 inline constexpr AUParameterAddress sinOsc1PitchInputAddress =
    MODULE_PARAM_ADDRESS(ModuleParamKindSinOsc, ModuleInstance1, SinOscParamItemPitchInput);
+// Osc 2 pitch mod-input port (a source's output connects here; depth is FreqModLevel).
+inline constexpr AUParameterAddress sinOsc1PitchModInputAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindSinOsc, ModuleInstance1, SinOscParamItemModPitch);
 
 inline constexpr AUParameterAddress ifsOsc1Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, 0);

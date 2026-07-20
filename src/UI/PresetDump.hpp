@@ -108,6 +108,8 @@ static constexpr PresetKey kPresetKeys[kParamCount] = {
    /*SinLevel*/        {"Global",  "sinLevel"},
    /*IfsLevel*/        {"Global",  "ifsLevel"},
    /*IfsSyncMode*/     {"IFSOsc1", "syncMode"},
+   /*Osc2PitchModSrc*/ {"SinOsc1", "pitchModSrc"},
+   /*Osc2PitchModDepth*/{"SinOsc1","freqModLevel"},
 };
 
 // Emit modules in this order (signal-flow-ish); every module in kPresetKeys must appear here.

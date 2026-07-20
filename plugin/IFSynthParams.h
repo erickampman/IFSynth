@@ -102,6 +102,9 @@ enum ParamIndex {
    kParamSinLevel,    // sine osc output level
    kParamIfsLevel,    // IFS osc output level
    kParamIfsSyncMode, // 0 Off, 1 Up, 2 Down, 3 Both
+   // Osc 2 pitch modulation (source + depth) — e.g. CC#1 vibrato even while Osc 2 drives sync
+   kParamOsc2PitchModSrc,
+   kParamOsc2PitchModDepth,
    kParamCount
 };
 
@@ -214,6 +217,9 @@ static constexpr ParamSpec kParams[kParamCount] = {
    {"Sine",        "sinLevel",   "",   0.0f,   1.0f,   0.0f,  false, false},
    {"IFS",         "ifsLevel",   "",   0.0f,   1.0f,   0.5f,  false, false},
    {"Sync",        "ifsSync",    "",   0.0f,   3.0f,   0.0f,  false, true },
+   // Osc 2 pitch modulation (source dropdown + depth)
+   {"Source",      "o2PMsrc",    "",   0.0f,   6.0f,   0.0f,  false, true },
+   {"Depth",       "o2PMdpt",    "",  -1.0f,   1.0f,   0.0f,  false, false},
 };
 
 } // namespace ifsynth

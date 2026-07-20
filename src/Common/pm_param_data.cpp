@@ -9,7 +9,7 @@ static const ModuleParamConstants sinOscConstants[] = {
    {"modPitch",      SinOscParamItemModPitch,      0, 0, nullptr, 0.0f, 0.0f, 0.0f, 0},
    {"modPitch2",     SinOscParamItemModPitch2,     0, 0, nullptr, 0.0f, 0.0f, 0.0f, 0},
    {"modPhase",      SinOscParamItemModPhase,      0, 0, nullptr, 0.0f, 0.0f, 0.0f, 0},
-   {"freqModLevel",  SinOscParamItemFreqModLevel,  0, 0, nullptr, 0.0f, 1.0f, 0.0f, 0},
+   {"freqModLevel",  SinOscParamItemFreqModLevel,  0, 0, nullptr, -1.0f, 1.0f, 0.0f, 0},
    {"phaseModLevel", SinOscParamItemPhaseModLevel, 0, 0, nullptr, 0.0f, 1.0f, 0.0f, 0},
    {"freqModLevel2", SinOscParamItemFreqModLevel2, 0, 0, nullptr, 0.0f, 1.0f, 0.0f, 0},
    {"modSync",       SinOscParamItemModSync,       0, 0, nullptr, 0.0f, 0.0f, 0.0f, 0},

@@ -204,6 +204,7 @@ private:
         case kParamSinLevel:      return MODULE_PARAM_ADDRESS(ModuleParamKindLevel, ModuleInstance1, LevelParamItemLevel);
         case kParamIfsLevel:      return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemLevel);
         case kParamIfsSyncMode:   return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemSyncMode);
+        case kParamOsc2PitchModDepth: return MODULE_PARAM_ADDRESS(ModuleParamKindSinOsc, ModuleInstance1, SinOscParamItemFreqModLevel);
         default:                  return 0;
         }
     }
@@ -235,6 +236,7 @@ private:
         case kParamOscSq1ModSrc:   destInput = ifsOsc1Squash1ModInputAddress; break;
         case kParamOscSq2ModSrc:   destInput = ifsOsc1Squash2ModInputAddress; break;
         case kParamLpfCutoffModSrc: destInput = lpf1FreqModInputAddress;      break;
+        case kParamOsc2PitchModSrc: destInput = sinOsc1PitchModInputAddress;  break;
         case kParamVCASource:
             // The amplitude VCA always has an env: 0 = Env 1, 1 = Env 2.
             fVoiceManager->setModSource(combine1Input2Address,
