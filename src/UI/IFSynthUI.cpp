@@ -353,16 +353,9 @@ private:
         default: return false;
         }
     }
-    static bool isSliderParam(uint32_t i) // the mod depths
+    static bool isSliderParam(uint32_t /*i*/) // mod depths are now knobs; no sliders remain
     {
-        switch (i)
-        {
-        case kParamOscPitchModDepth: case kParamOscBxModDepth: case kParamOscByModDepth:
-        case kParamOscSq1ModDepth: case kParamOscSq2ModDepth:
-        case kParamLpfCutoffModDepth:
-            return true;
-        default: return false;
-        }
+        return false;
     }
     static bool isModSrcParam(uint32_t i) // source dropdowns (osc mods + LPF cutoff + VCA)
     {
@@ -597,7 +590,11 @@ private:
         // Four rows now that Env/LFO/Mixer are tab groups: Osc|LPF, Env-tabs|LFO-tabs,
         // Mixer-tabs|(free), and the OscMod|LpfMod|Amp strip. Derived from the canvas height so it
         // fills any size (Retina-safe); the aspect ratio is locked in the constructor.
-        const int rowH = (H - 2 * m - 3 * gap - topPad) / 4;
+        // The bottom row (CV Mixer / OscMod / LpfMod) is given extra height so the CV Mixer can
+        // stack its LFO/Env/CC checkboxes in a column. Top three rows share the remainder equally.
+        const int totalH = H - 2 * m - 3 * gap - topPad;
+        const int rowH   = (totalH * 4) / 17;    // top rows
+        const int rowHb  = totalH - 3 * rowH;    // bottom row ≈ 5/17 → ~25% taller
         const int colL = m, colR = m + colW + gap;
         const int top0 = m + topPad;
         const int row0 = top0, row1 = top0 + rowH + gap;
@@ -656,10 +653,10 @@ private:
         const int lpfModX = W - m - lpfModW;
         const int oscModX = colL + mixW + gap;
         const int oscModW = lpfModX - gap - oscModX;
-        placeGroup(fMix1Group.get(),   colL,    modY, mixW,    rowH);
-        placeGroup(fMix2Group.get(),   colL,    modY, mixW,    rowH);
-        placeGroup(fOscModGroup.get(), oscModX, modY, oscModW, rowH);
-        placeGroup(fLpfModGroup.get(), lpfModX, modY, lpfModW, rowH);
+        placeGroup(fMix1Group.get(),   colL,    modY, mixW,    rowHb);
+        placeGroup(fMix2Group.get(),   colL,    modY, mixW,    rowHb);
+        placeGroup(fOscModGroup.get(), oscModX, modY, oscModW, rowHb);
+        placeGroup(fLpfModGroup.get(), lpfModX, modY, lpfModW, rowHb);
 
         // Tab bars in each tab group's title strip (top-right).
         placeTab(fLfoTab.get(), colL, mixY, colW, scale);
@@ -672,10 +669,9 @@ private:
                                 fDropdowns[kParamIfsSyncMode].get() };
         layoutPadPanel(fOscGroup.get(), fOscPad.get(), oscG, 7);
 
-        // Osc 2: Wave + Pitch (dropdowns) then Fine, Detune knobs (no pad).
-        SubWidget* sinG[4] = { fDropdowns[kParamSinWaveform].get(), fDropdowns[kParamSinPitch].get(),
-                               fKnobs[kParamSinFine].get(), fKnobs[kParamSinDetune].get() };
-        layoutRow(fSinGroup.get(), sinG, 4);
+        // Osc 2: Wave + Pitch dropdowns stacked in a left column; Fine, Detune knobs to the right.
+        layoutOsc2Panel(fSinGroup.get(), fDropdowns[kParamSinWaveform].get(), fDropdowns[kParamSinPitch].get(),
+                        fKnobs[kParamSinFine].get(), fKnobs[kParamSinDetune].get());
 
         SubWidget* env1G[4] = { fKnobs[kParamEnvDuration].get(), fKnobs[kParamEnvSmoothing].get(),
                                 fDropdowns[kParamEnvHoldMode].get(), fDropdowns[kParamEnvIterations].get() };
@@ -698,14 +694,16 @@ private:
                               fKnobs[kParamLpfKeyTrack].get() };
         layoutRow(fLpfGroup.get(), lpf, 3);
 
-        SubWidget* mix1[5] = { fToggles[kParamMix1EnableLFO].get(), fToggles[kParamMix1EnableEnv].get(),
-                               fToggles[kParamMix1EnableCC].get(), fKnobs[kParamMix1CCNumber].get(),
-                               fDropdowns[kParamMix1Mode].get() };
-        layoutRow(fMix1Group.get(), mix1, 5);
-        SubWidget* mix2[5] = { fToggles[kParamMix2EnableLFO].get(), fToggles[kParamMix2EnableEnv].get(),
-                               fToggles[kParamMix2EnableCC].get(), fKnobs[kParamMix2CCNumber].get(),
-                               fDropdowns[kParamMix2Mode].get() };
-        layoutRow(fMix2Group.get(), mix2, 5);
+        // CV Mixer: LFO/Env/CC checkboxes stacked in a column on the left; Mode dropdown over the
+        // CC# knob on the right.
+        SubWidget* mix1T[3] = { fToggles[kParamMix1EnableLFO].get(), fToggles[kParamMix1EnableEnv].get(),
+                                fToggles[kParamMix1EnableCC].get() };
+        layoutMixPanel(fMix1Group.get(), mix1T, fKnobs[kParamMix1CCNumber].get(),
+                       fDropdowns[kParamMix1Mode].get());
+        SubWidget* mix2T[3] = { fToggles[kParamMix2EnableLFO].get(), fToggles[kParamMix2EnableEnv].get(),
+                                fToggles[kParamMix2EnableCC].get() };
+        layoutMixPanel(fMix2Group.get(), mix2T, fKnobs[kParamMix2CCNumber].get(),
+                       fDropdowns[kParamMix2Mode].get());
 
         layoutModPanel();
 
@@ -723,7 +721,7 @@ private:
 #endif
     }
 
-    // LPF cutoff modulation: one cell — a source dropdown over a depth fader.
+    // LPF cutoff modulation: one cell — a source dropdown over a depth knob.
     void layoutLpfModPanel()
     {
         int cx, cy, cw, ch;
@@ -732,9 +730,9 @@ private:
         Dropdown* d = fDropdowns[kParamLpfCutoffModSrc].get();
         d->setSize(static_cast<uint>(cw), static_cast<uint>(dropH));
         d->setAbsolutePos(cx, cy);
-        Slider* s = fSliders[kParamLpfCutoffModDepth].get();
-        s->setSize(static_cast<uint>(cw), static_cast<uint>(ch - dropH - 4));
-        s->setAbsolutePos(cx, cy + dropH + 4);
+        Knob* k = fKnobs[kParamLpfCutoffModDepth].get();
+        k->setSize(static_cast<uint>(cw), static_cast<uint>(ch - dropH - 4));
+        k->setAbsolutePos(cx, cy + dropH + 4);
     }
 
     // IFS Osc modulation: 5 cells, each a source dropdown over a depth fader.
@@ -757,9 +755,9 @@ private:
             Dropdown* d = fDropdowns[cells[i].src].get();
             d->setSize(static_cast<uint>(cellW), static_cast<uint>(dropH));
             d->setAbsolutePos(x, cy);
-            Slider* s = fSliders[cells[i].depth].get();
-            s->setSize(static_cast<uint>(cellW), static_cast<uint>(ch - dropH - 4));
-            s->setAbsolutePos(x, cy + dropH + 4);
+            Knob* k = fKnobs[cells[i].depth].get();
+            k->setSize(static_cast<uint>(cellW), static_cast<uint>(ch - dropH - 4));
+            k->setAbsolutePos(x, cy + dropH + 4);
         }
     }
 
@@ -799,6 +797,53 @@ private:
             grid[i]->setSize(static_cast<uint>(cellW), static_cast<uint>(ch));
             grid[i]->setAbsolutePos(cx + i * cellW, cy);
         }
+    }
+
+    // CV Mixer panel: a column of three checkboxes on the left, Mode dropdown over the CC# knob
+    // on the right.
+    void layoutMixPanel(GroupBox* group, SubWidget* toggles[3], SubWidget* ccKnob, SubWidget* mode)
+    {
+        int cx, cy, cw, ch;
+        group->contentBounds(cx, cy, cw, ch);
+        const int leftW  = cw * 42 / 100;   // checkbox column
+        const int rightW = cw - leftW;
+        const int rightX = cx + leftW;
+
+        const int tcH = ch / 3;
+        for (int i = 0; i < 3; ++i)
+        {
+            toggles[i]->setSize(static_cast<uint>(leftW), static_cast<uint>(tcH));
+            toggles[i]->setAbsolutePos(cx, cy + i * tcH);
+        }
+
+        const int topH = ch * 45 / 100;     // Mode dropdown band
+        const int botH = ch - topH;         // CC# knob band
+        mode->setSize(static_cast<uint>(rightW), static_cast<uint>(topH));
+        mode->setAbsolutePos(rightX, cy);
+        ccKnob->setSize(static_cast<uint>(rightW), static_cast<uint>(botH));
+        ccKnob->setAbsolutePos(rightX, cy + topH);
+    }
+
+    // Osc 2 panel: the two dropdowns (Wave, Pitch) stacked in a left column; two knobs to the right.
+    void layoutOsc2Panel(GroupBox* group, SubWidget* dd0, SubWidget* dd1, SubWidget* knob0, SubWidget* knob1)
+    {
+        int cx, cy, cw, ch;
+        group->contentBounds(cx, cy, cw, ch);
+        const int leftW  = cw * 40 / 100;   // dropdown column
+        const int rightW = cw - leftW;
+        const int rightX = cx + leftW;
+
+        const int dh = ch / 2;
+        dd0->setSize(static_cast<uint>(leftW), static_cast<uint>(dh));
+        dd0->setAbsolutePos(cx, cy);
+        dd1->setSize(static_cast<uint>(leftW), static_cast<uint>(ch - dh));
+        dd1->setAbsolutePos(cx, cy + dh);
+
+        const int kw = rightW / 2;
+        knob0->setSize(static_cast<uint>(kw), static_cast<uint>(ch));
+        knob0->setAbsolutePos(rightX, cy);
+        knob1->setSize(static_cast<uint>(rightW - kw), static_cast<uint>(ch));
+        knob1->setAbsolutePos(rightX + kw, cy);
     }
 
     void placeGroup(GroupBox* g, int x, int y, int w, int h)
