@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "Dropdown.hpp"
+#include "GeneratedPresets.h" // build-time codegen from Presets/*.json (see tools/gen_presets.py)
 #include "GroupBox.hpp"
 #include "IFSControl.hpp"
 #include "IFSEnvControl.hpp"
@@ -24,6 +25,7 @@
 #include "Knob.hpp"
 #include "PopupMenu.hpp"
 #include "PresetDump.hpp" // dev-only JSON patch dumper (no-op unless IFSYNTH_PRESET_DUMP=1)
+#include "PresetKeys.hpp"
 #include "Slider.hpp"
 #include "TabBar.hpp"
 #include "Toggle.hpp"
@@ -108,6 +110,7 @@ public:
         // control signals=amber, combiner=orange, modulation=teal).
         fOscGroup  = makeGroup("IFS Oscillator", colSound());
         fSinGroup  = makeGroup("Osc 2", colSound());
+        fSlewGroup = makeGroup("Slew", colSound());
         fLpfGroup  = makeGroup("Low-Pass Filter", colFilter());
         // Env / LFO / Mixer are tab groups: the two instances share a rect + title, and a TabBar
         // switches which is visible, so the shared title is the module name (tabs say 1/2).
@@ -199,6 +202,19 @@ public:
                          p.empty() ? "dump FAILED" : "dumped to", p.c_str());
         });
 #endif
+        // Preset selector: not tied to a GroupBox (it applies to the whole patch), parented to
+        // the UI itself like fMenu/fDumpBtn. Shares the generic Dropdown::Callback +
+        // PopupMenu::Callback plumbing every other dropdown uses; menuSelected() below tells it
+        // apart from a real per-param dropdown via kPresetDropdownId.
+        fPresetDropdown = std::make_unique<Dropdown>(this, this);
+        fPresetDropdown->setId(kPresetDropdownId);
+        fPresetDropdown->setLabel("Preset");
+        {
+            std::vector<std::string> names;
+            for (int i = 0; i < kPresetCount; ++i) names.push_back(kPresets[i].name);
+            fPresetDropdown->setChoices(names);
+        }
+
         fMenu = std::make_unique<PopupMenu>(this, this); // created last → draws on top
 
         pushPadDefaults();
@@ -260,6 +276,7 @@ protected:
     void menuSelected(PopupMenu* menu, int index) override
     {
         const uint32_t id = menu->tag();
+        if (id == kPresetDropdownId) { applyPreset(index); return; }
         editParameter(id, true);
         setParameterValue(id, static_cast<float>(index));
         editParameter(id, false);
@@ -267,6 +284,35 @@ protected:
         if (fDropdowns[id]) fDropdowns[id]->setIndex(index);
         routeToPad(id, static_cast<float>(index));
         if (id == kParamVoiceMode) updateGlideEnabled();
+    }
+
+    // Apply every param the selected preset has a value for (looked up by "module.item" key via
+    // kPresetKeys — the same mapping PresetDump.hpp uses to write these files). Params the
+    // preset doesn't mention are left at their current value. parameterChanged() already knows
+    // how to sync every widget kind (knob/dropdown/toggle/slider) + the pads + glide-enable, so
+    // it's reused here instead of duplicating that dispatch.
+    void applyPreset(int index)
+    {
+        if (index < 0 || index >= kPresetCount)
+            return;
+        const PresetEntry& preset = kPresets[index];
+        for (uint32_t i = 0; i < kParamCount; ++i)
+        {
+            const std::string key = std::string(kPresetKeys[i].module) + "." + kPresetKeys[i].item;
+            for (int j = 0; j < preset.count; ++j)
+            {
+                if (key == preset.values[j].key)
+                {
+                    const float v = preset.values[j].value;
+                    editParameter(i, true);
+                    setParameterValue(i, v);
+                    editParameter(i, false);
+                    parameterChanged(i, v);
+                    break;
+                }
+            }
+        }
+        if (fPresetDropdown) fPresetDropdown->setIndex(index);
     }
 
     /* -- drawing / layout ------------------------------------------------- */
@@ -293,7 +339,7 @@ protected:
 
 private:
     // Panels declared before their child controls so the children are destroyed first.
-    std::unique_ptr<GroupBox>      fOscGroup, fSinGroup, fLpfGroup, fEnv1Group, fEnv2Group, fLfo1Group, fLfo2Group;
+    std::unique_ptr<GroupBox>      fOscGroup, fSinGroup, fSlewGroup, fLpfGroup, fEnv1Group, fEnv2Group, fLfo1Group, fLfo2Group;
     std::unique_ptr<GroupBox>      fMix1Group, fMix2Group, fOscModGroup, fOsc2ModGroup, fLpfModGroup, fAmpGroup;
     std::unique_ptr<IFSControl>    fOscPad, fLfo1Pad, fLfo2Pad;
     std::unique_ptr<IFSEnvControl> fEnv1Pad, fEnv2Pad;
@@ -302,7 +348,12 @@ private:
     std::unique_ptr<Toggle>        fToggles[kParamCount];
     std::unique_ptr<Slider>        fSliders[kParamCount];
     std::unique_ptr<TabBar>        fEnvTab, fLfoTab, fMixTab;
+    std::unique_ptr<Dropdown>      fPresetDropdown;
     std::unique_ptr<PopupMenu>     fMenu;
+    // Sentinel dropdown id, distinct from every real ParamIndex (which are all < kParamCount),
+    // so dropdownClicked()/menuSelected() can tell the preset selector apart from a per-param
+    // dropdown sharing the same generic PopupMenu.
+    static constexpr uint32_t kPresetDropdownId = kParamCount;
 #if IFSYNTH_PRESET_DUMP
     std::unique_ptr<DumpButton>    fDumpBtn;
 #endif
@@ -409,6 +460,7 @@ private:
             || i == kParamSinWaveform)
             return fSinGroup.get();
         if (i == kParamIfsSyncMode) return fOscGroup.get();
+        if (i == kParamSlewRate) return fSlewGroup.get();
         if (i == kParamLpfCutoff || i == kParamLpfResonance || i == kParamLpfKeyTrack)
             return fLpfGroup.get();
         if (i == kParamLpfCutoffModSrc || i == kParamLpfCutoffModDepth)
@@ -587,11 +639,10 @@ private:
         // hard-coded 349px row assumed the macOS height and overflowed the default window on
         // hosts that report logical pixels (Linux), pushing the bottom rows off-screen. The
         // aspect ratio is locked (see the constructor), so rows never stretch disproportionately.
-#if IFSYNTH_PRESET_DUMP
-        const int topPad = static_cast<int>(24 * scale); // dev: top strip for the DUMP button
-#else
-        const int topPad = 0;
-#endif
+        // Always-on top strip for the Preset dropdown (plus the dev-only DUMP button, when built
+        // with IFSYNTH_PRESET_DUMP). Sized like a standalone dropdown elsewhere in this file
+        // (label + box).
+        const int topPad = static_cast<int>(46 * scale);
         // Four rows now that Env/LFO/Mixer are tab groups: Osc|LPF, Env-tabs|LFO-tabs,
         // Mixer-tabs|(free), and the OscMod|LpfMod|Amp strip. Derived from the canvas height so it
         // fills any size (Retina-safe); the aspect ratio is locked in the constructor.
@@ -618,7 +669,7 @@ private:
         // Group titles / dropdown labels / popup menu text aren't part of the knob widget, so
         // they need the same scale applied explicitly. setUiScale scales each widget's own
         // internal box/label geometry along with its font, so text can't overflow its box.
-        GroupBox* allGroups[] = { fOscGroup.get(), fSinGroup.get(), fLpfGroup.get(),
+        GroupBox* allGroups[] = { fOscGroup.get(), fSinGroup.get(), fSlewGroup.get(), fLpfGroup.get(),
                                    fEnv1Group.get(), fEnv2Group.get(), fLfo1Group.get(), fLfo2Group.get(),
                                    fMix1Group.get(), fMix2Group.get(),
                                    fOscModGroup.get(), fOsc2ModGroup.get(), fLpfModGroup.get(), fAmpGroup.get() };
@@ -631,19 +682,31 @@ private:
         for (uint32_t i = 0; i < kParamCount; ++i)
             if (fToggles[i]) fToggles[i]->setUiScale(txtScale);
         fMenu->setUiScale(txtScale);
+        fPresetDropdown->setUiScale(txtScale);
+
+        // Preset dropdown: top strip, left-aligned (the dev DUMP button, if present, takes the
+        // right side of the same strip — see below).
+        {
+            const int pw = static_cast<int>(220 * scale);
+            fPresetDropdown->setSize(static_cast<uint>(pw), static_cast<uint>(topPad));
+            fPresetDropdown->setAbsolutePos(m, m / 2);
+        }
 
         // Row 0: IFS Oscillator, full width (pad + 6 controls + Sync).
         placeGroup(fOscGroup.get(), colL, row0, W - 2 * m, rowH);
 
-        // Row 1: Sine Osc | LPF | Amp.
-        const int ampW = static_cast<int>(300 * fUiScale);
-        const int sinW = static_cast<int>(300 * fUiScale);
-        const int r1LpfW = W - 2 * m - 2 * gap - sinW - ampW;
-        const int r1LpfX = colL + sinW + gap;
+        // Row 1: Sine Osc | Slew | LPF | Amp.
+        const int ampW  = static_cast<int>(300 * fUiScale);
+        const int sinW  = static_cast<int>(300 * fUiScale);
+        const int slewW = static_cast<int>(180 * fUiScale);
+        const int slewX = colL + sinW + gap;
+        const int r1LpfX = slewX + slewW + gap;
+        const int r1LpfW = W - 2 * m - 3 * gap - sinW - slewW - ampW;
         const int ampX   = W - m - ampW;
-        placeGroup(fSinGroup.get(), colL,   row1, sinW,   rowH);
-        placeGroup(fLpfGroup.get(), r1LpfX, row1, r1LpfW, rowH);
-        placeGroup(fAmpGroup.get(), ampX,   row1, ampW,   rowH);
+        placeGroup(fSinGroup.get(),  colL,   row1, sinW,   rowH);
+        placeGroup(fSlewGroup.get(), slewX,  row1, slewW,  rowH);
+        placeGroup(fLpfGroup.get(),  r1LpfX, row1, r1LpfW, rowH);
+        placeGroup(fAmpGroup.get(),  ampX,   row1, ampW,   rowH);
 
         // Row 2: LFO tab group (left) + Env tab group (right). Each pair overlays one rect; the
         // TabBar switches which is visible.
@@ -671,12 +734,16 @@ private:
         placeTab(fEnvTab.get(), colR, mixY, colW, scale);
         placeTab(fMixTab.get(), colL, modY, mixW, scale);
 
-        SubWidget* oscG[7]  = { fKnobs[kParamOscPitch].get(), fKnobs[kParamOscFine].get(),
-                                fKnobs[kParamOscDetune].get(), fKnobs[kParamSlewRate].get(),
+        SubWidget* oscG[6]  = { fKnobs[kParamOscPitch].get(), fKnobs[kParamOscFine].get(),
+                                fKnobs[kParamOscDetune].get(),
                                 fKnobs[kParamOscSmoothing].get(), fDropdowns[kParamOscIterations].get(),
                                 fDropdowns[kParamIfsSyncMode].get() };
-        // Smaller pad fraction here (7 controls incl. Sync share the strip) so the Sync dropdown breathes.
-        layoutPadPanel(fOscGroup.get(), fOscPad.get(), oscG, 7, 0.34f);
+        // Smaller pad fraction here (6 controls incl. Sync share the strip) so the Sync dropdown breathes.
+        layoutPadPanel(fOscGroup.get(), fOscPad.get(), oscG, 6, 0.34f);
+
+        // Slew now has its own group (row 1, after Osc 2) instead of sharing the Oscillator strip.
+        SubWidget* slewG[1] = { fKnobs[kParamSlewRate].get() };
+        layoutRow(fSlewGroup.get(), slewG, 1);
 
         // Osc 2: Wave + Pitch dropdowns stacked in a left column; Fine, Detune knobs to the right.
         layoutOsc2Panel(fSinGroup.get(), fDropdowns[kParamSinWaveform].get(), fDropdowns[kParamSinPitch].get(),

@@ -44,6 +44,22 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
     target_compile_options(pm_framework PRIVATE -Wall -Wno-unknown-pragmas -Wno-unused-parameter)
 endif()
 
+# --- presets: Presets/*.json compiled in as a C++ array, not loaded at runtime -------------
+# Avoids any runtime JSON parser in the plugin and doesn't depend on CLAP's own preset-discovery
+# extension — the UI presents its own dropdown. Adding/removing a preset file requires
+# reconfiguring (CONFIGURE_DEPENDS re-globs on build, but a brand new file still needs `cmake -B
+# build -S .` rerun once to pick up the new match).
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+file(GLOB IFSYNTH_PRESET_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/Presets/*.json")
+set(IFSYNTH_GENERATED_PRESETS_H "${CMAKE_BINARY_DIR}/generated/GeneratedPresets.h")
+add_custom_command(
+    OUTPUT "${IFSYNTH_GENERATED_PRESETS_H}"
+    COMMAND ${Python3_EXECUTABLE} "${CMAKE_SOURCE_DIR}/tools/gen_presets.py"
+            ${IFSYNTH_PRESET_FILES} -o "${IFSYNTH_GENERATED_PRESETS_H}"
+    DEPENDS ${IFSYNTH_PRESET_FILES} "${CMAKE_SOURCE_DIR}/tools/gen_presets.py"
+    COMMENT "Generating embedded presets from Presets/*.json")
+add_custom_target(generate_presets DEPENDS "${IFSYNTH_GENERATED_PRESETS_H}")
+
 # --- the plugin: CLAP + OpenGL UI, built with DPF --------------------------
 # DPF (vendored submodule) owns the plugin wrapper and generates the .clap from our DSP + UI
 # subclasses; the DSP side drives pm_framework's VoiceManager. The four ADSR knobs route to
@@ -63,6 +79,9 @@ target_link_libraries(IFSynth-dsp PUBLIC pm_framework)
 # The UI's IFSControl pad draws the true DSP waveform via IFSCore (computeIFSWavetable), so it
 # links pm_framework too. Static-lib symbol extraction dedups it in the final .clap.
 target_link_libraries(IFSynth-ui PUBLIC pm_framework)
+# Generated preset array (see the codegen step above) — must exist before IFSynthUI.cpp compiles.
+add_dependencies(IFSynth-ui generate_presets)
+target_include_directories(IFSynth-ui PRIVATE "${CMAKE_BINARY_DIR}/generated")
 # DPF may default to an older standard; the DSP glue includes C++20 framework headers.
 set_target_properties(IFSynth-dsp IFSynth-ui PROPERTIES
     CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
