@@ -83,6 +83,7 @@ add_subdirectory(dpf)
 dpf_add_plugin(IFSynth
     TARGETS clap
     UI_TYPE opengl
+    USE_WEB_VIEW
     FILES_DSP
         plugin/IFSynthPlugin.cpp
     FILES_UI

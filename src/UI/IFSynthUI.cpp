@@ -20,6 +20,7 @@
 #include "EmbeddedResources.hpp" // build-time codegen from Resources/* (see dpf/utils/res2c.py)
 #include "GeneratedPresets.h" // build-time codegen from Presets/*.json (see tools/gen_presets.py)
 #include "GroupBox.hpp"
+#include "HelpButton.hpp"
 #include "IFSControl.hpp"
 #include "IFSEnvControl.hpp"
 #include "IFSynthParams.h"
@@ -33,12 +34,18 @@
 #include "TitleText.hpp"
 #include "Toggle.hpp"
 
+#include <cstdlib>
+#include <cstdio>
+
 START_NAMESPACE_DISTRHO
+
+#include "extra/WebView.hpp" // native WebView overlay (WKWebView/WebKitGTK/WebView2), for Help
 
 using namespace ifsynth;
 using DGL_NAMESPACE::Color;
 using DGL_NAMESPACE::Dropdown;
 using DGL_NAMESPACE::GroupBox;
+using DGL_NAMESPACE::HelpButton;
 using DGL_NAMESPACE::IFSControl;
 using DGL_NAMESPACE::IFSEnvControl;
 using DGL_NAMESPACE::Knob;
@@ -233,6 +240,10 @@ public:
             fPresetDropdown->setChoices(names);
         }
 
+        // Help: toggles a native WebView overlay showing the bundled help.html. Right-aligned in
+        // the top strip (see the dev DUMP button's placement, further right when both exist).
+        fHelpButton = std::make_unique<HelpButton>(this, [this] { toggleHelp(); });
+
         fMenu = std::make_unique<PopupMenu>(this, this); // created last → draws on top
 
         pushPadDefaults();
@@ -241,6 +252,12 @@ public:
 #if IFSYNTH_PRESET_DUMP
         for (uint32_t i = 0; i < kParamCount; ++i) fMirror[i] = kParams[i].def;
 #endif
+    }
+
+    ~IFSynthUI() override
+    {
+        if (fHelpWebView != nullptr)
+            webViewDestroy(fHelpWebView);
     }
 
 protected:
@@ -338,7 +355,20 @@ protected:
     {
         beginPath(); rect(0, 0, getWidth(), getHeight()); fillColor(24, 26, 31); fill();
     }
-    void onResize(const ResizeEvent& ev) override { UI::onResize(ev); layout(); }
+    void onResize(const ResizeEvent& ev) override
+    {
+        UI::onResize(ev);
+        layout();
+        if (fHelpWebView != nullptr)
+            resizeHelpWebView();
+    }
+
+    // WebViews need regular pumping to process their own event loop / message callbacks.
+    void uiIdle() override
+    {
+        if (fHelpWebView != nullptr)
+            webViewIdle(fHelpWebView);
+    }
 
 #if IFSYNTH_PRESET_DUMP
     // Dev-only: press 'P' to write the current patch as JSON to $HOME.
@@ -369,6 +399,9 @@ private:
     std::unique_ptr<Logo>          fLogo;
     std::unique_ptr<TitleText>     fTitleText;
     std::unique_ptr<Dropdown>      fPresetDropdown;
+    std::unique_ptr<HelpButton>    fHelpButton;
+    WebViewHandle                  fHelpWebView = nullptr;
+    int                             fTopPad = 0; // set each layout() pass; read by the help-panel geometry below
     std::unique_ptr<PopupMenu>     fMenu;
     // Sentinel dropdown id, distinct from every real ParamIndex (which are all < kParamCount),
     // so dropdownClicked()/menuSelected() can tell the preset selector apart from a per-param
@@ -574,6 +607,72 @@ private:
         if (fKnobs[kParamSlewRate]) fKnobs[kParamSlewRate]->setEnabled(mono);
     }
 
+    // Help panel: a native WebView overlay covering everything below the top strip, so the
+    // always-visible Help button up there can toggle it closed again.
+    void helpPanelGeometry(int& x, int& y, int& w, int& h) const
+    {
+        const int m = 8;
+        x = m;
+        y = fTopPad + m;
+        w = static_cast<int>(getWidth()) - 2 * m;
+        h = static_cast<int>(getHeight()) - fTopPad - 2 * m;
+    }
+
+    void resizeHelpWebView()
+    {
+        int x, y, w, h;
+        helpPanelGeometry(x, y, w, h);
+        webViewResize(fHelpWebView, static_cast<uint>(w), static_cast<uint>(h), fUiScale);
+    }
+
+    static std::string helpFilePath()
+    {
+        const char* tmp = std::getenv("TMPDIR");
+        std::string dir = (tmp && *tmp) ? tmp : "/tmp";
+        if (!dir.empty() && dir.back() != '/') dir += '/';
+        return dir + "ifsynth-help.html";
+    }
+
+    // The WebView needs a real file:// URL, not an in-memory buffer, so the embedded HTML bytes
+    // get written out here. Overwritten every time the panel opens, so it always matches
+    // whatever's actually embedded in this build.
+    static std::string writeHelpFile()
+    {
+        const std::string path = helpFilePath();
+        FILE* const f = std::fopen(path.c_str(), "wb");
+        if (f == nullptr)
+            return "";
+        std::fwrite(EmbeddedResources::helpData, 1, EmbeddedResources::helpDataSize, f);
+        std::fclose(f);
+        return path;
+    }
+
+    void toggleHelp()
+    {
+        if (fHelpWebView != nullptr)
+        {
+            webViewDestroy(fHelpWebView);
+            fHelpWebView = nullptr;
+            fHelpButton->setOpen(false);
+            return;
+        }
+
+        const std::string path = writeHelpFile();
+        if (path.empty())
+            return;
+        const std::string url = "file://" + path;
+
+        int x, y, w, h;
+        helpPanelGeometry(x, y, w, h);
+
+        WebViewOptions options;
+        options.offset.x = x;
+        options.offset.y = y;
+        fHelpWebView = webViewCreate(url.c_str(), getWindow().getNativeWindowHandle(),
+                                      static_cast<uint>(w), static_cast<uint>(h), fUiScale, options);
+        fHelpButton->setOpen(fHelpWebView != nullptr);
+    }
+
     std::unique_ptr<GroupBox> makeGroup(const char* title, Color accent)
     {
         auto g = std::make_unique<GroupBox>(this);
@@ -664,6 +763,7 @@ private:
         // breathing room above/below.
         const int logoH  = static_cast<int>(48 * scale);
         const int topPad = logoH + static_cast<int>(6 * scale);
+        fTopPad = topPad;
         // Four rows now that Env/LFO/Mixer are tab groups: Osc|LPF, Env-tabs|LFO-tabs,
         // Mixer-tabs|(free), and the OscMod|LpfMod|Amp strip. Derived from the canvas height so it
         // fills any size (Retina-safe); the aspect ratio is locked in the constructor.
@@ -825,12 +925,18 @@ private:
 
         layoutAmp();
 
+        // Help button: far right of the top strip (the dev DUMP button, if present, sits just
+        // left of it instead of also claiming the far-right corner).
+        const int helpW = static_cast<int>(34 * scale), helpH = static_cast<int>(28 * scale);
+        fHelpButton->setSize(static_cast<uint>(helpW), static_cast<uint>(helpH));
+        fHelpButton->setAbsolutePos(W - helpW - m, (topPad - helpH) / 2 + m / 2);
+
 #if IFSYNTH_PRESET_DUMP
         if (fDumpBtn)
         {
             const int bw = static_cast<int>(58 * scale), bh = static_cast<int>(18 * scale);
             fDumpBtn->setSize(static_cast<uint>(bw), static_cast<uint>(bh));
-            fDumpBtn->setAbsolutePos(W - bw - m, (topPad - bh) / 2 + m / 2);
+            fDumpBtn->setAbsolutePos(W - helpW - gap - bw - m, (topPad - bh) / 2 + m / 2);
         }
 #endif
     }
