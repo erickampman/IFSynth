@@ -116,7 +116,7 @@ public:
         // given, so an unconstrained host resize (previously keepAspectRatio=false, with a
         // minimum pair that didn't even match 980:900) is what let a host open the window
         // taller than intended.
-        setGeometryConstraints(784, 576, true, false); // matches the 980:720 design ratio
+        setGeometryConstraints(784, 592, true, false); // matches the 980:740 design ratio
 
         // Per-module accent colours, following PM's category scheme (sound=green, filter=purple,
         // control signals=amber, combiner=orange, modulation=teal).
@@ -156,7 +156,7 @@ public:
 
         for (uint32_t i = 0; i < kParamCount; ++i)
         {
-            if (isPadParam(i) || isHostOnlyParam(i))
+            if (isPadParam(i))
                 continue;
             if (isDropdownParam(i))
             {
@@ -443,12 +443,6 @@ private:
         default: return false;
         }
     }
-    // Params with no custom-UI control yet (host generic controls only).
-    static bool isHostOnlyParam(uint32_t i)
-    {
-        return i == kParamEnvLegatoMode || i == kParamEnvScaleRelease
-            || i == kParamEnv2LegatoMode || i == kParamEnv2ScaleRelease;
-    }
     static bool isDropdownParam(uint32_t i)
     {
         switch (i)
@@ -457,6 +451,7 @@ private:
         case kParamEnvIterations: case kParamEnvHoldMode:
         case kParamLfoIterations:
         case kParamEnv2Iterations: case kParamEnv2HoldMode:
+        case kParamEnvLegatoMode: case kParamEnv2LegatoMode:
         case kParamLfo2Iterations:
         case kParamMix1Mode: case kParamMix2Mode:
         case kParamVoiceMode:
@@ -473,6 +468,7 @@ private:
         {
         case kParamMix1EnableLFO: case kParamMix1EnableEnv: case kParamMix1EnableCC:
         case kParamMix2EnableLFO: case kParamMix2EnableEnv: case kParamMix2EnableCC:
+        case kParamEnvScaleRelease: case kParamEnv2ScaleRelease:
             return true;
         default: return false;
         }
@@ -514,6 +510,8 @@ private:
             return colFilter();
         if (i == kParamLpfCutoffModSrc || i == kParamLpfCutoffModDepth) return colNeutral();
         if (i == kParamOsc2PitchModSrc || i == kParamOsc2PitchModDepth) return colNeutral();
+        if (i == kParamEnvLegatoMode || i == kParamEnvScaleRelease
+            || i == kParamEnv2LegatoMode || i == kParamEnv2ScaleRelease) return colEnv();
         if (i <= kParamOscIterations)  return colSound();
         if (i <= kParamEnvHoldMode)    return colEnv();
         if (i <= kParamLfoIterations)  return colLfo();
@@ -539,6 +537,8 @@ private:
             return fLpfModGroup.get();
         if (i == kParamOsc2PitchModSrc || i == kParamOsc2PitchModDepth)
             return fOsc2ModGroup.get();
+        if (i == kParamEnvLegatoMode || i == kParamEnvScaleRelease)   return fEnv1Group.get();
+        if (i == kParamEnv2LegatoMode || i == kParamEnv2ScaleRelease) return fEnv2Group.get();
         if (i <= kParamOscIterations)    return fOscGroup.get();
         if (i <= kParamEnvHoldMode)      return fEnv1Group.get();
         if (i <= kParamLfoIterations)    return fLfo1Group.get();
@@ -554,6 +554,7 @@ private:
     {
         if (i == kParamOscIterations) return {"3", "4"};
         if (i == kParamEnvHoldMode || i == kParamEnv2HoldMode) return {"None", "Blue", "Green", "Loop"};
+        if (i == kParamEnvLegatoMode || i == kParamEnv2LegatoMode) return {"Steal", "Match Y"};
         if (i == kParamMix1Mode || i == kParamMix2Mode) return {"Add", "Multiply"};
         if (i == kParamVoiceMode) return {"Mono", "10 Voices"};
         if (i == kParamIfsSyncMode) return {"Off", "Up", "Down", "Both"};
@@ -768,9 +769,7 @@ private:
         // on Retina the host hands us a ~2x physical-pixel canvas, so fixed sizes render tiny.
         const float scale = std::fmin(static_cast<float>(W) / DISTRHO_UI_DEFAULT_WIDTH,
                                       static_cast<float>(H) / DISTRHO_UI_DEFAULT_HEIGHT);
-        const int colW = (W - 2 * m - gap) / 2;
-        // All five rows (3 module rows + mixer row + modulation row) share one height and are
-        // derived from the ACTUAL canvas height so the stack fills the window exactly on any
+        // Row heights are derived from the ACTUAL canvas height so the stack fills the window exactly on any
         // host. This self-corrects for the Retina-vs-logical pixel difference: macOS hands us a
         // physical-pixel canvas (~1800 tall → rowH ~350), Linux a logical one (900 → rowH ~170),
         // and the shared `scale` below sizes knobs/text by the same factor. A previously
@@ -783,19 +782,22 @@ private:
         const int logoH  = static_cast<int>(48 * scale);
         const int topPad = logoH + static_cast<int>(6 * scale);
         fTopPad = topPad;
-        // Four rows now that Env/LFO/Mixer are tab groups: Osc|LPF, Env-tabs|LFO-tabs,
-        // Mixer-tabs|(free), and the OscMod|LpfMod|Amp strip. Derived from the canvas height so it
-        // fills any size (Retina-safe); the aspect ratio is locked in the constructor.
-        // The bottom row (CV Mixer / OscMod / LpfMod) is given extra height so the CV Mixer can
-        // stack its LFO/Env/CC checkboxes in a column. Top three rows share the remainder equally.
+        // Four rows: IFS Osc | Osc 2, Env-tabs | LPF, LFO-tabs | Slew | Amp, and the
+        // CV Mixer | OscMod | Osc2Mod | LpfMod strip. Derived from the canvas height so it fills
+        // any size (Retina-safe); the aspect ratio is locked in the constructor.
+        // Row 0 gets a fixed extra band (the Osc's Iterations/Sync dropdowns sit under its knobs),
+        // and the bottom row is ~25% taller so the CV Mixer can stack its checkboxes in a column.
+        // Rows 1-2 share the rest equally.
+        const int extraTop = static_cast<int>(20 * scale);
         const int totalH = H - 2 * m - 3 * gap - topPad;
-        const int rowH   = (totalH * 4) / 17;    // top rows
-        const int rowHb  = totalH - 3 * rowH;    // bottom row ≈ 5/17 → ~25% taller
-        const int colL = m, colR = m + colW + gap;
+        const int rowH   = ((totalH - extraTop) * 4) / 17;    // rows 1-2
+        const int row0H  = rowH + extraTop;                   // row 0
+        const int rowHb  = totalH - extraTop - 3 * rowH;      // bottom row ≈ 5/17
+        const int colL = m;
         const int top0 = m + topPad;
-        const int row0 = top0, row1 = top0 + rowH + gap;
-        const int mixY = top0 + 2 * (rowH + gap);
-        const int modY = top0 + 3 * (rowH + gap);
+        const int row0 = top0, row1 = top0 + row0H + gap;
+        const int row2 = row1 + rowH + gap;
+        const int modY = row2 + rowH + gap;
 
         // Uniform knob size + text scale (scale computed above). No tight upper clamp on text
         // scale: a host can hand us a canvas much larger than the design size, and text needs to
@@ -846,33 +848,31 @@ private:
             fPresetDropdown->setAbsolutePos(px, m / 2);
         }
 
-        // Row 0: IFS Oscillator, full width (pad + 6 controls + Sync).
-        placeGroup(fOscGroup.get(), colL, row0, W - 2 * m, rowH);
+        // Row 0: IFS Oscillator (fills) | Osc 2.
+        const int sinW = static_cast<int>(300 * fUiScale);
+        const int sinX = W - m - sinW;
+        placeGroup(fOscGroup.get(), colL, row0, sinX - gap - colL, row0H);
+        placeGroup(fSinGroup.get(), sinX, row0, sinW,              row0H);
 
-        // Row 1: Sine Osc | Slew | LPF | Amp.
+        // Rows 1-2: the Env and LFO tab groups share one width (left column); Env sits beside the
+        // LPF (which takes the rest of row 1), LFO beside Amp + Slew. Each tab pair overlays one
+        // rect; the TabBar switches which is visible.
         const int ampW  = static_cast<int>(300 * fUiScale);
-        const int sinW  = static_cast<int>(300 * fUiScale);
-        const int slewW = static_cast<int>(180 * fUiScale);
-        const int slewX = colL + sinW + gap;
-        const int r1LpfX = slewX + slewW + gap;
-        const int r1LpfW = W - 2 * m - 3 * gap - sinW - slewW - ampW;
-        const int ampX   = W - m - ampW;
-        placeGroup(fSinGroup.get(),  colL,   row1, sinW,   rowH);
-        placeGroup(fSlewGroup.get(), slewX,  row1, slewW,  rowH);
-        placeGroup(fLpfGroup.get(),  r1LpfX, row1, r1LpfW, rowH);
-        placeGroup(fAmpGroup.get(),  ampX,   row1, ampW,   rowH);
-
-        // Row 2: LFO tab group (left) + Env tab group (right). Each pair overlays one rect; the
-        // TabBar switches which is visible.
-        placeGroup(fLfo1Group.get(), colL, mixY, colW, rowH);
-        placeGroup(fLfo2Group.get(), colL, mixY, colW, rowH);
-        placeGroup(fEnv1Group.get(), colR, mixY, colW, rowH);
-        placeGroup(fEnv2Group.get(), colR, mixY, colW, rowH);
+        const int slewW = static_cast<int>(120 * fUiScale);
+        const int envW  = W - 2 * m - 2 * gap - slewW - ampW;
+        const int rightX = colL + envW + gap;
+        placeGroup(fEnv1Group.get(), colL,   row1, envW,              rowH);
+        placeGroup(fEnv2Group.get(), colL,   row1, envW,              rowH);
+        placeGroup(fLpfGroup.get(),  rightX, row1, W - m - rightX,    rowH);
+        placeGroup(fLfo1Group.get(), colL,   row2, envW,              rowH);
+        placeGroup(fLfo2Group.get(), colL,   row2, envW,              rowH);
+        placeGroup(fAmpGroup.get(),  rightX, row2, ampW,              rowH);
+        placeGroup(fSlewGroup.get(), W - m - slewW, row2, slewW,      rowH);
 
         // Row 3: CV Mixer (condensed) + IFS Osc modulation (wide, fills) + Osc 2 Mod + LPF modulation.
-        const int mixW     = static_cast<int>(238 * fUiScale);   // condensed to free room for Osc 2 Mod
-        const int lpfModW  = static_cast<int>(150 * fUiScale);
-        const int osc2ModW = static_cast<int>(150 * fUiScale);
+        const int mixW     = static_cast<int>(200 * fUiScale);   // condensed to give the IFS Osc Mod room
+        const int lpfModW  = static_cast<int>(125 * fUiScale);
+        const int osc2ModW = static_cast<int>(125 * fUiScale);
         const int lpfModX  = W - m - lpfModW;
         const int osc2ModX = lpfModX - gap - osc2ModW;
         const int oscModX  = colL + mixW + gap;
@@ -884,18 +884,13 @@ private:
         placeGroup(fLpfModGroup.get(),  lpfModX,  modY, lpfModW,  rowHb);
 
         // Tab bars in each tab group's title strip (top-right).
-        placeTab(fLfoTab.get(), colL, mixY, colW, scale);
-        placeTab(fEnvTab.get(), colR, mixY, colW, scale);
+        placeTab(fEnvTab.get(), colL, row1, envW, scale);
+        placeTab(fLfoTab.get(), colL, row2, envW, scale);
         placeTab(fMixTab.get(), colL, modY, mixW, scale);
 
-        SubWidget* oscG[6]  = { fKnobs[kParamOscPitch].get(), fKnobs[kParamOscFine].get(),
-                                fKnobs[kParamOscDetune].get(),
-                                fKnobs[kParamOscSmoothing].get(), fDropdowns[kParamOscIterations].get(),
-                                fDropdowns[kParamIfsSyncMode].get() };
-        // Smaller pad fraction here (6 controls incl. Sync share the strip) so the Sync dropdown breathes.
-        layoutPadPanel(fOscGroup.get(), fOscPad.get(), oscG, 6, 0.34f);
+        layoutOscPanel();
 
-        // Slew now has its own group (row 1, after Osc 2) instead of sharing the Oscillator strip.
+        // Slew has its own group (row 2, far right).
         SubWidget* slewG[1] = { fKnobs[kParamSlewRate].get() };
         layoutRow(fSlewGroup.get(), slewG, 1);
 
@@ -903,21 +898,20 @@ private:
         layoutOsc2Panel(fSinGroup.get(), fDropdowns[kParamSinWaveform].get(), fDropdowns[kParamSinPitch].get(),
                         fKnobs[kParamSinFine].get(), fKnobs[kParamSinDetune].get());
 
-        SubWidget* env1G[4] = { fKnobs[kParamEnvDuration].get(), fKnobs[kParamEnvSmoothing].get(),
-                                fDropdowns[kParamEnvHoldMode].get(), fDropdowns[kParamEnvIterations].get() };
-        layoutPadPanel(fEnv1Group.get(), fEnv1Pad.get(), env1G, 4);
-
-        SubWidget* env2G[4] = { fKnobs[kParamEnv2Duration].get(), fKnobs[kParamEnv2Smoothing].get(),
-                                fDropdowns[kParamEnv2HoldMode].get(), fDropdowns[kParamEnv2Iterations].get() };
-        layoutPadPanel(fEnv2Group.get(), fEnv2Pad.get(), env2G, 4);
+        // Env: Duration + Smoothing knobs, then a 2x2 grid of Hold / Legato over Iterations /
+        // Scale Release. The LFO below uses the same pad fraction so the two pads line up.
+        layoutEnvPanel(fEnv1Group.get(), fEnv1Pad.get(), kParamEnvDuration, kParamEnvSmoothing,
+                       kParamEnvHoldMode, kParamEnvLegatoMode, kParamEnvIterations, kParamEnvScaleRelease);
+        layoutEnvPanel(fEnv2Group.get(), fEnv2Pad.get(), kParamEnv2Duration, kParamEnv2Smoothing,
+                       kParamEnv2HoldMode, kParamEnv2LegatoMode, kParamEnv2Iterations, kParamEnv2ScaleRelease);
 
         SubWidget* lfo1G[3] = { fKnobs[kParamLfoRate].get(), fKnobs[kParamLfoSmoothing].get(),
                                 fDropdowns[kParamLfoIterations].get() };
-        layoutPadPanel(fLfo1Group.get(), fLfo1Pad.get(), lfo1G, 3);
+        layoutPadPanel(fLfo1Group.get(), fLfo1Pad.get(), lfo1G, 3, kEnvLfoPadFrac);
 
         SubWidget* lfo2G[3] = { fKnobs[kParamLfo2Rate].get(), fKnobs[kParamLfo2Smoothing].get(),
                                 fDropdowns[kParamLfo2Iterations].get() };
-        layoutPadPanel(fLfo2Group.get(), fLfo2Pad.get(), lfo2G, 3);
+        layoutPadPanel(fLfo2Group.get(), fLfo2Pad.get(), lfo2G, 3, kEnvLfoPadFrac);
 
         // Low-pass filter: cutoff, resonance, key-track knobs across the panel.
         SubWidget* lpf[3] = { fKnobs[kParamLpfCutoff].get(), fKnobs[kParamLpfResonance].get(),
@@ -958,6 +952,73 @@ private:
             fDumpBtn->setAbsolutePos(W - helpW - gap - bw - m, (topPad - bh) / 2 + m / 2);
         }
 #endif
+    }
+
+    // Pad width fraction shared by the Env and LFO panels (stacked, same width) so their pads align.
+    static constexpr float kEnvLfoPadFrac = 0.30f;
+
+    // Pad on the left, placed like layoutPadPanel; returns the content area to its right.
+    void placePad(GroupBox* group, NanoSubWidget* pad, float padFrac, int& kx, int& cy, int& kw, int& ch)
+    {
+        int cx, cw;
+        group->contentBounds(cx, cy, cw, ch);
+        const int gap = 8;
+        const int padW = static_cast<int>(cw * padFrac);
+        const int padH = std::min(ch, static_cast<int>(padW * 0.5f));   // fixed 2:1 landscape
+        pad->setSize(static_cast<uint>(padW), static_cast<uint>(padH));
+        pad->setAbsolutePos(cx, cy + (ch - padH) / 2);
+        kx = cx + padW + gap;
+        kw = cw - padW - gap;
+    }
+
+    // IFS Osc panel: pad, then the four knobs in a row with the Iterations and Sync dropdowns
+    // under them (each dropdown centred under a pair of knobs).
+    void layoutOscPanel()
+    {
+        int kx, cy, kw, ch;
+        placePad(fOscGroup.get(), fOscPad.get(), 0.42f, kx, cy, kw, ch);
+        const int dropH = static_cast<int>(46 * fUiScale);
+        const int knobH = ch - dropH;
+        const int cellW = kw / 4;
+        Knob* knobs[4] = { fKnobs[kParamOscPitch].get(), fKnobs[kParamOscFine].get(),
+                           fKnobs[kParamOscDetune].get(), fKnobs[kParamOscSmoothing].get() };
+        for (int i = 0; i < 4; ++i)
+        {
+            knobs[i]->setSize(static_cast<uint>(cellW), static_cast<uint>(knobH));
+            knobs[i]->setAbsolutePos(kx + i * cellW, cy);
+        }
+        Dropdown* drops[2] = { fDropdowns[kParamOscIterations].get(), fDropdowns[kParamIfsSyncMode].get() };
+        const int dropW = std::min(2 * cellW, static_cast<int>(130 * fUiScale));
+        for (int i = 0; i < 2; ++i)
+        {
+            drops[i]->setSize(static_cast<uint>(dropW), static_cast<uint>(dropH));
+            drops[i]->setAbsolutePos(kx + i * 2 * cellW + (2 * cellW - dropW) / 2, cy + knobH);
+        }
+    }
+
+    // IFS Env panel: pad, two full-height knobs, then a 2x2 grid (top: Hold, Legato; bottom:
+    // Iterations, Scale Release).
+    void layoutEnvPanel(GroupBox* group, NanoSubWidget* pad, uint32_t durK, uint32_t smoothK,
+                        uint32_t holdD, uint32_t legatoD, uint32_t itersD, uint32_t scaleRelT)
+    {
+        int kx, cy, kw, ch;
+        placePad(group, pad, kEnvLfoPadFrac, kx, cy, kw, ch);
+        const int knobW = kw * 18 / 100;              // each knob; the grid gets the remaining ~64%
+        Knob* knobs[2] = { fKnobs[durK].get(), fKnobs[smoothK].get() };
+        for (int i = 0; i < 2; ++i)
+        {
+            knobs[i]->setSize(static_cast<uint>(knobW), static_cast<uint>(ch));
+            knobs[i]->setAbsolutePos(kx + i * knobW, cy);
+        }
+        const int gx = kx + 2 * knobW, gw = kw - 2 * knobW;
+        const int cellW = gw / 2, cellH = ch / 2;
+        SubWidget* grid[4] = { fDropdowns[holdD].get(), fDropdowns[legatoD].get(),
+                               fDropdowns[itersD].get(), fToggles[scaleRelT].get() };
+        for (int i = 0; i < 4; ++i)
+        {
+            grid[i]->setSize(static_cast<uint>(cellW), static_cast<uint>(i < 2 ? cellH : ch - cellH));
+            grid[i]->setAbsolutePos(gx + (i % 2) * cellW, cy + (i / 2) * cellH);
+        }
     }
 
     // A single modulation cell: a source dropdown over a depth knob, filling the group.

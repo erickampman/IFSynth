@@ -26,6 +26,6 @@
 #define DISTRHO_UI_USE_NANOVG          1   // knobs/labels drawn with NanoVG vector primitives
 #define DISTRHO_UI_USER_RESIZABLE      1
 #define DISTRHO_UI_DEFAULT_WIDTH       980
-#define DISTRHO_UI_DEFAULT_HEIGHT      720   // 4 rows (Env/LFO/Mixer are tab groups)
+#define DISTRHO_UI_DEFAULT_HEIGHT      740   // 4 rows (Env/LFO/Mixer are tab groups); row 0 is ~20 px taller
 
 #endif // DISTRHO_PLUGIN_INFO_H_INCLUDED
