@@ -6,14 +6,16 @@
 //     iterations). The whole modulation matrix (per-param mod inputs, phase mod) is deferred
 //     until IFSynth has mod sources (LFO/Env) and a CV module, so the per-sample mod path is
 //     gone — this is purely the wavetable + crossfade path.
-//   - Apple GCD background render (dispatch_queue/source) is replaced by a single-threaded,
-//     coalesced render at the top of the process block: a shape-param change flags the table
-//     dirty; the next process() renders the inactive buffer once (~2048 samples, sub-0.1 ms),
-//     swaps, and crossfades. No RT-heap allocation, no threads.
+//   - Band-limited mip pyramid (11 levels, FFT brick-wall truncation — see IFSCore) so high notes
+//     don't alias. Like PM it lives in a cross-voice shared object (one pyramid per placed module,
+//     not per voice), but PM's Apple-GCD background render is replaced by a SYNCHRONOUS render: the
+//     first voice to see an uninitialised/changed shape renders it inline (rate-limited via a
+//     cooldown ticked in beginBlock). No GCD, no threads, no RT-heap allocation.
 //
 
 #include "IFSOscModule.hpp"
 #include "IFSCore.hpp"
+#include "ModuleSharedState.hpp"
 #include "PitchConverter.hpp"
 
 #include <algorithm>
@@ -24,16 +26,62 @@
 // Samples over which to crossfade when the wavetable changes.
 static constexpr int IFS_CROSSFADE_SAMPLES = 256;
 
-// ------------------------------------------------------------ State
-struct IFSOscState {
-    float wavetable[2][IFS_WAVETABLE_SIZE];
-    int   activeIdx    = 0;   // process reads wavetable[activeIdx]
-    bool  tableDirty   = true; // a shape param changed → re-render at next process
-    int   crossfadePos = 0;    // counts down from IFS_CROSSFADE_SAMPLES
+// Minimum samples between synchronous mip re-renders (~43 ms @ 48k). Rendering the pyramid is ~12×
+// costlier than a single table (one IFS eval + 11 FFTs), so coalesce rapid shape-param automation:
+// the LATEST shape is always what renders next, but at a bounded rate so a block never stalls (a
+// host fuzzing params every block would otherwise re-render every block). A future shared/background
+// render (see docs/AudioVerificationTests.md) would remove this compromise.
+static constexpr int IFS_RENDER_COOLDOWN = 2048;
 
-    IFSShapeParams pendingShape; // written by paramProc, consumed by the render
-    IFSShapeParams activeShape;  // shape of the currently active table
+// Fast log2 approximation (~0.01 max error) — plenty accurate for mip-level selection, and far
+// cheaper than std::log2f, which is called PER SAMPLE in mipRead (a real hot-loop cost: std::log2f
+// there timed out clap-validator's param-fuzz on a large audio volume).
+static inline float fastLog2(float x) {
+    union { float f; uint32_t i; } vx = { x };
+    union { uint32_t i; float f; } mx = { (vx.i & 0x007FFFFF) | 0x3F000000 };
+    float y = (float)vx.i * 1.1920928955078125e-7f;   // vx.i * 2^-23
+    return y - 124.22551499f - 1.498030302f * mx.f - 1.72587999f / (0.3520887068f + mx.f);
+}
+
+// ------------------------------------------------------------ State
+
+// Cross-voice shared band-limited mip pyramid. The IFS waveform depends only on module-level shape
+// params (identical across every voice copy), so the pyramid is rendered ONCE per placed module and
+// shared — NOT 32× per voice. (Per-voice was 23 MB and 128 renders and timed out host param-fuzz;
+// see docs/AudioVerificationTests.md.) Ported from PM's IFSOscSharedState but rendered SYNCHRONOUSLY
+// (no GCD): the first voice to see an uninitialised/changed shape renders inline; beginBlock() ticks
+// the coalescing cooldown. Voices process sequentially on the audio thread, so plain members are safe.
+struct IFSOscSharedState : ModuleSharedState {
+    float    mip[2][IFS_MIP_LEVELS][IFS_WAVETABLE_SIZE];
+    int      activeIdx      = 0;   // voices read mip[activeIdx]
+    uint64_t generation     = 0;   // ++ on each swap; drives each voice's crossfade
+    int      renderCooldown = 0;   // samples until the next re-render is allowed (coalesces automation)
+    bool     initialized    = false;
+    IFSShapeParams activeShape;    // shape of the current active pyramid
+
+    void reset() override {}
+    void beginBlock(uint32_t /*activeVoices*/, uint32_t frameCount) override {
+        renderCooldown -= (int)frameCount;   // once per chunk, before any voice processes
+    }
+};
+
+ModuleSharedState* CreateIFSOscSharedState() { return new IFSOscSharedState(); }
+
+static bool shapeChanged(const IFSShapeParams& a, const IFSShapeParams& b) {
+    return a.ifs1Squash != b.ifs1Squash || a.ifs2Squash != b.ifs2Squash || a.bx != b.bx ||
+           a.by != b.by || a.startEndY != b.startEndY || a.smoothing != b.smoothing ||
+           a.iterations != b.iterations;
+}
+
+// Per-voice playback state (phase lives in Module; the pyramid is shared, above).
+struct IFSOscState {
+    int      crossfadePos   = 0;      // counts down from IFS_CROSSFADE_SAMPLES
+    uint64_t seenGeneration = 0;      // last shared generation this voice crossfaded to
+    bool     firstProcess   = true;   // skip the crossfade the first time this voice reads the pyramid
     float prevSyncL = 0.0f, prevSyncR = 0.0f; // last sync-input sample (zero-crossing detection)
+    /// Pitch (octaves re A440) of the most recent MIDI note. Applied in the process loop only when
+    /// the Pitch input is unconnected — a patched Pitch input overrides it.
+    float midiPitch = 0.0f;
 };
 
 // Advance a phase by one sample; if hard sync is on and the sync input crosses zero (per mode),
@@ -42,7 +90,10 @@ static inline void advanceSync(double& phase, double delta, bool syncOn, OscSync
                                float& prevS, float curS)
 {
     phase += delta;
-    if (phase >= 1.0) phase -= 1.0;
+    // Wrap to [0,1) for ANY finite delta. A single `phase -= 1.0` cannot recover when the
+    // per-sample delta exceeds 1.0 (extreme pitch, or a hot signal patched into the pitch/
+    // pitch-mod input) — phase then runs away and later indexes the wavetable out of bounds.
+    if (phase >= 1.0 || phase < 0.0) phase -= std::floor(phase);
     if (syncOn)
     {
         bool reset = false;
@@ -58,43 +109,42 @@ static inline void advanceSync(double& phase, double delta, bool syncOn, OscSync
     }
 }
 
-// Snapshot the module's shape params into pendingShape.
-static void applyShapeParams(IFSOscState* st, Module* module)
-{
-    IFSShapeParams& s = st->pendingShape;
-    s.ifs1Squash = module->paramByEnum(IFSOscParamItemIFS1Squash);
-    s.ifs2Squash = module->paramByEnum(IFSOscParamItemIFS2Squash);
-    s.bx         = module->paramByEnum(IFSOscParamItemBx);
-    s.by         = module->paramByEnum(IFSOscParamItemBy);
-    s.startEndY  = module->paramByEnum(IFSOscParamItemStartEndY);
-    s.smoothing  = module->paramByEnum(IFSOscParamItemSmoothing);
-    // Parameter is 0-based (picker index): 0 → 3 iterations, 1 → 4 iterations.
-    s.iterations = static_cast<int>(module->paramByEnum(IFSOscParamItemIterations)) + 3;
-}
-
 // Wavetable lookup with linear interpolation and phase wrapping. phase in [0, 1).
 static inline float tableRead(const float* table, double phase)
 {
     double pos  = phase * IFS_WAVETABLE_SIZE;
-    int    idx  = static_cast<int>(pos);
-    float  frac = static_cast<float>(pos - idx);
+    int    idx  = static_cast<int>(pos) & (IFS_WAVETABLE_SIZE - 1);   // mask like idx1 — never index OOB
+    float  frac = static_cast<float>(pos - std::floor(pos));
     int    idx1 = (idx + 1) & (IFS_WAVETABLE_SIZE - 1);
     return table[idx] + frac * (table[idx1] - table[idx]);
+}
+
+// Read the band-limited mip pyramid at `phase` for phase-increment `delta` (cycles/sample),
+// selecting a level whose top harmonic stays below Nyquist so nothing folds. Lf = log2(N*delta) is
+// the fractional minimum-safe level; we read the two levels just above floor(Lf) (both always safe)
+// and crossfade by the fractional part — mixing floor..ceil would leak the unsafe sharp level.
+static inline float mipRead(const float mip[IFS_MIP_LEVELS][IFS_WAVETABLE_SIZE],
+                            double phase, double delta)
+{
+    constexpr int MAXL = IFS_MIP_LEVELS - 1;
+    float arg  = static_cast<float>(IFS_WAVETABLE_SIZE * delta);
+    float Lf   = arg > 0.0f ? fastLog2(arg) : 0.0f;
+    Lf         = std::clamp(Lf, 0.0f, static_cast<float>(MAXL));
+    int   base = static_cast<int>(std::floor(Lf));
+    float frac = Lf - base;
+    int   l0   = std::min(base + 1, MAXL);
+    int   l1   = std::min(base + 2, MAXL);
+    float a    = tableRead(mip[l0], phase);
+    float b    = tableRead(mip[l1], phase);
+    return a + frac * (b - a);
 }
 
 // ------------------------------------------------------------ Lifecycle
 const void InitIFSOscModule(uint32_t /*count*/, Module* module)
 {
     auto* st = new IFSOscState();
-
-    // Render a valid default table now (params aren't set until addParams(), which runs after
-    // this init). tableDirty forces the first process() to re-render from the real params.
-    st->pendingShape = st->activeShape = IFSShapeParams{};
-    computeIFSWavetable(st->activeShape, st->wavetable[0]);
-    std::copy_n(st->wavetable[0], IFS_WAVETABLE_SIZE, st->wavetable[1]);
-    st->activeIdx = 0;
-    st->crossfadePos = 0;
-    st->tableDirty = true;
+    // The mip pyramid lives in the shared state (rendered lazily on first process — module->sharedState
+    // is not wired yet here, it's injected by Voice::initializeModules after this Init runs).
 
     // Pitch infrastructure — same pattern as SinOsc.
     double hz = 440.0;
@@ -124,6 +174,7 @@ const void ResetIFSOscModule(Module* module)
     if (module->state) {
         auto* st = static_cast<IFSOscState*>(module->state);
         st->prevSyncL = st->prevSyncR = 0.0f;
+        st->midiPitch = 0.0f;
     }
 }
 
@@ -134,27 +185,10 @@ const void SampleRateIFSOscModule(Module* /*module*/, double /*newSampleRate*/)
 }
 
 // ------------------------------------------------------------ Parameter change
-const void ParamIFSOscModule(Module* module, AUParameterAddress address, AUValue /*value*/)
+// No-op: the shared pyramid detects shape changes by comparing the module's live shape params to the
+// pyramid's activeShape each block (see ProcessIFSOscModule), so there's nothing to flag here.
+const void ParamIFSOscModule(Module* /*module*/, AUParameterAddress /*address*/, AUValue /*value*/)
 {
-    auto* st = static_cast<IFSOscState*>(module->state);
-    if (!st) return;
-
-    switch (MODULE_ITEM_FROM_ADDRESS(address)) {
-        case IFSOscParamItemIFS1Squash:
-        case IFSOscParamItemIFS2Squash:
-        case IFSOscParamItemBx:
-        case IFSOscParamItemBy:
-        case IFSOscParamItemStartEndY:
-        case IFSOscParamItemSmoothing:
-        case IFSOscParamItemIterations:
-            // Snapshot the new shape; the next process() renders it (coalesces rapid changes).
-            applyShapeParams(st, module);
-            st->tableDirty = true;
-            break;
-        default:
-            // Pitch / fine — used directly in the process loop.
-            break;
-    }
 }
 
 // ------------------------------------------------------------ MIDI
@@ -174,10 +208,17 @@ void MIDIIFSOscModule(const pm::UmpMessage& message, Module* module)
         } else {
             freq = pm::noteToFrequency(message.note);
         }
-        module->mBaseDeltaOmegaL = freq * module->mFrequencyScale;
-        module->mBaseDeltaOmegaR = freq * module->mFrequencyScale;
-        module->mOmegaL = 0.0;
-        module->mOmegaR = 0.0;
+        // Store the note as a pitch offset (octaves re A440); the process loop applies it only when
+        // the Pitch input is unconnected. (Setting mBaseDeltaOmega is futile — the loop recomputes
+        // delta from the pitch sum every sample.)
+        static_cast<IFSOscState*>(module->state)->midiPitch =
+            module->pitchConverter->frequencyToPitch(freq);
+        // Retune above, but only reset phase for a fresh note — a legato continuation keeps its
+        // phase so the slide is click-free. See Module::legatoContinuation's own comment.
+        if (!module->legatoContinuation) {
+            module->mOmegaL = 0.0;
+            module->mOmegaR = 0.0;
+        }
     }
 }
 
@@ -211,6 +252,9 @@ const KPBuffPair* ProcessIFSOscModule(uint64_t processCallID, uint32_t count, Mo
     const float   detuneHalf = 0.5f * module->paramByEnum(IFSOscParamItemDetune) * (float)CENTS_TO_PITCH;
     const double  freqScale = module->mFrequencyScale;
     auto* pitchConverter    = module->pitchConverter;
+
+    // Direct-MIDI pitch: the played note, applied only when nothing is patched to the Pitch input.
+    const float midiPitch = module->isInputConnected(IFSOscParamItemPitchInput) ? 0.0f : st->midiPitch;
 
     double& phaseL = module->mOmegaL;
     double& phaseR = module->mOmegaR;
@@ -247,30 +291,48 @@ const KPBuffPair* ProcessIFSOscModule(uint64_t processCallID, uint32_t count, Mo
     const bool anyShapeMod = bxConn || byConn || s1Conn || s2Conn;
 
     if (!anyShapeMod) {
-        // ---- Wavetable path (coalesced render; cheap) ----
-        if (st->tableDirty) {
-            st->tableDirty = false;
-            applyShapeParams(st, module);
-            const int inactive = 1 - st->activeIdx;
-            computeIFSWavetable(st->pendingShape, st->wavetable[inactive]);
-            st->activeIdx   = inactive;
-            st->activeShape = st->pendingShape;
-            st->crossfadePos = IFS_CROSSFADE_SAMPLES;
+        // ---- Wavetable path (shared band-limited pyramid) ----
+        auto* shared = static_cast<IFSOscSharedState*>(module->sharedState);
+        const IFSShapeParams shape = baseShapeFromParams(module);
+        // Render into the shared pyramid on first touch, or when the shape changed (rate-limited).
+        // Voices run sequentially on the audio thread, so the first voice this block does the render
+        // and the rest read the result. renderCooldown is ticked once per chunk in beginBlock().
+        if (!shared->initialized) {
+            computeIFSWavetableMips(shape, shared->mip[0]);
+            std::copy_n(&shared->mip[0][0][0], IFS_MIP_LEVELS * IFS_WAVETABLE_SIZE, &shared->mip[1][0][0]);
+            shared->activeShape  = shape;
+            shared->initialized  = true;
+        } else if (shapeChanged(shape, shared->activeShape) && shared->renderCooldown <= 0) {
+            shared->renderCooldown = IFS_RENDER_COOLDOWN;   // coalesce rapid automation
+            const int inactive = 1 - shared->activeIdx;
+            computeIFSWavetableMips(shape, shared->mip[inactive]);
+            shared->activeShape = shape;
+            shared->activeIdx   = inactive;
+            shared->generation++;
         }
-        const int    activeIdx = st->activeIdx;
-        const float* activeTbl = st->wavetable[activeIdx];
-        const float* prevTbl   = st->wavetable[1 - activeIdx];
-        bool crossfading       = st->crossfadePos > 0;
+
+        // Crossfade to the freshly-rendered pyramid when the shared generation advances. The first
+        // time this voice reads the pyramid it just adopts the current generation (no crossfade).
+        if (st->firstProcess) { st->seenGeneration = shared->generation; st->firstProcess = false; }
+        else if (shared->generation != st->seenGeneration) {
+            st->seenGeneration = shared->generation;
+            st->crossfadePos   = IFS_CROSSFADE_SAMPLES;
+        }
+        const int activeIdx  = shared->activeIdx;
+        const auto& activeMip = shared->mip[activeIdx];
+        const auto& prevMip   = shared->mip[1 - activeIdx];
+        bool crossfading      = st->crossfadePos > 0;
 
         for (uint32_t i = 0; i < count; ++i) {
-            deltaL = pitchConverter->pitchToFrequency(pilPtr[i] + freqParam + fineParam - detuneHalf + pmlPtr[i] * pitchModLevel) * freqScale;
-            deltaR = pitchConverter->pitchToFrequency(pirPtr[i] + freqParam + fineParam + detuneHalf + pmrPtr[i] * pitchModLevel) * freqScale;
-            float sampleL = tableRead(activeTbl, phaseL);
-            float sampleR = tableRead(activeTbl, phaseR);
+            deltaL = pitchConverter->pitchToFrequency(pilPtr[i] + midiPitch + freqParam + fineParam - detuneHalf + pmlPtr[i] * pitchModLevel) * freqScale;
+            deltaR = pitchConverter->pitchToFrequency(pirPtr[i] + midiPitch + freqParam + fineParam + detuneHalf + pmrPtr[i] * pitchModLevel) * freqScale;
+            // Mip level tracks the phase increment (delta), so band-limiting follows pitch + pitch-mod.
+            float sampleL = mipRead(activeMip, phaseL, deltaL);
+            float sampleR = mipRead(activeMip, phaseR, deltaR);
             if (crossfading) {
                 float blend = static_cast<float>(st->crossfadePos) / IFS_CROSSFADE_SAMPLES;
-                sampleL += blend * (tableRead(prevTbl, phaseL) - sampleL);
-                sampleR += blend * (tableRead(prevTbl, phaseR) - sampleR);
+                sampleL += blend * (mipRead(prevMip, phaseL, deltaL) - sampleL);
+                sampleR += blend * (mipRead(prevMip, phaseR, deltaR) - sampleR);
                 --st->crossfadePos;
                 crossfading = st->crossfadePos > 0;
             }
@@ -306,15 +368,15 @@ const KPBuffPair* ProcessIFSOscModule(uint64_t processCallID, uint32_t count, Mo
         precomputeIFSVertices(ms, verts);
 
         for (uint32_t j = i0; j < i1; ++j) {
-            deltaL = pitchConverter->pitchToFrequency(pilPtr[j] + freqParam + fineParam - detuneHalf + pmlPtr[j] * pitchModLevel) * freqScale;
-            deltaR = pitchConverter->pitchToFrequency(pirPtr[j] + freqParam + fineParam + detuneHalf + pmrPtr[j] * pitchModLevel) * freqScale;
+            deltaL = pitchConverter->pitchToFrequency(pilPtr[j] + midiPitch + freqParam + fineParam - detuneHalf + pmlPtr[j] * pitchModLevel) * freqScale;
+            deltaR = pitchConverter->pitchToFrequency(pirPtr[j] + midiPitch + freqParam + fineParam + detuneHalf + pmrPtr[j] * pitchModLevel) * freqScale;
             outL[j] = evaluateIFSSmoothed(static_cast<float>(phaseL), verts) * levelParam;
             outR[j] = evaluateIFSSmoothed(static_cast<float>(phaseR), verts) * levelParam;
             advanceSync(phaseL, deltaL, syncOn, syncType, st->prevSyncL, syncLPtr[j]);
             advanceSync(phaseR, deltaR, syncOn, syncType, st->prevSyncR, syncRPtr[j]);
         }
     }
-    // Force a fresh wavetable render when we next fall back to the non-modulated path.
-    st->tableDirty = true;
+    // No explicit dirty flag needed: when we next fall back to the wavetable path, it compares the
+    // live shape to the shared pyramid's activeShape and re-renders if it changed.
     return &module->output;
 }

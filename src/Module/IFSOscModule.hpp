@@ -9,6 +9,11 @@
 
 #pragma once
 #include "Module.hpp"
+#include "ModuleSharedState.hpp"
+
+// One shared band-limited mip pyramid per placed module (voice-independent). Listed as the module's
+// sharedStateCreateProc in its ModuleInitSpec; defined in IFSOscModule.cpp.
+ModuleSharedState* CreateIFSOscSharedState();
 
 const void InitIFSOscModule(uint32_t count, Module* module);
 const void DeinitIFSOscModule(Module* module);

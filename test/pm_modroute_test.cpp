@@ -6,6 +6,7 @@
 #include "ModuleFactory.hpp"
 #include "PitchConverter.hpp"
 #include "Voice.hpp"
+#include "ModuleSharedState.hpp"
 #include "pm_addresses.h"
 #include "pm_midi.h"
 #include "pm_params.h"
@@ -45,8 +46,9 @@ int main()
     const uint32_t N = 512;
     ModuleFactory factory(sr, N);
     PitchConverter pc(440.0);
+    ModuleSharedStateRegistry registry;   // IFSOsc needs its shared mip pyramid (outlives v)
     Voice v(sr);
-    v.initializeModules(&factory, &pc);
+    v.initializeModules(&factory, &pc, &registry);
     wirePatch(v);
 
     Module* osc  = v.getModule(ifsOsc1Address);

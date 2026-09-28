@@ -105,6 +105,12 @@ enum ParamIndex {
    // Osc 2 pitch modulation (source + depth) — e.g. CC#1 vibrato even while Osc 2 drives sync
    kParamOsc2PitchModSrc,
    kParamOsc2PitchModDepth,
+   // IFS envelope legato + release options (appended to keep earlier param ids stable). Not yet
+   // shown in the custom UI — host generic controls only.
+   kParamEnvLegatoMode,    // 0 Steal (restart from top), 1 Match Y — applies in Mono only
+   kParamEnvScaleRelease,  // 0 Off, 1 On: early release jumps to the hold point, tail scaled
+   kParamEnv2LegatoMode,
+   kParamEnv2ScaleRelease,
    kParamCount
 };
 
@@ -220,6 +226,11 @@ static constexpr ParamSpec kParams[kParamCount] = {
    // Osc 2 pitch modulation (source dropdown + depth)
    {"Source",      "o2PMsrc",    "",   0.0f,   6.0f,   0.0f,  false, true },
    {"Depth",       "o2PMdpt",    "",  -1.0f,   1.0f,   0.0f,  false, false},
+   // IFS envelope legato + release options
+   {"Legato",      "envLegato",  "",   0.0f,   1.0f,   1.0f,  false, true },
+   {"Scale Rel",   "envScRel",   "",   0.0f,   1.0f,   0.0f,  false, true },
+   {"Legato",      "env2Legato", "",   0.0f,   1.0f,   1.0f,  false, true },
+   {"Scale Rel",   "env2ScRel",  "",   0.0f,   1.0f,   0.0f,  false, true },
 };
 
 } // namespace ifsynth

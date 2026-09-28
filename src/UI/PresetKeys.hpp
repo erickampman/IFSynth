@@ -100,6 +100,10 @@ static constexpr PresetKey kPresetKeys[kParamCount] = {
    /*IfsSyncMode*/     {"IFSOsc1", "syncMode"},
    /*Osc2PitchModSrc*/ {"SinOsc1", "pitchModSrc"},
    /*Osc2PitchModDepth*/{"SinOsc1","freqModLevel"},
+   /*EnvLegatoMode*/   {"IFSEnv1", "legatoMode"},
+   /*EnvScaleRelease*/ {"IFSEnv1", "scaleRelease"},
+   /*Env2LegatoMode*/  {"IFSEnv2", "legatoMode"},
+   /*Env2ScaleRelease*/{"IFSEnv2", "scaleRelease"},
 };
 
 } // namespace ifsynth

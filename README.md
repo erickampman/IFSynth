@@ -1,24 +1,48 @@
 # IFSynth
 
-A cross-platform **CLAP fractal synth** — the IFS (Iterated Function System) instrument built
-on top of the [SimpleSynth](https://github.com/erickampman/SimpleSynth) base project. IFSynth
-carries SimpleSynth's PolygraphModular voice engine + DPF/NanoVG UI kit unchanged and adds the
-IFS module family (IFSOsc / IFSEnv / IFSLFO) and their custom fractal-editor control. SimpleSynth
-stays a clean, IFS-free base; this repo is where the fractal work lives.
+A cross-platform **CLAP fractal synth** from Unlikelyware — oscillator, envelopes and LFOs are
+all shaped by IFS (Iterated Function System) fractals, drawn and edited directly on custom
+fractal-editor controls. Built on the vendored PolygraphModular voice engine and a DPF/NanoVG UI
+kit, forked from the [SimpleSynth](https://github.com/erickampman/SimpleSynth) base (SimpleSynth
+stays IFS-free; the fractal work lives here).
 
 ## Status
 
-**Polyphonic synth with a GUI, running the real PolygraphModular voice engine.** The PM
-framework is vendored off AUv3 and drives a `VoiceManager` (polyphony, note-stealing, mono
-mode) rendering the v1 voice **PitchConverter → Slew → SinOsc → Combine ×ADSR → Final** per
-voice. The plugin wrapper is now built with the [DISTRHO Plugin Framework (DPF)](https://github.com/DISTRHO/DPF),
-which generates the CLAP around our DSP + UI subclasses. The UI is a row of NanoVG-drawn
-rotary knobs — **Gain + the four ADSR controls** — that edit the envelope live. Passes
-`clap-validator` (18/18).
+**Polyphonic fractal synth with a full custom GUI.** The PM framework drives a `VoiceManager`
+(polyphony, note-stealing, mono/legato) rendering, per voice:
 
-Next: **Phase 3** drops in the IFS modules (IFSOsc/IFSEnv/IFSLFO) and a 24 dB/oct LPF (pure
-module additions, no architectural change), and the UI grows to match. Full plan in
-`~/dev-clap/polygraph-clap-plan.md`.
+```
+note pitch → Slew (glide) → Osc 2, IFS Osc, LPF key track
+
+Osc 2 (Sine/Tri/Saw) → Level ─┐
+        │ hard sync           ├→ Mix (+) → LPF → VCA (× Env 1 or 2) → Final
+        ▼                     │
+IFS Osc (× IFS level) ────────┘
+```
+
+- **IFS Osc**: 2-transform fractal wavetable, band-limited (mip pyramid shared across voices),
+  stereo detune, hard sync to Osc 2 (Off / Up / Down / Both).
+- **Osc 2**: band-limited Sine / Triangle / Saw, interval pitch, fine + detune; the hard-sync
+  master.
+- **LPF**: 24 dB/oct Butterworth with resonance, key tracking and cutoff modulation.
+- **Envelopes (×2)**: 3-transform IFS envelopes with hold mode (None / Blue / Green / Loop),
+  legato mode (Steal / Match Y, mono only) and Scale Release. Either one drives the VCA.
+- **LFOs (×2)** and **CV mixers (×2)**: each mixer combines an LFO, an envelope and a MIDI CC
+  (add / multiply).
+- **Modulation**: source select (LFO 1/2, Env 1/2, CV Mix 1/2) + bipolar depth for IFS Osc
+  pitch / Bx / By / Squash 1 / Squash 2, LPF cutoff and Osc 2 pitch.
+- **Voices**: 10-voice poly or mono (legato note-stack, glide, click-free phase continuation).
+- **Presets**: factory presets in `Presets/*.json`, baked into the plugin at build time; in-UI
+  help page (`Resources/help.html`).
+
+MIDI notes are sample-accurate: `run()` splits rendering at each event's frame offset.
+Parameter changes are applied per host block (DPF applies them before `run()`).
+
+The envelope Legato and Scale Release params are exposed to the host but don't yet have
+custom-UI controls.
+
+The wrapper is built with the [DISTRHO Plugin Framework (DPF)](https://github.com/DISTRHO/DPF),
+which generates the CLAP around our DSP + UI subclasses.
 
 ## Layout
 
@@ -28,21 +52,28 @@ The engine (`src/`) mirrors PolygraphModular's structure; the DPF plugin assembl
 ```
 plugin/               the DPF plugin definition (the CLAP wrapper is generated from these)
                         DistrhoPluginInfo.h (plugin flags), IFSynthParams.h (shared param
-                        table), IFSynthPlugin.cpp (DSP: MIDI + params → VoiceManager)
+                        table), IFSynthPlugin.cpp (DSP: MIDI + params → VoiceManager, mod routing)
 src/UI/               the plugin GUI (reusable NanoVG widgets + the panel)
-                        Knob.hpp — labelled rotary-knob widget (NanoSubWidget + KnobEventHandler);
-                        GroupBox.hpp — titled container panel that frames + lays out a group of
-                        controls; IFSynthUI.cpp — composes the knobs into labelled groups
+                        IFSControl / IFSEnvControl (fractal editors, drawn from IFSCore so the
+                        graph is exactly what you hear); Knob, Slider, Toggle, Dropdown,
+                        PopupMenu, TabBar, GroupBox, TitleText, Logo, HelpButton; PresetKeys /
+                        PresetDump (preset menu + dev-only JSON dumper); IFSynthUI.cpp — the panel
 src/Common/           shim + MIDI + params + utilities
                         pm_compat.h (Apple→portable), pm_midi.* (spec UMP + MIDI-1 decode),
                         clap_ump.h (CLAP↔UMP), pm_params.h / pm_param_data.* / pm_addresses.h,
-                        ParamAddressMacros.h, CPPTypes.hpp, CPPProcs.hpp, KPBuffPairHelper.hpp
-src/Module/           Module core + the six v1 modules
-                        Module.hpp, ModuleFactory.*, SinOscillatorModule.*, ADSR{Helper,Module}.*,
-                        CombineModule.*, FinalModule.*, SlewModule.*, PitchConverterModule.*
+                        ParamAddressMacros.h, ResonanceComp.hpp, CPPTypes.hpp, CPPProcs.hpp,
+                        KPBuffPairHelper.hpp
+src/Module/           Module core + modules
+                        IFSCore.* (fractal evaluation, wavetables, mip pyramid), IFSOsc, IFSEnv,
+                        IFSLFO, SinOscillator, LPFilter (+ ButterLow4), CVMixer, Combine, Level,
+                        Slew, PitchConverter, Final; ModuleSharedState.hpp (cross-voice state);
+                        ADSR stays instantiated but unconnected
 src/Voice/            voice engine
                         Voice.*, VoiceStateManager.*, VoiceManager.*, ModuleMap.*, ModuleGraph.hpp,
                         ModuleInitSpecs.hpp, pm_module_specs.cpp, ConnectionCommandQueue.hpp
+Presets/              factory presets (JSON), compiled into GeneratedPresets.h by
+                        tools/gen_presets.py
+Resources/            font, logo and help page, embedded into the binary at build time
 test/                 in-process self-tests (see TESTING.md)
 dpf/                  DISTRHO Plugin Framework (submodule, + nested pugl) — generates the .clap
 external/clap         CLAP headers (submodule, pinned 1.2.9) — used by the framework self-tests
@@ -63,18 +94,19 @@ sudo apt install pkg-config libgl1-mesa-dev libx11-dev libxext-dev libxrandr-dev
 Then:
 
 ```sh
-git clone --recurse-submodules <this-repo>
+git clone --recurse-submodules https://github.com/erickampman/IFSynth.git
 cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ctest --test-dir build --output-on-failure     # see TESTING.md for the full suite
 ```
 
-Produces `build/bin/IFSynth.clap`. Copy/symlink into `~/.clap` (Linux) or
-`~/Library/Audio/Plug-Ins/CLAP/` (macOS), load in any CLAP host, and play — it's polyphonic
-(8 voices by default; drop the **Gain** knob if chords clip) with a rotary-knob UI for gain
-and the ADSR envelope. Validate with
-[`clap-validator`](https://github.com/free-audio/clap-validator). Test details in
-[TESTING.md](TESTING.md).
+Produces `build/bin/IFSynth.clap`. A post-build step symlinks it into `~/.clap` (Linux) or
+`~/Library/Audio/Plug-Ins/CLAP/` (macOS), so any CLAP host picks up the freshest build after a
+rescan. Validate with [`clap-validator`](https://github.com/free-audio/clap-validator). Test
+details in [TESTING.md](TESTING.md).
+
+Configure options: `-DIFSYNTH_WERROR=ON` (warnings as errors), `-DIFSYNTH_PRESET_DUMP=ON`
+(dev-only DUMP button that writes the current patch as JSON to `$HOME`).
 
 ## License
 

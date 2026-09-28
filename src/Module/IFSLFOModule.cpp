@@ -20,6 +20,10 @@ struct IFSLFOState {
     int   activeIdx    = 0;
     bool  tableDirty   = true;
     int   crossfadePos = 0;
+    // First real render replaces the init-default table; deferred to first process. Crossfading from
+    // the default shape briefly emits the wrong LFO waveform, so swap the first render instantly and
+    // crossfade only later shape changes. (Same fix as IFSEnvModule.)
+    bool  firstTableRender = true;
     IFSShapeParams pendingShape;
     IFSShapeParams activeShape;
 };
@@ -97,7 +101,8 @@ const KPBuffPair* ProcessIFSLFOModule(uint64_t /*processCallID*/, uint32_t count
         computeIFSWavetable(st->pendingShape, st->wavetable[inactive]);
         st->activeIdx    = inactive;
         st->activeShape  = st->pendingShape;
-        st->crossfadePos = IFS_LFO_CROSSFADE_SAMPLES;
+        st->crossfadePos   = st->firstTableRender ? 0 : IFS_LFO_CROSSFADE_SAMPLES;
+        st->firstTableRender = false;
     }
 
     // Rate: 2^Pitch Hz (Pitch in octaves, 0 → 1 Hz). Constant per block.

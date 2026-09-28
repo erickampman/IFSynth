@@ -32,7 +32,7 @@ const std::vector<ModuleInitSpec>& getModuleInitSpecs() {
       // unconnected — available as a second source / future phase-mod source.
       {ifsOsc1Address, &ifsOscConstantsGroup, InitIFSOscModule, DeinitIFSOscModule,
        ProcessIFSOscModule, MIDIIFSOscModule, ParamIFSOscModule, ResetIFSOscModule,
-       SampleRateIFSOscModule},
+       SampleRateIFSOscModule, CreateIFSOscSharedState},
       {adsr1Address, &adsrConstantsGroup, InitADSRModule, DeinitADSRModule, ProcessADSRModule,
        MIDIProcADSRModule, ParamADSR, nullptr, SampleRateADSRModule},
       // IFSEnv is the active amplitude envelope (see buildDefaultPatch); ADSR stays instantiated

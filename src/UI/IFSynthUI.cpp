@@ -156,7 +156,7 @@ public:
 
         for (uint32_t i = 0; i < kParamCount; ++i)
         {
-            if (isPadParam(i))
+            if (isPadParam(i) || isHostOnlyParam(i))
                 continue;
             if (isDropdownParam(i))
             {
@@ -239,6 +239,8 @@ public:
             for (int i = 0; i < kPresetCount; ++i) names.push_back(kPresets[i].name);
             fPresetDropdown->setChoices(names);
         }
+        fPresetDropdown->setPlaceholder("--");
+        fPresetDropdown->setIndex(-1); // no preset selected until the user picks one
 
         // Help: toggles a native WebView overlay showing the bundled help.html. Right-aligned in
         // the top strip (see the dev DUMP button's placement, further right when both exist).
@@ -363,9 +365,19 @@ protected:
             resizeHelpWebView();
     }
 
-    // WebViews need regular pumping to process their own event loop / message callbacks.
+    // Two jobs on the idle tick:
+    //  1. Some Linux hosts (notably REAPER via pugl) don't apply the UI's initial size until the
+    //     event loop starts pumping, so the window loads mis-sized (top gap, bottom row clipped)
+    //     until a manual resize. Re-assert the default size once on the first tick to force the
+    //     host to apply correct geometry, which drives onResize() -> layout().
+    //  2. WebViews need regular pumping to process their own event loop / message callbacks.
     void uiIdle() override
     {
+        if (!fInitialSizeNudged)
+        {
+            fInitialSizeNudged = true;
+            setSize(DISTRHO_UI_DEFAULT_WIDTH, DISTRHO_UI_DEFAULT_HEIGHT);
+        }
         if (fHelpWebView != nullptr)
             webViewIdle(fHelpWebView);
     }
@@ -411,6 +423,7 @@ private:
     std::unique_ptr<DumpButton>    fDumpBtn;
 #endif
     float                          fUiScale = 1.0f; // set each layout() pass; read by the dropH helpers below
+    bool                           fInitialSizeNudged = false; // one-shot size re-assert on first uiIdle (see uiIdle)
 
     static bool isPadParam(uint32_t i)
     {
@@ -429,6 +442,12 @@ private:
             return true;
         default: return false;
         }
+    }
+    // Params with no custom-UI control yet (host generic controls only).
+    static bool isHostOnlyParam(uint32_t i)
+    {
+        return i == kParamEnvLegatoMode || i == kParamEnvScaleRelease
+            || i == kParamEnv2LegatoMode || i == kParamEnv2ScaleRelease;
     }
     static bool isDropdownParam(uint32_t i)
     {

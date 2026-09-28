@@ -16,6 +16,7 @@
 #include "Voice.hpp"
 #include "PitchConverter.hpp"
 #include "ConnectionCommandQueue.hpp"
+#include "ModuleSharedState.hpp"
 
 
 #define LOG_VM(fmt, ...) \
@@ -99,6 +100,7 @@ private:
 	uint64_t voiceIdCounter = 0;
 
     PitchConverter pitchConverter;
+    ModuleSharedStateRegistry sharedStateRegistry;   // per-placed-module cross-voice state
 
     float params[MODULE_MAX_PARAMS];    // MIDI and global?
 

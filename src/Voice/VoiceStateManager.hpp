@@ -86,6 +86,13 @@ private:
     // re-triggered.  Consumed at the top of process() so the Note On reaches
     // the modules in the correct order (after any Note Off already dispatched).
     std::optional<pm::UmpMessage> deferredRetrigger = std::nullopt;
+
+    // Consecutive below-threshold frames seen while Deactivating. The plugin splits rendering at
+    // MIDI event offsets, so a process() call can be only a few frames long; judging silence on
+    // one such sliver (e.g. a single sample at a zero crossing) would free a still-ringing voice.
+    // Require kMinSilentFrames of accumulated silence instead.
+    static constexpr uint32_t kMinSilentFrames = 256;
+    uint32_t silentFrames = 0;
     
 };
 

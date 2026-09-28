@@ -135,8 +135,12 @@ void MIDISinOscillator(const pm::UmpMessage& message, Module* module) {
 
             module->mBaseDeltaOmegaL = freq * module->mFrequencyScale;
             module->mBaseDeltaOmegaR = freq * module->mFrequencyScale;
-            module->mOmegaL = 0.0;
-            module->mOmegaR = 0.0;
+            // Only reset phase for a fresh note — a legato continuation keeps its phase so the
+            // slide is click-free. See Module::legatoContinuation's own comment.
+            if (!module->legatoContinuation) {
+                module->mOmegaL = 0.0;
+                module->mOmegaR = 0.0;
+            }
         }
     }
 }

@@ -61,6 +61,17 @@ struct IFSShapeParams {
 /// `wavetable` must be pre-allocated by the caller.
 void computeIFSWavetable(const IFSShapeParams& p, float* wavetable);
 
+/// Number of band-limited mip levels in the pyramid (level 0 = full bandwidth).
+static constexpr int IFS_MIP_LEVELS = 11;
+
+/// Fill `mips` with IFS_MIP_LEVELS band-limited copies of the waveform `p`.
+/// Level 0 is the full waveform (identical to computeIFSWavetable); each higher
+/// level l brick-wall-truncates to harmonics 1..(N/2)>>l via one forward FFT and
+/// IFS_MIP_LEVELS-1 inverse FFTs, so playback can pick a level whose top harmonic
+/// stays below Nyquist at the current pitch. `mips` must be pre-allocated.
+void computeIFSWavetableMips(const IFSShapeParams& p,
+                             float mips[IFS_MIP_LEVELS][IFS_WAVETABLE_SIZE]);
+
 /// Evaluate the IFS attractor at a single phase position x ∈ [0, 1).
 ///
 /// Returns the raw PWL fractal value — no Catmull-Rom smoothing is applied.

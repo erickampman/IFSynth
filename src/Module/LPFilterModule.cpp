@@ -13,6 +13,7 @@
 #include "ButterLow4.hpp"
 #include "FMSlewLimiter.hpp"
 #include "LPFilterModule.hpp"
+#include "ResonanceComp.hpp"
 #include "PitchConverter.hpp"
 #include "pm_params.h"
 
@@ -114,18 +115,23 @@ const KPBuffPair* ProcessLPFilterModule(uint64_t processCallID, uint32_t count, 
         const double qL = std::clamp((double)(qParam + qModL * qModLevelParam), (double)qMin, (double)qMax);
         const double qR = std::clamp((double)(qParam + qModR * qModLevelParam), (double)qMin, (double)qMax);
 
-        // Coefficients once per block per channel (recalc contains tan()).
+        // Coefficients once per block per channel (recalc contains tan()). Resonance (q) is applied to
+        // ONE stage only; the other stays at its Butterworth damping (q=1). Driving both stages, as
+        // before, stacked their peaks into a huge spike (+37 dB @ Q10, +48 @ Q20). One resonant stage
+        // gives a single peak (~like a lone biquad), which resonanceComp then tames consistently.
         ButterCoeff bcL1, bcL2, bcR1, bcR2;
-        state->butterLowL.recalc(sampleRate, cutoffL, ButterLow4::K_STAGE_1, qL, &bcL1);
-        state->butterLowL.recalc(sampleRate, cutoffL, ButterLow4::K_STAGE_2, qL, &bcL2);
-        state->butterLowR.recalc(sampleRate, cutoffR, ButterLow4::K_STAGE_1, qR, &bcR1);
-        state->butterLowR.recalc(sampleRate, cutoffR, ButterLow4::K_STAGE_2, qR, &bcR2);
+        state->butterLowL.recalc(sampleRate, cutoffL, ButterLow4::K_STAGE_1, qL,  &bcL1);  // resonant
+        state->butterLowL.recalc(sampleRate, cutoffL, ButterLow4::K_STAGE_2, 1.0, &bcL2);  // Butterworth
+        state->butterLowR.recalc(sampleRate, cutoffR, ButterLow4::K_STAGE_1, qR,  &bcR1);  // resonant
+        state->butterLowR.recalc(sampleRate, cutoffR, ButterLow4::K_STAGE_2, 1.0, &bcR2);  // Butterworth
 
         ButterLow4State& stL = state->butterLowL.getState();
         ButterLow4State& stR = state->butterLowR.getState();
+        const float compL = resonanceComp((float)qL);   // tame the high-Q peak (see ResonanceComp.hpp)
+        const float compR = resonanceComp((float)qR);
         for (int j = 0; j < n; ++j) {
-            lop[i + j] = ButterLow4::processWithCoeff(lip[i + j], bcL1, bcL2, stL);
-            rop[i + j] = ButterLow4::processWithCoeff(rip[i + j], bcR1, bcR2, stR);
+            lop[i + j] = ButterLow4::processWithCoeff(lip[i + j], bcL1, bcL2, stL) * compL;
+            rop[i + j] = ButterLow4::processWithCoeff(rip[i + j], bcR1, bcR2, stR) * compR;
         }
 
         lfmp  += n;  rfmp  += n;

@@ -221,6 +221,7 @@ bool VoiceStateManager::handleMIDINoteMessageInActiveState(const pm::UmpMessage&
             } else {
                 // No more held notes — begin normal release.
                 state = VoiceState::Deactivating;
+                silentFrames = 0;
                 return true;
             }
         } else {
@@ -282,7 +283,10 @@ void VoiceStateManager::processInActiveState(uint32_t frameCount, float *inLeft,
 
 void VoiceStateManager::processInDeactivatingState(uint32_t frameCount, float *inLeft, float *inRight, float *outLeft, float *outRight)
 {
-    if (isSilent(1e-5, frameCount, inLeft, inRight)) {
+    if (!isSilent(1e-5, frameCount, inLeft, inRight)) {
+        silentFrames = 0;
+    } else if ((silentFrames += frameCount) >= kMinSilentFrames) {
+        silentFrames = 0;
         LOG_VOICE("VoiceStateManager::processInDeactivatingState clearing state info");
         state = VoiceState::Inactive;
         clearCurrentNoteOn();

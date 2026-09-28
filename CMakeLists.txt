@@ -110,20 +110,21 @@ if(IFSYNTH_PRESET_DUMP)
 endif()
 
 # --- install: symlink the built .clap into the user CLAP dir ---------------
-# Not part of the default `all` build (avoids touching outside the build tree on every
-# rebuild); run explicitly with `cmake --build build --target install-clap`.
+# Runs automatically after IFSynth-clap is (re)built, so the plugin in the
+# user CLAP dir is always a symlink pointing at the freshest build.
+# create_symlink replaces any existing file or link, so this is idempotent.
 if(APPLE)
     set(IFSYNTH_CLAP_DIR "$ENV{HOME}/Library/Audio/Plug-Ins/CLAP")
 else()
     set(IFSYNTH_CLAP_DIR "$ENV{HOME}/.clap")
 endif()
-add_custom_target(install-clap
+add_custom_command(TARGET IFSynth-clap POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory "${IFSYNTH_CLAP_DIR}"
     COMMAND ${CMAKE_COMMAND} -E create_symlink
         "${CMAKE_BINARY_DIR}/bin/IFSynth.clap"
         "${IFSYNTH_CLAP_DIR}/IFSynth.clap"
-    DEPENDS IFSynth-clap
-    COMMENT "Symlinking IFSynth.clap into ${IFSYNTH_CLAP_DIR}")
+    COMMENT "Symlinking IFSynth.clap into ${IFSYNTH_CLAP_DIR}"
+    VERBATIM)
 
 # --- self-tests (the framework; headless, no DAW) --------------------------
 add_executable(pm-selftest test/pm_selftest.cpp)

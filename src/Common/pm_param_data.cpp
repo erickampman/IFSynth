@@ -85,6 +85,7 @@ static const ModuleParamConstants ifsEnvConstants[] = {
    {"iterations", IFSEnvParamItemIterations, 0, 0, nullptr,  0.0f,   7.0f,  2.0f,  0},
    {"holdMode",   IFSEnvParamItemHoldMode,   0, 0, nullptr,  0.0f,   3.0f,  2.0f,  0},
    {"legatoMode", IFSEnvParamItemLegatoMode, 0, 0, nullptr,  0.0f,   1.0f,  0.0f,  0},
+   {"scaleRelease", IFSEnvParamItemScaleRelease, 0, 0, nullptr,  0.0f,   1.0f,  0.0f,  0},
 };
 const ModuleParamConstantsGroup ifsEnvConstantsGroup = {
    const_cast<char*>("ifsEnv"),

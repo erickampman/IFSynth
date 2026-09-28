@@ -30,6 +30,9 @@ public:
     }
 
     void setLabel(const std::string& label)          { fLabel = label; }
+    // Text shown when there is no valid selection (fIndex out of range) — e.g. the preset box
+    // before any preset is chosen. Empty by default, so ordinary dropdowns render nothing.
+    void setPlaceholder(const std::string& p)        { fPlaceholder = p; }
     void setChoices(const std::vector<std::string>& c){ fChoices = c; }
     void setIndex(int i)                              { fIndex = i; repaint(); }
     // Scales font size AND the label/box geometry together — scaling font alone (without the
@@ -81,6 +84,14 @@ protected:
             fillColor(Color(226, 230, 236));
             text(bx + 10.0f, by + bh * 0.5f, fChoices[fIndex].c_str(), nullptr);
         }
+        else if (fHasFont && !fPlaceholder.empty())
+        {
+            // No valid selection: dim placeholder so the box never implies a preset is loaded.
+            textAlign(ALIGN_LEFT | ALIGN_MIDDLE);
+            fontSize(13.0f * fUiScale);
+            fillColor(Color(120, 126, 134));
+            text(bx + 10.0f, by + bh * 0.5f, fPlaceholder.c_str(), nullptr);
+        }
 
         // chevron
         const float cx = bx + bw - 14.0f, cy = by + bh * 0.5f;
@@ -111,6 +122,7 @@ private:
 
     Callback*                fCallback;
     std::string              fLabel;
+    std::string              fPlaceholder;
     std::vector<std::string> fChoices;
     int                      fIndex = 0;
     bool                     fHasFont = false;

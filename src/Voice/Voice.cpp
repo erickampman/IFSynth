@@ -9,6 +9,7 @@
 #include "pm_midi.h"
 
 #include "Voice.hpp"
+#include "ModuleSharedState.hpp"
 #include "ModuleFactory.hpp"
 #include "pm_addresses.h"
 #include "ModuleInitSpecs.hpp"
@@ -40,7 +41,8 @@ static const std::vector<ModuleInitSpec> moduleInitSpecs = {
 };
 #endif /* 0 */
 
-void Voice::initializeModules(ModuleFactory *factory, PitchConverter *pitchConverter)
+void Voice::initializeModules(ModuleFactory *factory, PitchConverter *pitchConverter,
+                              ModuleSharedStateRegistry *sharedStateRegistry)
 {
     auto moduleInitSpecs = getModuleInitSpecs();
     moduleMap.reserveModules(moduleInitSpecs.size());
@@ -58,6 +60,14 @@ void Voice::initializeModules(ModuleFactory *factory, PitchConverter *pitchConve
                                             );
         if (module->pitchConverter == nullptr) {
             module->setPitchConverter(pitchConverter);  // this one's global
+        }
+
+        // Cross-voice shared object: one per PLACED module (keyed by base address, identical across
+        // voices), so every voice's copy of this module sees the same object. See ModuleSharedState.hpp.
+        if (spec.sharedStateCreateProc && sharedStateRegistry) {
+            module->sharedState =
+                sharedStateRegistry->getOrCreate(MODULE_BASE_ADDRESS(spec.id),
+                                                 spec.sharedStateCreateProc);
         }
         
         // not really cool to set here, but saves on redundancy
@@ -203,13 +213,24 @@ void Voice::handleMIDIMessage(const pm::UmpMessage& message) {
     if (pm::isNoteOn(message)) {
         currentNoteNumber = message.note;
     }
+    // A note-on is a LEGATO CONTINUATION when the voice was ALREADY sounding as it arrived —
+    // Active (a note is held) OR Deactivating (previous note released but its envelope is still
+    // ringing). Captured BEFORE handleMIDIMessage() below mutates the state. Oscillators read
+    // module->legatoContinuation to skip their note-on phase reset so the slide retunes without a
+    // click; a fresh note from a fully Inactive (silent) voice keeps the clean phase-0 attack.
+    const VoiceState prevState = voiceStateManager.getState();
+    const bool legatoContinuation = pm::isNoteOn(message)
+        && (prevState == VoiceState::Active || prevState == VoiceState::Deactivating);
+
     // generally should suppress propagation only if in stealing state
     bool shouldPropagate = voiceStateManager.handleMIDIMessage(message, id);
 
     if (shouldPropagate) {
         for (Module* module : moduleMap.allModules()) {
             if (module && module->activeCount && module->midiProc) {
+                module->legatoContinuation = legatoContinuation;
                 module->midiProc(message, module);
+                module->legatoContinuation = false;   // scoped to this dispatch only
             }
         }
     }

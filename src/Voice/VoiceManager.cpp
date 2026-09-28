@@ -31,11 +31,11 @@ void VoiceManager::initialize(double sampleRate) {
 
 void VoiceManager::initializeVoices(PitchConverter *pitchConverter)
 {
-    referenceVoice->initializeModules(moduleFactory.get(), pitchConverter);
+    referenceVoice->initializeModules(moduleFactory.get(), pitchConverter, &sharedStateRegistry);
     buildDefaultPatch(*referenceVoice);
     
 	for (auto& voice : voices) {
-		voice->initializeModules(moduleFactory.get(), pitchConverter);
+		voice->initializeModules(moduleFactory.get(), pitchConverter, &sharedStateRegistry);
 		buildDefaultPatch(*voice);
 	}
 }
@@ -47,6 +47,7 @@ void VoiceManager::reset() {
     for (auto& voice : voices) {
         voice->reset();
     }
+    sharedStateRegistry.reset();   // soft reset: clears state, keeps objects alive
 }
 
 // This occurs at a bad time in initialization. I want to defer this until
@@ -188,18 +189,26 @@ void VoiceManager::noteOn(const pm::UmpMessage& msg) {
     }
 
     // Legato mode: when in mono (1 voice), skip the steal path and route
-    // the NoteOn directly to the currently active voice.  The ADSR/ADR
-    // modules decide independently (via their own legato param) whether
-    // to retrigger the envelope or let it continue.
+    // the NoteOn directly to the voice that is still SOUNDING — Active (a note
+    // is held) OR Deactivating (the previous note was released but its envelope
+    // is still ringing out).  Routing a detached-but-still-ringing note here
+    // (instead of letting it fall through to the steal path) is what keeps the
+    // oscillator on the same voice so it can retune without a phase-reset click
+    // (see Voice::handleMIDIMessage / Module::legatoContinuation). The ADSR/
+    // IFS Env modules decide independently (via their own legato param) whether
+    // to retrigger the envelope or let it continue. A fully Inactive voice is
+    // silent, so a fresh note there resets phase harmlessly — fall through to
+    // normal allocation for that case.
     uint32_t legatoMode = uint32_t(voiceManagerParamByEnum(MIDIParamItemLegato));
     if (legatoMode > 0) {
         for (auto& v : voices) {
-            if (v && v->isActive()) {
+            if (v && (v->voiceState() == VoiceState::Active
+                   || v->voiceState() == VoiceState::Deactivating)) {
                 v->handleMIDIMessage(msg);
                 return;
             }
         }
-        // No active voice: fall through to normal allocation below.
+        // No sounding voice: fall through to normal allocation below.
     }
 
     Voice* voice = findVoiceForMessage(msg);
@@ -350,6 +359,10 @@ void VoiceManager::process(uint32_t frameCount, float *left, float *right)
     // necessary?
     std::fill_n(left, frameCount, 0.f);
     std::fill_n(right, frameCount, 0.f);
+
+    // Advance any cross-voice per-chunk shared state exactly once, before the voices read it
+    // (the IFS Osc's shared mip pyramid ticks its re-render cooldown here).
+    sharedStateRegistry.beginBlock(activeCount(), frameCount);
 
     uint32_t maxVoices = uint32_t(voiceManagerParamByEnum(MIDIParamItemVoiceCount));
     

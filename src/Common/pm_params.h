@@ -191,6 +191,9 @@ enum IFSEnvParamItem : NSUInteger {
    IFSEnvParamItemIterations,    // picker index: 0 → 1 iteration
    IFSEnvParamItemHoldMode,      // 0 None, 1 Blue, 2 Green, 3 Loop
    IFSEnvParamItemLegatoMode,    // 0 NoteSteal, 1 FindMatchingY
+   IFSEnvParamItemScaleRelease,  // 0 Off (run full cycle) / 1 On: an early note-off (before the hold
+                                 // point, hold modes 1/2 only) jumps to the hold point and scales the
+                                 // release tail to start at the current level — see IFSEnvModule.cpp.
 };
 
 // IFS fractal LFO — free-running mod source, 2-transform shape (same family as IFSOsc). Trimmed

@@ -7,6 +7,7 @@
 #include <cmath>
 #include <algorithm>
 #include <cassert>
+#include <complex>
 
 // ------------------------------------------------------------
 // Internal: evaluate the IFS attractor function f(x) at depth d.
@@ -178,6 +179,66 @@ void computeIFSWavetable(const IFSShapeParams& p, float* wavetable)
     }
 }
 
+// ============================================================
+// Band-limited mip pyramid (ported from PM's IFSCore)
+// ============================================================
+
+// In-place iterative radix-2 FFT (sign = -1 forward, +1 inverse; inverse is left
+// unnormalised — the caller divides). IFS_WAVETABLE_SIZE is a power of two.
+static void fftRadix2(std::complex<double>* a, int n, int sign)
+{
+    for (int i = 1, j = 0; i < n; ++i) {
+        int bit = n >> 1;
+        for (; j & bit; bit >>= 1) j ^= bit;
+        j ^= bit;
+        if (i < j) std::swap(a[i], a[j]);
+    }
+    for (int len = 2; len <= n; len <<= 1) {
+        double ang = sign * 2.0 * M_PI / len;
+        std::complex<double> wlen(std::cos(ang), std::sin(ang));
+        for (int i = 0; i < n; i += len) {
+            std::complex<double> w(1.0, 0.0);
+            for (int k = 0; k < len / 2; ++k) {
+                std::complex<double> u = a[i + k];
+                std::complex<double> v = a[i + k + len / 2] * w;
+                a[i + k]           = u + v;
+                a[i + k + len / 2] = u - v;
+                w *= wlen;
+            }
+        }
+    }
+}
+
+void computeIFSWavetableMips(const IFSShapeParams& p,
+                             float mips[IFS_MIP_LEVELS][IFS_WAVETABLE_SIZE])
+{
+    const int N = IFS_WAVETABLE_SIZE;
+
+    // Level 0 is the full waveform (respects smoothing) — render it first.
+    computeIFSWavetable(p, mips[0]);
+
+    // thread_local (not stack): keeps a ~64 KB scratch footprint off the audio-thread
+    // stack when a render happens inline during process().
+    static thread_local std::complex<double> spec[IFS_WAVETABLE_SIZE];
+    static thread_local std::complex<double> work[IFS_WAVETABLE_SIZE];
+
+    for (int i = 0; i < N; ++i) spec[i] = std::complex<double>(mips[0][i], 0.0);
+    fftRadix2(spec, N, -1);
+
+    // Each higher level keeps harmonics 1..H, brick-walling the rest. Brick-wall
+    // truncation of a periodic waveform is exact (a shorter Fourier series), so no
+    // windowing/Gibbs concern.
+    for (int l = 1; l < IFS_MIP_LEVELS; ++l) {
+        const int H = (N / 2) >> l;                 // top retained harmonic
+        for (int k = 0; k < N; ++k) {
+            work[k] = (k <= H || k >= N - H) ? spec[k] : std::complex<double>(0.0, 0.0);
+        }
+        fftRadix2(work, N, +1);                      // inverse (unnormalised)
+        const double inv = 1.0 / N;
+        for (int i = 0; i < N; ++i) mips[l][i] = static_cast<float>(work[i].real() * inv);
+    }
+}
+
 // ------------------------------------------------------------
 // Single-point evaluator (for per-sample shape modulation)
 // ------------------------------------------------------------
@@ -241,6 +302,18 @@ float evaluateIFSSmoothed(float x, const IFSVertices& v)
 
 // Internal 3-transform recursive evaluator.
 // x1 < x2, and all three segment widths (x1, x2-x1, 1-x2) are >= 0.01 (guaranteed by caller).
+//
+// Continuity (fixed 2026-09-14): each segment adds its recursive fractal detail as
+// s * (fn(xn) - y0). The sub-fractal fn starts AND ends at y0 (fn(0) == y0 exactly, and with this
+// same anchoring fn(1) == y3 == y0 since an envelope's ends are both startEndY), so the added term
+// is zero at both xn==0 and xn==1 — i.e. it vanishes at every segment boundary. This is what keeps
+// the whole envelope CONTINUOUS at the Blue/Green junctions while leaving the segment endpoints
+// (y0,y1,y2,y3) and the fractal wiggle's magnitude untouched. The previous port anchored segments
+// 2 and 3 to y1 and y2 respectively, which left a step of s2*(y0-y1) at x1 and s3*(y0-y2) at x2 —
+// a real discontinuity that clicked through a VCA (and that Match-Y legato exposed as a pop when it
+// matched a level inside one of those steps' gaps). y0 is the correct anchor because it's the value
+// fn actually returns to at both of its own ends; anchoring to the segment's own start value only
+// happens to work for segment 1 (whose start IS y0).
 static float evaluateIFS3(float x, int depth,
                            float x1, float x2,
                            float y0, float y1, float y2, float y3,
@@ -257,14 +330,14 @@ static float evaluateIFS3(float x, int depth,
         float xn = (x - x1) / w;
         if (depth == 0) return y1 + (y2 - y1) * xn;
         float fn = evaluateIFS3(xn, depth - 1, x1, x2, y0, y1, y2, y3, s1, s2, s3);
-        return y1 + (y2 - y1) * xn + s2 * (fn - y1);
+        return y1 + (y2 - y1) * xn + s2 * (fn - y0);
     }
     {
         float w  = 1.0f - x2;
         float xn = (x - x2) / w;
         if (depth == 0) return y2 + (y3 - y2) * xn;
         float fn = evaluateIFS3(xn, depth - 1, x1, x2, y0, y1, y2, y3, s1, s2, s3);
-        return y2 + (y3 - y2) * xn + s3 * (fn - y2);
+        return y2 + (y3 - y2) * xn + s3 * (fn - y0);
     }
 }
 

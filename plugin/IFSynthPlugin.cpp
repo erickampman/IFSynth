@@ -41,8 +41,8 @@ protected:
     {
         return "A polyphonic synth built on the PolygraphModular voice engine.";
     }
-    const char* getMaker()    const override { return "example"; }
-    const char* getHomePage() const override { return "https://example.com/ifsynth"; }
+    const char* getMaker()    const override { return "Unlikelyware"; }
+    const char* getHomePage() const override { return "https://www.unlikelyware.com"; }
     const char* getLicense()  const override { return "MIT"; }
     uint32_t    getVersion()  const override { return d_version(0, 3, 0); }
     int64_t     getUniqueId() const override { return d_cconst('I', 'F', 'S', 'y'); }
@@ -205,6 +205,8 @@ private:
         case kParamIfsLevel:      return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemLevel);
         case kParamIfsSyncMode:   return MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemSyncMode);
         case kParamOsc2PitchModDepth: return MODULE_PARAM_ADDRESS(ModuleParamKindSinOsc, ModuleInstance1, SinOscParamItemFreqModLevel);
+        case kParamEnvScaleRelease:   return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance1, IFSEnvParamItemScaleRelease);
+        case kParamEnv2ScaleRelease:  return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance2, IFSEnvParamItemScaleRelease);
         default:                  return 0;
         }
     }
@@ -254,9 +256,9 @@ private:
         return static_cast<int>(voiceModeValue + 0.5f) == 0; // 0 = Mono, 1 = poly
     }
 
-    // Voice mode: Mono = 1 voice + VoiceManager legato (engages the last-note note-stack) + the
-    // envelopes' FindMatchingY level-matching (click-free retrigger). Poly = 10 voices, none of
-    // that. Glide (applySlew) also keys off mono.
+    // Voice mode: Mono = 1 voice + VoiceManager legato (engages the last-note note-stack) + each
+    // envelope's Legato mode (Steal / Match Y, default Match Y for a click-free retrigger). Poly =
+    // 10 voices, none of that. Glide (applySlew) also keys off mono.
     void applyVoiceMode(float value)
     {
         if (!fVoiceManager)
@@ -264,9 +266,9 @@ private:
         const bool mono = isMono(value);
         setConfig(MIDIParamItemVoiceCount, mono ? 1.0f : 10.0f);
         setConfig(MIDIParamItemLegato,     mono ? 1.0f : 0.0f);
-        const float envLegato = mono ? 1.0f : 0.0f; // 1 = FindMatchingY
-        fVoiceManager->setParameter(ifsEnv1LegatoModeAddress, envLegato);
-        fVoiceManager->setParameter(ifsEnv2LegatoModeAddress, envLegato);
+        // 0 = NoteSteal, 1 = FindMatchingY. Only meaningful in mono; poly always steals.
+        fVoiceManager->setParameter(ifsEnv1LegatoModeAddress, mono ? fValues[kParamEnvLegatoMode]  : 0.0f);
+        fVoiceManager->setParameter(ifsEnv2LegatoModeAddress, mono ? fValues[kParamEnv2LegatoMode] : 0.0f);
         applySlew();
     }
 
@@ -289,6 +291,11 @@ private:
             return; // spread is applied on the output bus in run()
         if (index == kParamSlewRate)  { applySlew(); return; }
         if (index == kParamVoiceMode) { applyVoiceMode(value); return; }
+        if (index == kParamEnvLegatoMode || index == kParamEnv2LegatoMode)
+        {
+            applyVoiceMode(fValues[kParamVoiceMode]);
+            return;
+        }
         if (index == kParamSinPitch)
         {
             // Interval dropdown → semitone offset on the sine osc (the master).

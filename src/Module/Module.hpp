@@ -66,6 +66,12 @@ enum class ModuleQueryType {
 
 typedef bool (*ModuleQueryProc)(Module* module, void* state, ModuleQueryType type);
 
+// Cross-voice shared state (see ModuleSharedState.hpp). A module type that needs one object shared
+// across all voices' copies of a placement declares this proc in its ModuleInitSpec; the registry
+// creates one per placed module and injects it as Module::sharedState below.
+struct ModuleSharedState;
+typedef ModuleSharedState* (*ModuleSharedStateCreateProc)();
+
 
 struct InputSlot {
 //	AUParameterAddress moduleID;	// I don't think I need this.
@@ -355,6 +361,17 @@ public:
 
     PitchConverter* pitchConverter = nullptr;
 
+    // True only while dispatching a note-on that is a LEGATO CONTINUATION (the voice was already
+    // sounding when the note-on arrived — mono legato, or a deferred retrigger of a still-held
+    // note). Set by Voice::handleMIDIMessage() just before each module's midiProc, cleared
+    // otherwise. Oscillator note-on handlers read it to skip the phase reset (mOmega = 0) so a
+    // legato slide retunes without a waveform discontinuity/click; a fresh note (voice was
+    // Inactive) leaves it false and still gets the clean phase-0 attack.
+    bool legatoContinuation = false;
+
+    // Cross-voice shared object for this placement, or null if the module type declares none.
+    // Injected by Voice::initializeModules from the VoiceManager's registry (see ModuleSharedState.hpp).
+    ModuleSharedState* sharedState = nullptr;
 };
 
 #endif /* Module_h */
