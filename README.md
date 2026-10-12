@@ -60,7 +60,13 @@ voices, and per-note messages reach only their own note. Pitch bend has two part
 The bend goes into both oscillators' second pitch input, after the glide, so glide never smears a
 bend; on a mono legato note it ramps rather than jumps. The filter's key tracking follows the note, not the bend.
 
-Next: per-note expression, MPE input, and CLAP note expressions; see
+**CLAP.** Note ids are kept: when a host supplies them (Bitwig does), they decide which note is
+which, so a re-struck key is a new note and an expression can name only the id. Note expressions:
+**tuning** arrives as Pitch 7.25 at key + tuning, so it is exact at any size, not clamped to the
+bend range; **pressure** and **brightness** become polyphonic pressure and per-note controller #74
+(nothing in the voice responds to them yet).
+
+Next: pressure and timbre as modulation sources, and MPE input; see
 [docs/MIDI2-PORT.md](docs/MIDI2-PORT.md).
 
 ## Layout

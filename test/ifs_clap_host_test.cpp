@@ -368,6 +368,22 @@ double pitchOfNote(Library& lib, const clap_event_header_t* noteEvent, double ex
     return pitchOfEvents(lib, events, 1, expectedHz, what);
 }
 
+clap_event_note_expression_t makeNoteExpression(clap_note_expression id, int32_t noteId, int16_t key,
+                                                 double value) {
+    clap_event_note_expression_t event{};
+    event.header.size = sizeof(event);
+    event.header.time = 0;
+    event.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+    event.header.type = CLAP_EVENT_NOTE_EXPRESSION;
+    event.expression_id = id;
+    event.note_id = noteId;
+    event.port_index = 0;
+    event.channel = 0;
+    event.key = key;
+    event.value = value;
+    return event;
+}
+
 // A MIDI 2.0 per-note pitch bend UMP (status 0x6). value is the 32-bit bend, 0x80000000 = centre.
 clap_event_midi2_t makeUmpPerNoteBend(uint8_t note, uint32_t value) {
     clap_event_midi2_t event = makeUmpNoteOn(note, 0, 0, 0);
@@ -745,6 +761,41 @@ int main(int argc, char** argv) {
             checkInterval(pitchOfEvents(lib, events, 4, kC4Hz, "Pitch 7.25, then a new note-on"), 0.0,
                           "Pitch 7.25 lasts only for the sounding note");
         }
+    }
+
+    // --- CLAP note expressions + note ids, as Bitwig sends them ---------------------------------------
+    // Tuning arrives as Pitch 7.25 (an absolute pitch), so it is exact far beyond the ±2 bend range.
+    std::printf("CLAP note expressions (Bitwig):\n");
+    {
+        clap_event_note_t noteOn = makeClapNoteOn(int16_t(kNote), 1.0);
+        noteOn.note_id = 7;
+        const clap_event_note_expression_t tuning =
+            makeNoteExpression(CLAP_NOTE_EXPRESSION_TUNING, 7, int16_t(kNote), 24.0);
+        const clap_event_header_t* events[] = { &noteOn.header, &tuning.header };
+        checkInterval(pitchOfEvents(lib, events, 2, kC4Hz * 4.0, "tuning +24 (key + id)"), 24.0,
+                      "a +24 semitone tuning expression sounds two octaves up");
+    }
+    {
+        clap_event_note_t noteOn = makeClapNoteOn(int16_t(kNote), 1.0);
+        noteOn.note_id = 11;
+        const clap_event_note_expression_t tuning =
+            makeNoteExpression(CLAP_NOTE_EXPRESSION_TUNING, 11, -1, 7.0);   // id only, no key
+        const clap_event_header_t* events[] = { &noteOn.header, &tuning.header };
+        const double up7 = kC4Hz * std::pow(2.0, 7.0 / 12.0);
+        checkInterval(pitchOfEvents(lib, events, 2, up7, "tuning +7 (id only)"), 7.0,
+                      "an expression naming only the note id reaches that note (+7 semitones)");
+        checkInterval(pitchOfEvents(lib, events, 2, up7, "tuning +7 (id only, Osc 2)", true), 7.0,
+                      "a tuning expression retunes Osc 2 too");
+    }
+    {
+        // The same key with another note id is another note: the expression must not reach it.
+        clap_event_note_t noteOn = makeClapNoteOn(int16_t(kNote), 1.0);
+        noteOn.note_id = 12;
+        const clap_event_note_expression_t tuning =
+            makeNoteExpression(CLAP_NOTE_EXPRESSION_TUNING, 13, int16_t(kNote), 7.0);
+        const clap_event_header_t* events[] = { &noteOn.header, &tuning.header };
+        checkInterval(pitchOfEvents(lib, events, 2, kC4Hz, "tuning for another note id"), 0.0,
+                      "a tuning expression for another note id leaves C4 alone");
     }
 
     // --- the MIDI-1.0 / CLAP dialects still work -------------------------------------------------

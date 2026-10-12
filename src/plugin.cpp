@@ -400,6 +400,15 @@ void processEvent(Plugin* plugin, const clap_event_header_t* header) {
             plugin->voiceManager->handleMIDIMessage(pm::fromClapNote(*note, false));
         break;
     }
+    case CLAP_EVENT_NOTE_EXPRESSION: {   // per-note tuning / pressure / brightness, CLAP dialect (Bitwig)
+        const auto* expression = reinterpret_cast<const clap_event_note_expression_t*>(header);
+        if (!plugin->voiceManager) break;
+        const int key = expression->key >= 0 ? expression->key
+                                             : plugin->voiceManager->keyForNoteId(expression->note_id);
+        if (const auto message = pm::fromClapNoteExpression(*expression, key))
+            plugin->voiceManager->handleMIDIMessage(*message);
+        break;
+    }
     case CLAP_EVENT_MIDI: {          // MIDI 1.0, three bytes
         const auto* midi = reinterpret_cast<const clap_event_midi_t*>(header);
         if (plugin->voiceManager)

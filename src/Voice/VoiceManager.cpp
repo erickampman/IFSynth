@@ -307,6 +307,15 @@ void VoiceManager::releaseAllNotes(Voice& voice) {
     }
 }
 
+int VoiceManager::keyForNoteId(int32_t noteId) {
+    if (noteId < 0) return -1;
+    for (auto& voice : voices) {
+        const auto& current = voice->voiceStateManager.currentNote();
+        if (current && current->noteId == noteId) return current->note;
+    }
+    return -1;
+}
+
 void VoiceManager::allNotesOff() {
     // Clear pedal state so no deferred NoteOffs linger after all-notes-off.
     sustainPedalActive = false;
