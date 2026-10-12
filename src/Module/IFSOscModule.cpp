@@ -104,7 +104,11 @@ static inline void advanceSync(double& phase, double delta, bool syncOn, OscSync
         case OscSyncTypeBoth: reset = ((prevS > 0.0f) && (curS <= 0.0f))
                                    || ((prevS < 0.0f) && (curS >= 0.0f)); break;
         }
-        if (reset) { const float t = prevS / (prevS - curS); phase = (1.0 - t) * delta; }
+        if (reset) {
+            const float t = prevS / (prevS - curS);
+            phase = (1.0 - t) * delta;
+            phase -= std::floor(phase);
+        }
         prevS = curS;
     }
 }
