@@ -113,6 +113,8 @@ enum ParamIndex {
    kParamEnvScaleRelease,  // 0 Off, 1 On: early release jumps to the hold point, tail scaled
    kParamEnv2LegatoMode,
    kParamEnv2ScaleRelease,
+   // MIDI input (appended; CLAP ids are indexes). Controller setup, not sound: presets leave it alone.
+   kParamMpe,              // MPE input, lower zone: member bend ±48 + the master channel's bend
    kParamCount
 };
 
@@ -233,6 +235,8 @@ static constexpr ParamSpec kParams[kParamCount] = {
    {"Scale Rel",   "envScRel",   "",   0.0f,   1.0f,   0.0f,  false, true },
    {"Legato",      "env2Legato", "",   0.0f,   1.0f,   1.0f,  false, true },
    {"Scale Rel",   "env2ScRel",  "",   0.0f,   1.0f,   0.0f,  false, true },
+   // MIDI input
+   {"MPE",         "mpe",        "",   0.0f,   1.0f,   0.0f,  false, true },
 };
 
 // --- dropdowns -------------------------------------------------------------------------------
@@ -244,6 +248,7 @@ static constexpr const char* kOscIterationChoices[] = { "3", "4", nullptr };
 static constexpr const char* kIterationChoices[]    = { "1", "2", "3", "4", "5", "6", "7", "8", nullptr };
 static constexpr const char* kHoldChoices[]         = { "None", "Blue", "Green", "Loop", nullptr };
 static constexpr const char* kLegatoChoices[]       = { "Steal", "Match Y", nullptr };
+static constexpr const char* kMpeChoices[]          = { "Off", "On", nullptr };
 static constexpr const char* kMixModeChoices[]      = { "Add", "Multiply", nullptr };
 static constexpr const char* kVoiceModeChoices[]    = { "Mono", "10 Voices", nullptr };
 static constexpr const char* kSyncChoices[]         = { "Off", "Up", "Down", "Both", nullptr };
@@ -277,7 +282,7 @@ constexpr bool isDropdownParam(uint32_t index)
    case kParamEnvLegatoMode: case kParamEnv2LegatoMode:
    case kParamLfo2Iterations:
    case kParamMix1Mode: case kParamMix2Mode:
-   case kParamVoiceMode:
+   case kParamVoiceMode: case kParamMpe:
    case kParamIfsSyncMode:
    case kParamSinPitch:
    case kParamSinWaveform:
@@ -305,6 +310,7 @@ constexpr const char* const* choicesFor(uint32_t index)
    case kParamMix1Mode:
    case kParamMix2Mode:       return kMixModeChoices;
    case kParamVoiceMode:      return kVoiceModeChoices;
+   case kParamMpe:            return kMpeChoices;
    case kParamIfsSyncMode:    return kSyncChoices;
    case kParamSinPitch:       return kSinPitchChoices;
    case kParamSinWaveform:    return kSinWaveChoices;
@@ -413,6 +419,7 @@ static_assert(symbolIs(kParamEnvLegatoMode,     "envLegato"));
 static_assert(symbolIs(kParamEnvScaleRelease,   "envScRel"));
 static_assert(symbolIs(kParamEnv2LegatoMode,    "env2Legato"));
 static_assert(symbolIs(kParamEnv2ScaleRelease,  "env2ScRel"));
+static_assert(symbolIs(kParamMpe,               "mpe"));
 
 // Every dropdown's labels must cover its range exactly: min 0, one label per step up to max.
 constexpr bool choicesMatchRange(uint32_t index)

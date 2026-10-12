@@ -104,6 +104,9 @@ static constexpr PresetKey kPresetKeys[kParamCount] = {
    /*EnvScaleRelease*/ {"IFSEnv1", "scaleRelease"},
    /*Env2LegatoMode*/  {"IFSEnv2", "legatoMode"},
    /*Env2ScaleRelease*/{"IFSEnv2", "scaleRelease"},
+   // MPE describes the controller, not the sound: factory presets leave it out, and the loader keeps
+   // the current value for any key a preset does not mention.
+   /*Mpe*/             {"Global",  "mpe"},
 };
 
 } // namespace ifsynth

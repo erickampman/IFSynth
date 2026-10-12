@@ -57,6 +57,13 @@ voices, and per-note messages reach only their own note. Pitch bend has two part
   note, exact at any size; both bends offset from it. It lasts for that note only (no tuning
   table). KeyboardEDO sends it in glide mode.
 
+**MPE** (lower zone), switched on in the Amp box; off by default, and presets leave it alone since
+it describes the controller, not the sound. Member channels 2–16 bend ±48, and the master channel's
+bend (±2) adds to every member note. **RPN 0** (MIDI 1.0 CC 101/100/6/38, or the MIDI 2.0 registered
+controller) sets a channel's bend range; under MPE, any member sets all members. Ranges reset on the
+MPE Configuration Message and when the switch flips, and like RC 7 they survive `reset()`.
+Pressure and timbre are not routed yet.
+
 The bend goes into both oscillators' second pitch input, after the glide, so glide never smears a
 bend; on a mono legato note it ramps rather than jumps. The filter's key tracking follows the note, not the bend.
 
@@ -69,7 +76,7 @@ falls silent at the end of the envelope's release (or is stolen, or leaves the m
 note-off, so Bitwig keeps its per-voice modulation running through the release. The voice-info
 extension reports 10 voices (1 in Mono) and supports overlapping notes on one key.
 
-Next: pressure and timbre as modulation sources, and MPE input; see
+Next: pressure and timbre as modulation sources; see
 [docs/MIDI2-PORT.md](docs/MIDI2-PORT.md).
 
 ## Layout

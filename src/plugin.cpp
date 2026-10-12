@@ -267,6 +267,8 @@ AUParameterAddress vmAddress(uint32_t paramIndex) {
     case kParamOsc2PitchModDepth: return MODULE_PARAM_ADDRESS(ModuleParamKindSinOsc, ModuleInstance1, SinOscParamItemFreqModLevel);
     case kParamEnvScaleRelease:   return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance1, IFSEnvParamItemScaleRelease);
     case kParamEnv2ScaleRelease:  return MODULE_PARAM_ADDRESS(ModuleParamKindIFSEnv, ModuleInstance2, IFSEnvParamItemScaleRelease);
+    // MIDI input
+    case kParamMpe:               return MODULE_PARAM_ADDRESS(ModuleParamKindPitchBendConverter, ModuleInstance1, PitchBendConverterParamItemMPE);
     default:                  return 0;
     }
 }

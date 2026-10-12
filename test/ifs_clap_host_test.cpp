@@ -787,6 +787,59 @@ int main(int argc, char** argv) {
         }
     }
 
+    // --- MPE switch through the real plugin ---------------------------------------------------------
+    // The same member-channel bend with the switch off and on: the parameter must reach the engine, and
+    // it must be a two-state Off/On enum.
+    std::printf("MPE switch:\n");
+    {
+        Instance probe;
+        if (probe.create(lib)) {
+            const auto* params = static_cast<const clap_plugin_params_t*>(
+                probe.plugin->get_extension(probe.plugin, CLAP_EXT_PARAMS));
+            clap_param_info_t info{};
+            char text[64] = {};
+            check(params != nullptr && params->get_info(probe.plugin, kParamMpe, &info)
+                      && (info.flags & CLAP_PARAM_IS_ENUM) != 0 && info.default_value == 0.0
+                      && params->value_to_text(probe.plugin, kParamMpe, 1.0, text, sizeof(text))
+                      && std::string(text) == "On",
+                  "MPE is an Off/On enum parameter, off by default");
+            probe.destroy();
+        }
+        // Semitones a list of MIDI 1.0 events (ending in a note-on) sounds above the unbent C4.
+        auto semitonesOf = [&](bool mpe, std::vector<clap_event_midi_t> midi) {
+            Instance inst;
+            if (!inst.create(lib)) return 0.0;
+            installTestPatch(inst.plugin);
+            sendParam(inst.plugin, kParamMpe, mpe ? 1.0 : 0.0);
+            std::vector<const clap_event_header_t*> events;
+            for (const auto& e : midi) events.push_back(&e.header);
+            const std::vector<float> audio = render(inst.plugin, uint32_t(kSampleRate * 1.5),
+                                                    events.data(), uint32_t(events.size()));
+            inst.destroy();
+            return 12.0 * std::log2(estimatePitch(audio, 100.0, 2000.0) / hzZero);
+        };
+        const clap_event_midi_t memberBend = makeMidi1(0xE1, 0x00, 0x44);   // 8192 + 512, channel 2
+        const clap_event_midi_t memberNote = makeMidi1(0x91, uint8_t(kNote), 100);
+        const double off = semitonesOf(false, { memberBend, memberNote });
+        const double on  = semitonesOf(true,  { memberBend, memberNote });
+        std::printf("        member bend: %.3f st with MPE off, %.3f st with MPE on\n", off, on);
+        check(std::fabs(off - 0.125) < 0.02 && std::fabs(on - 3.0) < 0.02,
+              "MPE on reads a member-channel bend at ±48 (+3 st), off at ±2 (+0.125 st)");
+
+        // The master channel (1) bends every member note, at its own ±2, on top of the member bend.
+        const clap_event_midi_t masterBend = makeMidi1(0xE0, 0x00, 0x60);   // half way up: +1 of ±2
+        const double both = semitonesOf(true, { masterBend, memberBend, memberNote });
+        std::printf("        master +1 and member +3: %.3f st\n", both);
+        check(std::fabs(both - 4.0) < 0.02, "MPE: the master channel's bend adds to a member note's");
+
+        // RPN 0 sets a channel's bend range: ±12 on channel 1, then half way up is +6.
+        const double rpn = semitonesOf(false, { makeMidi1(0xB0, 101, 0), makeMidi1(0xB0, 100, 0),
+                                                makeMidi1(0xB0, 6, 12),  makeMidi1(0xB0, 38, 0),
+                                                masterBend, makeMidi1(0x90, uint8_t(kNote), 100) });
+        std::printf("        RPN 0 = 12, half way up: %.3f st\n", rpn);
+        check(std::fabs(rpn - 6.0) < 0.02, "RPN 0 sets the channel bend range (±12: half way is +6)");
+    }
+
     // --- note end + voice-info ---------------------------------------------------------------------
     // A note rings on through the IFS envelope's release after note-off; CLAP_EVENT_NOTE_END must
     // come when the voice falls silent, not at the note-off, and only for notes that arrived as CLAP

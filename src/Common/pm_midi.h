@@ -157,6 +157,16 @@ inline UmpMessage fromMidi1Bytes(uint8_t status, uint8_t data1, uint8_t data2) {
    return m;
 }
 
+// --- MPE -------------------------------------------------------------------------------------
+// MPE (MIDI Polyphonic Expression, MIDI 1.0) gives each note its own MEMBER channel and carries
+// zone-wide controls on the zone's MASTER channel. The MPE switch assumes the standard lower zone:
+// master = channel 1 (index 0), members = channels 2..16. Member-channel bend range defaults to ±48
+// semitones, master-channel bend to ±2.
+constexpr uint8_t kMpeMasterChannel            = 0;
+constexpr float   kMpeMemberBendRangeSemitones = 48.0f;
+
+inline bool isMpeMemberChannel(bool mpe, uint8_t channel) { return mpe && channel != kMpeMasterChannel; }
+
 // --- pitch bend ----------------------------------------------------------------------------
 // A 32-bit MIDI 2.0 bend value (channel or per-note) → -1..+1, with 0x80000000 mapping to exactly 0.
 // The top of the range is 1 - 2^-31, so up-bends fall a hair short of full scale, as the spec intends.

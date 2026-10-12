@@ -496,7 +496,8 @@ private:
     // Same dispatch as groupFor, but returns the module's accent colour (for knobs).
     Color accentFor(uint32_t i) const
     {
-        if (i == kParamVoiceMode || i == kParamSpread || i == kParamSinLevel || i == kParamIfsLevel)
+        if (i == kParamVoiceMode || i == kParamMpe || i == kParamSpread || i == kParamSinLevel
+            || i == kParamIfsLevel)
             return colComb();
         if (i == kParamSinPitch || i == kParamSinFine || i == kParamSinDetune
             || i == kParamSinWaveform || i == kParamIfsSyncMode)
@@ -519,7 +520,8 @@ private:
 
     GroupBox* groupFor(uint32_t i) const
     {
-        if (i == kParamVoiceMode || i == kParamSpread || i == kParamSinLevel || i == kParamIfsLevel)
+        if (i == kParamVoiceMode || i == kParamMpe || i == kParamSpread || i == kParamSinLevel
+            || i == kParamIfsLevel)
             return fAmpGroup.get();
         if (i == kParamSinPitch || i == kParamSinFine || i == kParamSinDetune
             || i == kParamSinWaveform)
@@ -1056,18 +1058,20 @@ private:
         }
     }
 
-    // Amp box: VCA-envelope source + Voices dropdowns side by side on top, then the Sine / IFS
-    // mix levels + Spread knobs across the bottom.
+    // Amp box: VCA-envelope source, Voices and MPE dropdowns side by side on top, then the Sine /
+    // IFS mix levels + Spread knobs across the bottom.
     void layoutAmp()
     {
         int cx, cy, cw, ch;
         fAmpGroup->contentBounds(cx, cy, cw, ch);
         const int dropH = static_cast<int>(46 * fUiScale);
-        const int half = cw / 2;
-        fDropdowns[kParamVCASource]->setSize(static_cast<uint>(half), static_cast<uint>(dropH));
-        fDropdowns[kParamVCASource]->setAbsolutePos(cx, cy);
-        fDropdowns[kParamVoiceMode]->setSize(static_cast<uint>(cw - half), static_cast<uint>(dropH));
-        fDropdowns[kParamVoiceMode]->setAbsolutePos(cx + half, cy);
+        Dropdown* top[3] = { fDropdowns[kParamVCASource].get(), fDropdowns[kParamVoiceMode].get(),
+                             fDropdowns[kParamMpe].get() };
+        for (int i = 0; i < 3; ++i) {
+            const int x0 = cx + cw * i / 3, x1 = cx + cw * (i + 1) / 3;
+            top[i]->setSize(static_cast<uint>(x1 - x0), static_cast<uint>(dropH));
+            top[i]->setAbsolutePos(x0, cy);
+        }
 
         const int ky = cy + dropH + 6;
         const int kh = ch - dropH - 6;

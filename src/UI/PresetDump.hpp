@@ -56,6 +56,8 @@ inline std::string buildPresetJson(const float* values, const char* name = "Unti
       {
          if (std::strcmp(kPresetKeys[i].module, mod) != 0)
             continue;
+         if (i == kParamMpe)   // controller setup, not sound: presets leave it alone (PresetKeys.hpp)
+            continue;
          char val[32];
          if (kParams[i].integer)
             std::snprintf(val, sizeof val, "%d", static_cast<int>(std::lround(values[i])));
