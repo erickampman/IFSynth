@@ -254,7 +254,7 @@ static constexpr const char* kModSourceChoices[]    = { "None", "LFO 1", "LFO 2"
 
 // Source dropdowns (osc mods + LPF cutoff). The VCA source shares this classification but its own
 // two-entry label list, so choicesFor() checks it first.
-inline bool isModSrcParam(uint32_t index)
+constexpr bool isModSrcParam(uint32_t index)
 {
    switch (index) {
    case kParamOscPitchModSrc: case kParamOscBxModSrc: case kParamOscByModSrc:
@@ -267,7 +267,7 @@ inline bool isModSrcParam(uint32_t index)
    }
 }
 
-inline bool isDropdownParam(uint32_t index)
+constexpr bool isDropdownParam(uint32_t index)
 {
    switch (index) {
    case kParamOscIterations:
@@ -288,7 +288,7 @@ inline bool isDropdownParam(uint32_t index)
 }
 
 // Null-terminated label list for a dropdown parameter, or nullptr when it is a plain value.
-inline const char* const* choicesFor(uint32_t index)
+constexpr const char* const* choicesFor(uint32_t index)
 {
    if (index == kParamVCASource) return kVcaSourceChoices;   // before the mod-source group
    if (isModSrcParam(index))     return kModSourceChoices;
@@ -311,6 +311,126 @@ inline const char* const* choicesFor(uint32_t index)
    default:                   return nullptr;
    }
 }
+
+// --- table guards ----------------------------------------------------------------------------
+// kParams is indexed by ParamIndex, so a swapped pair of rows compiles fine and silently cross-wires
+// two controls (PlainOldSynth's Effect Mix and Spread once did exactly that). Check every row's
+// symbol against the enum, one assert per row so a failure names the row. When appending a
+// parameter, add its line here too.
+constexpr bool symbolIs(ParamIndex index, const char* symbol)
+{
+   const char* a = kParams[index].symbol;
+   while (*a != '\0' && *a == *symbol) { ++a; ++symbol; }
+   return *a == *symbol;
+}
+static_assert(symbolIs(kParamVoiceMode,         "voices"));
+static_assert(symbolIs(kParamSlewRate,          "glide"));
+static_assert(symbolIs(kParamOscPitch,          "oscPitch"));
+static_assert(symbolIs(kParamOscFine,           "oscFine"));
+static_assert(symbolIs(kParamOscDetune,         "oscDetune"));
+static_assert(symbolIs(kParamOscBx,             "oscBx"));
+static_assert(symbolIs(kParamOscBy,             "oscBy"));
+static_assert(symbolIs(kParamOscStartEndY,      "oscEnds"));
+static_assert(symbolIs(kParamOscSquash1,        "oscSq1"));
+static_assert(symbolIs(kParamOscSquash2,        "oscSq2"));
+static_assert(symbolIs(kParamOscSmoothing,      "oscSmooth"));
+static_assert(symbolIs(kParamOscIterations,     "oscIters"));
+static_assert(symbolIs(kParamEnvDuration,       "envDur"));
+static_assert(symbolIs(kParamEnvBlueX,          "envBlueX"));
+static_assert(symbolIs(kParamEnvBlueY,          "envBlueY"));
+static_assert(symbolIs(kParamEnvGreenX,         "envGreenX"));
+static_assert(symbolIs(kParamEnvGreenY,         "envGreenY"));
+static_assert(symbolIs(kParamEnvSquash1,        "envSq1"));
+static_assert(symbolIs(kParamEnvSquash2,        "envSq2"));
+static_assert(symbolIs(kParamEnvSquash3,        "envSq3"));
+static_assert(symbolIs(kParamEnvSmoothing,      "envSmooth"));
+static_assert(symbolIs(kParamEnvIterations,     "envIters"));
+static_assert(symbolIs(kParamEnvHoldMode,       "envHold"));
+static_assert(symbolIs(kParamLfoRate,           "lfoRate"));
+static_assert(symbolIs(kParamLfoBx,             "lfoBx"));
+static_assert(symbolIs(kParamLfoBy,             "lfoBy"));
+static_assert(symbolIs(kParamLfoStartEndY,      "lfoEnds"));
+static_assert(symbolIs(kParamLfoSquash1,        "lfoSq1"));
+static_assert(symbolIs(kParamLfoSquash2,        "lfoSq2"));
+static_assert(symbolIs(kParamLfoSmoothing,      "lfoSmooth"));
+static_assert(symbolIs(kParamLfoIterations,     "lfoIters"));
+static_assert(symbolIs(kParamEnv2Duration,      "env2Dur"));
+static_assert(symbolIs(kParamEnv2BlueX,         "env2BlueX"));
+static_assert(symbolIs(kParamEnv2BlueY,         "env2BlueY"));
+static_assert(symbolIs(kParamEnv2GreenX,        "env2GreenX"));
+static_assert(symbolIs(kParamEnv2GreenY,        "env2GreenY"));
+static_assert(symbolIs(kParamEnv2Squash1,       "env2Sq1"));
+static_assert(symbolIs(kParamEnv2Squash2,       "env2Sq2"));
+static_assert(symbolIs(kParamEnv2Squash3,       "env2Sq3"));
+static_assert(symbolIs(kParamEnv2Smoothing,     "env2Smooth"));
+static_assert(symbolIs(kParamEnv2Iterations,    "env2Iters"));
+static_assert(symbolIs(kParamEnv2HoldMode,      "env2Hold"));
+static_assert(symbolIs(kParamLfo2Rate,          "lfo2Rate"));
+static_assert(symbolIs(kParamLfo2Bx,            "lfo2Bx"));
+static_assert(symbolIs(kParamLfo2By,            "lfo2By"));
+static_assert(symbolIs(kParamLfo2StartEndY,     "lfo2Ends"));
+static_assert(symbolIs(kParamLfo2Squash1,       "lfo2Sq1"));
+static_assert(symbolIs(kParamLfo2Squash2,       "lfo2Sq2"));
+static_assert(symbolIs(kParamLfo2Smoothing,     "lfo2Smooth"));
+static_assert(symbolIs(kParamLfo2Iterations,    "lfo2Iters"));
+static_assert(symbolIs(kParamMix1EnableLFO,     "mix1LFO"));
+static_assert(symbolIs(kParamMix1EnableEnv,     "mix1Env"));
+static_assert(symbolIs(kParamMix1EnableCC,      "mix1CCen"));
+static_assert(symbolIs(kParamMix1CCNumber,      "mix1CCnum"));
+static_assert(symbolIs(kParamMix1Mode,          "mix1Mode"));
+static_assert(symbolIs(kParamMix2EnableLFO,     "mix2LFO"));
+static_assert(symbolIs(kParamMix2EnableEnv,     "mix2Env"));
+static_assert(symbolIs(kParamMix2EnableCC,      "mix2CCen"));
+static_assert(symbolIs(kParamMix2CCNumber,      "mix2CCnum"));
+static_assert(symbolIs(kParamMix2Mode,          "mix2Mode"));
+static_assert(symbolIs(kParamOscPitchModSrc,    "oscPMsrc"));
+static_assert(symbolIs(kParamOscPitchModDepth,  "oscPMdpt"));
+static_assert(symbolIs(kParamOscBxModSrc,       "oscBxMsrc"));
+static_assert(symbolIs(kParamOscBxModDepth,     "oscBxMdpt"));
+static_assert(symbolIs(kParamOscByModSrc,       "oscByMsrc"));
+static_assert(symbolIs(kParamOscByModDepth,     "oscByMdpt"));
+static_assert(symbolIs(kParamOscSq1ModSrc,      "oscSq1Msrc"));
+static_assert(symbolIs(kParamOscSq1ModDepth,    "oscSq1Mdpt"));
+static_assert(symbolIs(kParamOscSq2ModSrc,      "oscSq2Msrc"));
+static_assert(symbolIs(kParamOscSq2ModDepth,    "oscSq2Mdpt"));
+static_assert(symbolIs(kParamVCASource,         "vcaSrc"));
+static_assert(symbolIs(kParamLpfCutoff,         "lpfCutoff"));
+static_assert(symbolIs(kParamLpfResonance,      "lpfReso"));
+static_assert(symbolIs(kParamLpfKeyTrack,       "lpfKeyTrk"));
+static_assert(symbolIs(kParamLpfCutoffModSrc,   "lpfCMsrc"));
+static_assert(symbolIs(kParamLpfCutoffModDepth, "lpfCMdpt"));
+static_assert(symbolIs(kParamSpread,            "spread"));
+static_assert(symbolIs(kParamSinPitch,          "sinPitch"));
+static_assert(symbolIs(kParamSinFine,           "sinFine"));
+static_assert(symbolIs(kParamSinDetune,         "sinDetune"));
+static_assert(symbolIs(kParamSinWaveform,       "sinWave"));
+static_assert(symbolIs(kParamSinLevel,          "sinLevel"));
+static_assert(symbolIs(kParamIfsLevel,          "ifsLevel"));
+static_assert(symbolIs(kParamIfsSyncMode,       "ifsSync"));
+static_assert(symbolIs(kParamOsc2PitchModSrc,   "o2PMsrc"));
+static_assert(symbolIs(kParamOsc2PitchModDepth, "o2PMdpt"));
+static_assert(symbolIs(kParamEnvLegatoMode,     "envLegato"));
+static_assert(symbolIs(kParamEnvScaleRelease,   "envScRel"));
+static_assert(symbolIs(kParamEnv2LegatoMode,    "env2Legato"));
+static_assert(symbolIs(kParamEnv2ScaleRelease,  "env2ScRel"));
+
+// Every dropdown's labels must cover its range exactly: min 0, one label per step up to max.
+constexpr bool choicesMatchRange(uint32_t index)
+{
+   const char* const* c = choicesFor(index);
+   if (c == nullptr) return true;
+   uint32_t count = 0;
+   while (c[count] != nullptr) ++count;
+   const ParamSpec& s = kParams[index];
+   return s.integer && s.min == 0.0f && s.max == float(count - 1);
+}
+constexpr bool allChoicesMatchRanges()
+{
+   for (uint32_t i = 0; i < uint32_t(kParamCount); ++i)
+      if (isDropdownParam(i) != (choicesFor(i) != nullptr) || !choicesMatchRange(i)) return false;
+   return true;
+}
+static_assert(allChoicesMatchRanges(), "a dropdown's label count does not match its parameter range");
 
 } // namespace ifsynth
 
