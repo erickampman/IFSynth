@@ -74,6 +74,12 @@ struct UmpMessage {
    uint8_t  optionFlags   = 0; // per-note management (0xF): kPerNoteMgmt* flags
 };
 
+// Registered per-note controller indexes, per spec.
+enum : uint8_t {
+   kRegPerNotePitch7_25   = 3,  // absolute pitch, Q7.25 semitones; both pitch bends offset from it
+   kRegPerNoteBrightness  = 74, // the MIDI 2.0 counterpart of MPE's CC74 "timbre"
+};
+
 // --- predicates (spec logic; note-on with velocity 0 counts as note-off) -----------------
 inline bool isChannelVoice2(const UmpMessage& m) { return m.messageType == kUmpTypeChannelVoice2; }
 

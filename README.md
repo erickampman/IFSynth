@@ -50,11 +50,15 @@ receive MIDI 2.0 7.9-pitch notes that DPF's generated CLAP wrapper drops.
 voices, and per-note messages reach only their own note. Pitch bend has two parts, summed:
 
 - **Channel bend**, ±2 semitones (MIDI 1.0 or 2.0).
-- **Per-note bend** (MIDI 2.0), ±48 semitones unless the controller announces its range with
-  registered controller 7 (KeyboardEDO sends ±2), which is kept per channel.
+- **Per-note bend** (MIDI 2.0), the channel's range (±2) unless the controller announces its own
+  with registered controller 7, which is kept per channel. (M2-104 gives per-note bend no range
+  of its own: it "acts like Pitch Bend in every way".)
+- **Pitch 7.25** (MIDI 2.0 registered per-note controller #3): an absolute pitch for the sounding
+  note, exact at any size; both bends offset from it. It lasts for that note only (no tuning
+  table). KeyboardEDO sends it in glide mode.
 
 The bend goes into both oscillators' second pitch input, after the glide, so glide never smears a
-bend. The filter's key tracking follows the note, not the bend.
+bend; on a mono legato note it ramps rather than jumps. The filter's key tracking follows the note, not the bend.
 
 Next: per-note expression, MPE input, and CLAP note expressions; see
 [docs/MIDI2-PORT.md](docs/MIDI2-PORT.md).

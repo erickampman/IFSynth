@@ -283,8 +283,8 @@ enum PitchConverterParamItem : NSUInteger {
 };
 
 enum PitchBendConverterParamItem : NSUInteger {
-   PitchBendConverterParamItemQuarterTones = 1, // channel bend range, 0..8 quarter-tones
-   PitchBendConverterParamItemPerNoteSemitones, // MIDI 2.0 per-note bend range, semitones
+   PitchBendConverterParamItemQuarterTones = 1, // channel bend range, 0..8 quarter-tones; also the
+                                                // per-note range until registered controller 7 sets one
 };
 
 // Referenced by Voice::connectTunnelPairs (no tunnel modules in the v1 patch, but it must compile).

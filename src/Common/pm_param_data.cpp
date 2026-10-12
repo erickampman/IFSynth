@@ -206,11 +206,10 @@ const ModuleParamConstantsGroup pitchConverterModuleConstantsGroup = {
    const_cast<char*>("pitchConverter"),
    sizeof(pitchConverterConstants) / sizeof(pitchConverterConstants[0]), pitchConverterConstants};
 
-// Pitch bend converter — MIDI 2.0 pitch bend → a bipolar octaves signal. Channel bend range in
-// quarter-tones; per-note bend range in semitones (±48 by default, the MPE convention).
+// Pitch bend converter — MIDI 2.0 pitch bend → a bipolar octaves signal. Bend range in quarter-tones
+// (±2 semitones by default), used by per-note bend too until registered controller 7 sets its own.
 static const ModuleParamConstants pitchBendConverterConstants[] = {
    {"quarterTones",     PitchBendConverterParamItemQuarterTones,     0, 0, nullptr, 0.0f, 8.0f,  4.0f,  0},
-   {"perNoteSemitones", PitchBendConverterParamItemPerNoteSemitones, 0, 0, nullptr, 0.0f, 96.0f, 48.0f, 0},
 };
 const ModuleParamConstantsGroup pitchBendConverterConstantsGroup = {
    const_cast<char*>("Pitch Bend"),

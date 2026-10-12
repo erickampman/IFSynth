@@ -624,18 +624,31 @@ int main(int argc, char** argv) {
     };
     {
         const clap_event_midi2_t noteOn = makeUmpNoteOn(uint8_t(kNote), 0xFFFF, 0, 0);
-        const clap_event_midi2_t bend = makeUmpPerNoteBend(uint8_t(kNote), bendValue(3.0, 48.0));
+        // No registered controller 7: per-note bend uses the channel's range, ±2.
+        const clap_event_midi2_t bend = makeUmpPerNoteBend(uint8_t(kNote), 0xC0000000u);  // half way up
         const clap_event_header_t* events[] = { &noteOn.header, &bend.header };
-        const double up3 = kC4Hz * std::pow(2.0, 3.0 / 12.0);
-        checkInterval(pitchOfEvents(lib, events, 2, up3, "per-note bend +3 (IFS)"), 3.0,
-                      "a per-note bend of +3 semitones moves the IFS oscillator from C4 to D#4");
-        checkInterval(pitchOfEvents(lib, events, 2, up3, "per-note bend +3 (Osc 2)", true), 3.0,
-                      "a per-note bend of +3 semitones moves Osc 2 from C4 to D#4");
+        const double up1 = kC4Hz * std::pow(2.0, 1.0 / 12.0);
+        checkInterval(pitchOfEvents(lib, events, 2, up1, "per-note bend +1 (IFS)"), 1.0,
+                      "with no RC 7, a half-way per-note bend is +1 semitone on the IFS oscillator");
+        checkInterval(pitchOfEvents(lib, events, 2, up1, "per-note bend +1 (Osc 2)", true), 1.0,
+                      "with no RC 7, a half-way per-note bend is +1 semitone on Osc 2");
+    }
+    {
+        // Registered controller 7 can also widen the range: ±48, then +3.
+        clap_event_midi2_t range = makeUmpNoteOn(0, 0, 0, 0);
+        range.data[0] = (0x4u << 28) | (0x2u << 20) | (0u << 8) | 7u;
+        range.data[1] = 48u << 25;
+        const clap_event_midi2_t noteOn = makeUmpNoteOn(uint8_t(kNote), 0xFFFF, 0, 0);
+        const clap_event_midi2_t bend = makeUmpPerNoteBend(uint8_t(kNote), bendValue(3.0, 48.0));
+        const clap_event_header_t* events[] = { &range.header, &noteOn.header, &bend.header };
+        checkInterval(pitchOfEvents(lib, events, 3, kC4Hz * std::pow(2.0, 3.0 / 12.0),
+                                    "per-note bend +3 at RC7 = 48"), 3.0,
+                      "registered controller 7 = 48 widens the per-note range: +3 of ±48");
     }
     {
         // A bend sent for another key must not touch the sounding note.
         const clap_event_midi2_t noteOn = makeUmpNoteOn(uint8_t(kNote), 0xFFFF, 0, 0);
-        const clap_event_midi2_t bend = makeUmpPerNoteBend(uint8_t(kNote + 1), bendValue(12.0, 48.0));
+        const clap_event_midi2_t bend = makeUmpPerNoteBend(uint8_t(kNote + 1), 0xFFFFFFFFu);
         const clap_event_header_t* events[] = { &noteOn.header, &bend.header };
         checkInterval(pitchOfEvents(lib, events, 2, kC4Hz, "per-note bend, other key"), 0.0,
                       "a per-note bend for another key leaves C4 alone");
@@ -644,7 +657,7 @@ int main(int argc, char** argv) {
         // Notes match on note + channel + group: the same key's per-note bend on channel 2 is for a
         // different note.
         const clap_event_midi2_t noteOn = makeUmpNoteOn(uint8_t(kNote), 0xFFFF, 0, 0);
-        clap_event_midi2_t bend = makeUmpPerNoteBend(uint8_t(kNote), bendValue(12.0, 48.0));
+        clap_event_midi2_t bend = makeUmpPerNoteBend(uint8_t(kNote), 0xFFFFFFFFu);
         bend.data[0] |= 1u << 16;   // channel 2
         const clap_event_header_t* events[] = { &noteOn.header, &bend.header };
         checkInterval(pitchOfEvents(lib, events, 2, kC4Hz, "per-note bend, other channel"), 0.0,
@@ -687,12 +700,51 @@ int main(int argc, char** argv) {
         mono.param_id = kParamVoiceMode;  mono.value = 0.0;
         glide.param_id = kParamSlewRate;  glide.value = 2.0;  glide.header.time = later;
         const clap_event_midi2_t noteOn = makeUmpNoteOn(uint8_t(kNote), 0xFFFF, 0, 0);
-        clap_event_midi2_t bend = makeUmpPerNoteBend(uint8_t(kNote), bendValue(3.0, 48.0));
+        clap_event_midi2_t bend = makeUmpPerNoteBend(uint8_t(kNote), 0xC0000000u);   // +1 of ±2
         bend.header.time = later;
         const clap_event_header_t* events[] = { &mono.header, &noteOn.header, &glide.header, &bend.header };
-        checkInterval(pitchOfEvents(lib, events, 4, kC4Hz * std::pow(2.0, 3.0 / 12.0),
-                                    "per-note bend +3, mono, 2 s glide"), 3.0,
+        checkInterval(pitchOfEvents(lib, events, 4, kC4Hz * std::pow(2.0, 1.0 / 12.0),
+                                    "per-note bend +1, mono, 2 s glide"), 1.0,
                       "a bend bypasses the glide");
+    }
+
+    // --- Pitch 7.25 (registered per-note controller #3) -------------------------------------------
+    // An absolute pitch for the sounding note, exact at any size (unlike a bend, clamped to its
+    // range); both bends then offset from it.
+    std::printf("Pitch 7.25 through the real plugin:\n");
+    {
+        const clap_event_midi2_t noteOn = makeUmpNoteOn(uint8_t(kNote), 0xFFFF, 0, 0);
+        clap_event_midi2_t tune = makeUmpNoteOn(uint8_t(kNote), 0, 0, 0);
+        tune.data[0] = (0x4u << 28) | (0x0u << 20) | (uint32_t(kNote) << 8) | 3u;
+        tune.data[1] = uint32_t((kNote + 7) * 33554432.0 + 0.5 * 33554432.0);   // G4 + 50 cents
+        {
+            const clap_event_header_t* events[] = { &noteOn.header, &tune.header };
+            checkInterval(pitchOfEvents(lib, events, 2, kC4Hz * std::pow(2.0, 7.5 / 12.0),
+                                        "Pitch 7.25 = 67.5"), 7.5,
+                          "Pitch 7.25 retunes the sounding C4 to 67.5 (G4 + 50 cents)");
+            checkInterval(pitchOfEvents(lib, events, 2, kC4Hz * std::pow(2.0, 7.5 / 12.0),
+                                        "Pitch 7.25 = 67.5 (Osc 2)", true), 7.5,
+                          "Pitch 7.25 retunes Osc 2 too");
+        }
+        {
+            const clap_event_midi2_t bend = makeUmpPerNoteBend(uint8_t(kNote), 0xC0000000u);  // +1
+            const clap_event_header_t* events[] = { &noteOn.header, &tune.header, &bend.header };
+            checkInterval(pitchOfEvents(lib, events, 3, kC4Hz * std::pow(2.0, 8.5 / 12.0),
+                                        "Pitch 7.25 = 67.5, bend +1"), 8.5,
+                          "a per-note bend offsets from the Pitch 7.25 pitch");
+        }
+        {
+            // Not persistent: the next note-on on that key starts at its own pitch.
+            clap_event_midi2_t noteOff = makeUmpNoteOn(uint8_t(kNote), 0, 0, 0);
+            noteOff.data[0] = (0x4u << 28) | (0x8u << 20) | (uint32_t(kNote) << 8);
+            clap_event_midi2_t again = noteOn;
+            noteOff.header.time = 100;
+            again.header.time = 200;
+            const clap_event_header_t* events[] = { &noteOn.header, &tune.header,
+                                                    &noteOff.header, &again.header };
+            checkInterval(pitchOfEvents(lib, events, 4, kC4Hz, "Pitch 7.25, then a new note-on"), 0.0,
+                          "Pitch 7.25 lasts only for the sounding note");
+        }
     }
 
     // --- the MIDI-1.0 / CLAP dialects still work -------------------------------------------------
