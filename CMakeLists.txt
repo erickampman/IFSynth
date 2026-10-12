@@ -119,6 +119,10 @@ add_dependencies(ifsynth_core generate_presets generate_resources)
 # links WebKit; the WebView implementation itself comes from DPF's UI sources (DistrhoUI_macOS.mm /
 # DistrhoUI.cpp / DistrhoUI_win32.cpp), not from dgl.
 dpf__add_plugin_specific_ui_sources(ifsynth_core TRUE)
+if(APPLE)
+    # The live Retina scale of the host window (see the file's header comment).
+    target_sources(ifsynth_core PRIVATE src/UI/BackingScale_mac.mm)
+endif()
 # Dev-only JSON patch dumper (keystroke → file); compiled out of release builds.
 if(IFSYNTH_PRESET_DUMP)
     target_compile_definitions(ifsynth_core PRIVATE IFSYNTH_PRESET_DUMP=1)
