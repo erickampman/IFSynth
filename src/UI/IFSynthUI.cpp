@@ -496,7 +496,8 @@ private:
     // Same dispatch as groupFor, but returns the module's accent colour (for knobs).
     Color accentFor(uint32_t i) const
     {
-        if (i == kParamVoiceMode || i == kParamMpe || i == kParamSpread || i == kParamSinLevel
+        if (i == kParamVoiceMode || i == kParamMpe || i == kParamVelocity || i == kParamSpread
+            || i == kParamSinLevel
             || i == kParamIfsLevel)
             return colComb();
         if (i == kParamSinPitch || i == kParamSinFine || i == kParamSinDetune
@@ -520,7 +521,8 @@ private:
 
     GroupBox* groupFor(uint32_t i) const
     {
-        if (i == kParamVoiceMode || i == kParamMpe || i == kParamSpread || i == kParamSinLevel
+        if (i == kParamVoiceMode || i == kParamMpe || i == kParamVelocity || i == kParamSpread
+            || i == kParamSinLevel
             || i == kParamIfsLevel)
             return fAmpGroup.get();
         if (i == kParamSinPitch || i == kParamSinFine || i == kParamSinDetune
@@ -849,19 +851,23 @@ private:
         placeGroup(fOscGroup.get(), colL, row0, sinX - gap - colL, row0H);
         placeGroup(fSinGroup.get(), sinX, row0, sinW,              row0H);
 
-        // Rows 1-2: the Env and LFO tab groups share one width (left column); Env sits beside the
-        // LPF (which takes the rest of row 1), LFO beside Amp + Slew. Each tab pair overlays one
-        // rect; the TabBar switches which is visible.
-        const int ampW  = static_cast<int>(300 * fUiScale);
-        const int slewW = static_cast<int>(120 * fUiScale);
-        const int envW  = W - 2 * m - 2 * gap - slewW - ampW;
-        const int rightX = colL + envW + gap;
+        // Rows 1-2: Env sits beside the LPF (which takes the rest of row 1), LFO beside Amp + Slew.
+        // The LFO is narrower than the Env by ampExtra, which the Amp box gets for its fourth
+        // dropdown (Velocity); layoutLfoPanel keeps the two pads the same width so they still line
+        // up. Each tab pair overlays one rect; the TabBar switches which is visible.
+        const int ampW     = static_cast<int>(300 * fUiScale);
+        const int ampExtra = static_cast<int>(100 * fUiScale);
+        const int slewW    = static_cast<int>(120 * fUiScale);
+        const int envW     = W - 2 * m - 2 * gap - slewW - ampW;
+        const int lfoW     = envW - ampExtra;
+        const int rightX   = colL + envW + gap;
+        const int ampX     = colL + lfoW + gap;
         placeGroup(fEnv1Group.get(), colL,   row1, envW,              rowH);
         placeGroup(fEnv2Group.get(), colL,   row1, envW,              rowH);
         placeGroup(fLpfGroup.get(),  rightX, row1, W - m - rightX,    rowH);
-        placeGroup(fLfo1Group.get(), colL,   row2, envW,              row2H);
-        placeGroup(fLfo2Group.get(), colL,   row2, envW,              row2H);
-        placeGroup(fAmpGroup.get(),  rightX, row2, ampW,              row2H);
+        placeGroup(fLfo1Group.get(), colL,   row2, lfoW,              row2H);
+        placeGroup(fLfo2Group.get(), colL,   row2, lfoW,              row2H);
+        placeGroup(fAmpGroup.get(),  ampX,   row2, ampW + ampExtra,   row2H);
         placeGroup(fSlewGroup.get(), W - m - slewW, row2, slewW,      row2H);
 
         // Row 3: CV Mixer (condensed) + IFS Osc modulation (wide, fills) + Osc 2 Mod + LPF modulation.
@@ -880,7 +886,7 @@ private:
 
         // Tab bars in each tab group's title strip (top-right).
         placeTab(fEnvTab.get(), colL, row1, envW, scale);
-        placeTab(fLfoTab.get(), colL, row2, envW, scale);
+        placeTab(fLfoTab.get(), colL, row2, lfoW, scale);
         placeTab(fMixTab.get(), colL, modY, mixW, scale);
 
         layoutOscPanel();
@@ -900,13 +906,9 @@ private:
         layoutEnvPanel(fEnv2Group.get(), fEnv2Pad.get(), kParamEnv2Duration, kParamEnv2Smoothing,
                        kParamEnv2HoldMode, kParamEnv2LegatoMode, kParamEnv2Iterations, kParamEnv2ScaleRelease);
 
-        SubWidget* lfo1G[3] = { fKnobs[kParamLfoRate].get(), fKnobs[kParamLfoSmoothing].get(),
-                                fDropdowns[kParamLfoIterations].get() };
-        layoutPadPanel(fLfo1Group.get(), fLfo1Pad.get(), lfo1G, 3, kEnvLfoPadFrac);
-
-        SubWidget* lfo2G[3] = { fKnobs[kParamLfo2Rate].get(), fKnobs[kParamLfo2Smoothing].get(),
-                                fDropdowns[kParamLfo2Iterations].get() };
-        layoutPadPanel(fLfo2Group.get(), fLfo2Pad.get(), lfo2G, 3, kEnvLfoPadFrac);
+        // LFO: the pad, then Iterations above the Rate + Smoothing knobs.
+        layoutLfoPanel(fLfo1Group.get(), fLfo1Pad.get(), kParamLfoRate, kParamLfoSmoothing, kParamLfoIterations);
+        layoutLfoPanel(fLfo2Group.get(), fLfo2Pad.get(), kParamLfo2Rate, kParamLfo2Smoothing, kParamLfo2Iterations);
 
         // Low-pass filter: cutoff, resonance, key-track knobs across the panel.
         SubWidget* lpf[3] = { fKnobs[kParamLpfCutoff].get(), fKnobs[kParamLpfResonance].get(),
@@ -952,7 +954,7 @@ private:
     // Pad width fraction shared by the Env and LFO panels (stacked, same width) so their pads align.
     static constexpr float kEnvLfoPadFrac = 0.30f;
 
-    // Pad on the left, placed like layoutPadPanel; returns the content area to its right.
+    // Pad on the left (fixed 2:1 landscape); returns the content area to its right.
     void placePad(GroupBox* group, NanoSubWidget* pad, float padFrac, int& kx, int& cy, int& kw, int& ch)
     {
         int cx, cw;
@@ -1061,17 +1063,17 @@ private:
         }
     }
 
-    // Amp box: VCA-envelope source, Voices and MPE dropdowns side by side on top, then the Sine /
-    // IFS mix levels + Spread knobs across the bottom.
+    // Amp box: VCA-envelope source, Voices, MPE and Velocity dropdowns side by side on top, then the
+    // Sine / IFS mix levels + Spread knobs across the bottom.
     void layoutAmp()
     {
         int cx, cy, cw, ch;
         fAmpGroup->contentBounds(cx, cy, cw, ch);
         const int dropH = static_cast<int>(46 * fUiScale);
-        Dropdown* top[3] = { fDropdowns[kParamVCASource].get(), fDropdowns[kParamVoiceMode].get(),
-                             fDropdowns[kParamMpe].get() };
-        for (int i = 0; i < 3; ++i) {
-            const int x0 = cx + cw * i / 3, x1 = cx + cw * (i + 1) / 3;
+        Dropdown* top[4] = { fDropdowns[kParamVCASource].get(), fDropdowns[kParamVoiceMode].get(),
+                             fDropdowns[kParamMpe].get(), fDropdowns[kParamVelocity].get() };
+        for (int i = 0; i < 4; ++i) {
+            const int x0 = cx + cw * i / 4, x1 = cx + cw * (i + 1) / 4;
             top[i]->setSize(static_cast<uint>(x1 - x0), static_cast<uint>(dropH));
             top[i]->setAbsolutePos(x0, cy);
         }
@@ -1165,13 +1167,17 @@ private:
         t->setAbsolutePos(gx + gw - tabW - inset, gy + static_cast<int>(4 * scale));
     }
 
-    // Landscape panel: shrunk pad on the left, a single row of n controls on the right.
-    void layoutPadPanel(GroupBox* group, NanoSubWidget* pad, SubWidget* grid[], int n, float padFrac = 0.42f)
+    // LFO panel: the pad on the left, then Iterations centred at the top of the controls area with the
+    // Rate and Smoothing knobs below it. The LFO box is narrower than the Env box above it (the Amp
+    // box takes the difference), so the pad's width comes from the Env box: the two pads line up.
+    void layoutLfoPanel(GroupBox* group, NanoSubWidget* pad, uint32_t rateK, uint32_t smoothK,
+                        uint32_t itersD)
     {
-        int cx, cy, cw, ch;
+        int cx, cy, cw, ch, ex, ey, ew, eh;
         group->contentBounds(cx, cy, cw, ch);
+        fEnv1Group->contentBounds(ex, ey, ew, eh);
         const int gap = 8;
-        const int padW = static_cast<int>(cw * padFrac);
+        const int padW = static_cast<int>(ew * kEnvLfoPadFrac);
         // Fixed 2:1 landscape, independent of row height — hosts vary in whether they honour
         // setGeometryConstraints' keepAspectRatio, so this can't rely on a well-shaped `ch`.
         const int padH = std::min(ch, static_cast<int>(padW * 0.5f));
@@ -1179,11 +1185,19 @@ private:
         pad->setAbsolutePos(cx, cy + (ch - padH) / 2);
 
         const int kx = cx + padW + gap, kw = cw - padW - gap;
-        const int cellW = n > 0 ? kw / n : kw;
-        for (int i = 0; i < n; ++i)
+        // Iterations: about one Amp-box dropdown wide (never wider than a knob's column), centred
+        // over the knobs rather than spanning them.
+        const int dropH = static_cast<int>(46 * fUiScale);
+        const int dropW = std::min(kw / 2, static_cast<int>(100 * fUiScale));
+        fDropdowns[itersD]->setSize(static_cast<uint>(dropW), static_cast<uint>(dropH));
+        fDropdowns[itersD]->setAbsolutePos(kx + (kw - dropW) / 2, cy);
+        const int ky = cy + dropH + 6, kh = ch - dropH - 6;
+        Knob* knobs[2] = { fKnobs[rateK].get(), fKnobs[smoothK].get() };
+        for (int i = 0; i < 2; ++i)
         {
-            grid[i]->setSize(static_cast<uint>(cellW), static_cast<uint>(ch));
-            grid[i]->setAbsolutePos(kx + i * cellW, cy);
+            const int x0 = kx + kw * i / 2, x1 = kx + kw * (i + 1) / 2;
+            knobs[i]->setSize(static_cast<uint>(x1 - x0), static_cast<uint>(kh));
+            knobs[i]->setAbsolutePos(x0, ky);
         }
     }
 

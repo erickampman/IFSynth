@@ -32,6 +32,9 @@ IFS Osc (× IFS level) ────────┘
 - **Modulation**: source select (LFO 1/2, Env 1/2, CV Mix 1/2) + bipolar depth for IFS Osc
   pitch / Bx / By / Squash 1 / Squash 2, LPF cutoff and Osc 2 pitch.
 - **Voices**: 10-voice poly or mono (legato note-stack, glide, click-free phase continuation).
+- **Velocity**: how much note velocity sets loudness, as the VCA's third factor: Off (default;
+  every note at full level, as before) / Light / Medium / Full (velocity squared: velocity 64 is
+  -12 dB). Latched at note-on; a mono legato note ramps to its new level instead of stepping.
 - **Presets**: factory presets in `Presets/*.json`, baked into the plugin at build time; in-UI
   help page (`Resources/help.html`).
 

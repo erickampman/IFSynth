@@ -32,6 +32,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <iterator>
 #include <memory>
 #include <string>
 
@@ -354,6 +355,13 @@ void applyParam(Plugin* plugin, uint32_t index, float value) {
         if (i < 0) i = 0; else if (i > 6) i = 6;
         setEngine(plugin, MODULE_PARAM_ADDRESS(ModuleParamKindSinOsc, ModuleInstance1, SinOscParamItemPitch),
                   kSinIntervals[i]);
+        return;
+    }
+    if (index == uint32_t(kParamVelocity)) {
+        const int choice = std::clamp(int(value + 0.5f), 0, int(std::size(kVelocityShapes)) - 1);
+        const VelocityShape& shape = kVelocityShapes[choice];
+        setEngine(plugin, velocity1MinAddress,   shape.minPercent);
+        setEngine(plugin, velocity1CurveAddress, velocityCurveForExponent(shape.exponent));
         return;
     }
     if (applyModRouting(plugin, index, value)) return;

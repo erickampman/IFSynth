@@ -115,6 +115,7 @@ enum ParamIndex {
    kParamEnv2ScaleRelease,
    // MIDI input (appended; CLAP ids are indexes). Controller setup, not sound: presets leave it alone.
    kParamMpe,              // MPE input, lower zone: member bend ±48 + the master channel's bend
+   kParamVelocity,         // how much velocity sets loudness: Off / Light / Medium / Full
    kParamCount
 };
 
@@ -237,6 +238,8 @@ static constexpr ParamSpec kParams[kParamCount] = {
    {"Scale Rel",   "env2ScRel",  "",   0.0f,   1.0f,   0.0f,  false, true },
    // MIDI input
    {"MPE",         "mpe",        "",   0.0f,   1.0f,   0.0f,  false, true },
+   // Velocity → loudness. Off by default, so presets that predate it sound as before.
+   {"Velocity",    "velocityAmp","",   0.0f,   3.0f,   0.0f,  false, true },
 };
 
 // --- dropdowns -------------------------------------------------------------------------------
@@ -249,6 +252,21 @@ static constexpr const char* kIterationChoices[]    = { "1", "2", "3", "4", "5",
 static constexpr const char* kHoldChoices[]         = { "None", "Blue", "Green", "Loop", nullptr };
 static constexpr const char* kLegatoChoices[]       = { "Steal", "Match Y", nullptr };
 static constexpr const char* kMpeChoices[]          = { "Off", "On", nullptr };
+// Same order as kVelocityShapes.
+static constexpr const char* kVelocityChoices[]     = { "Off", "Light", "Medium", "Full", nullptr };
+
+// The Velocity dropdown's settings: gain = min + (1 - min) · velocity^exponent. Off keeps every note at
+// full level (the synth's behaviour before velocity existed); Full is velocity squared, the usual
+// "velocity is loudness" law (velocity 64 ≈ -12 dB). From PlainOldSynth.
+struct VelocityShape { float minPercent, exponent; };
+static constexpr VelocityShape kVelocityShapes[] = {
+   { 100.0f, 1.0f },   // Off
+   {  50.0f, 1.0f },   // Light:  velocity 64 ≈ -2.5 dB
+   {  20.0f, 1.5f },   // Medium: velocity 64 ≈ -6 dB
+   {   0.0f, 2.0f },   // Full:   velocity 64 ≈ -12 dB
+};
+// VelocityConverter maps Curve 0..1 onto an exponent 0.3..3.0; this is the inverse.
+constexpr float velocityCurveForExponent(float exponent) { return (exponent - 0.3f) / 2.7f; }
 static constexpr const char* kMixModeChoices[]      = { "Add", "Multiply", nullptr };
 static constexpr const char* kVoiceModeChoices[]    = { "Mono", "10 Voices", nullptr };
 static constexpr const char* kSyncChoices[]         = { "Off", "Up", "Down", "Both", nullptr };
@@ -282,7 +300,7 @@ constexpr bool isDropdownParam(uint32_t index)
    case kParamEnvLegatoMode: case kParamEnv2LegatoMode:
    case kParamLfo2Iterations:
    case kParamMix1Mode: case kParamMix2Mode:
-   case kParamVoiceMode: case kParamMpe:
+   case kParamVoiceMode: case kParamMpe: case kParamVelocity:
    case kParamIfsSyncMode:
    case kParamSinPitch:
    case kParamSinWaveform:
@@ -311,6 +329,7 @@ constexpr const char* const* choicesFor(uint32_t index)
    case kParamMix2Mode:       return kMixModeChoices;
    case kParamVoiceMode:      return kVoiceModeChoices;
    case kParamMpe:            return kMpeChoices;
+   case kParamVelocity:       return kVelocityChoices;
    case kParamIfsSyncMode:    return kSyncChoices;
    case kParamSinPitch:       return kSinPitchChoices;
    case kParamSinWaveform:    return kSinWaveChoices;
@@ -420,6 +439,8 @@ static_assert(symbolIs(kParamEnvScaleRelease,   "envScRel"));
 static_assert(symbolIs(kParamEnv2LegatoMode,    "env2Legato"));
 static_assert(symbolIs(kParamEnv2ScaleRelease,  "env2ScRel"));
 static_assert(symbolIs(kParamMpe,               "mpe"));
+static_assert(symbolIs(kParamVelocity,          "velocityAmp"));
+static_assert(sizeof(kVelocityShapes) / sizeof(kVelocityShapes[0]) == 4, "one shape per Velocity choice");
 
 // Every dropdown's labels must cover its range exactly: min 0, one label per step up to max.
 constexpr bool choicesMatchRange(uint32_t index)

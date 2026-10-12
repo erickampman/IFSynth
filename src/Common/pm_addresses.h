@@ -135,6 +135,16 @@ inline constexpr AUParameterAddress sinOsc1PitchMod2LevelAddress =
 inline constexpr AUParameterAddress ifsOsc1PitchMod2InputAddress =
    MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemPitchMod2Input);
 
+// --- Velocity → loudness (the VCA's third factor, shaped by the Velocity dropdown) ----------
+inline constexpr AUParameterAddress velocity1Address =
+   MODULE_PARAM_ADDRESS(ModuleParamKindVelocityConverter, ModuleInstance1, 0);
+inline constexpr AUParameterAddress velocity1MinAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindVelocityConverter, ModuleInstance1, VelocityParamItemMin);
+inline constexpr AUParameterAddress velocity1CurveAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindVelocityConverter, ModuleInstance1, VelocityParamItemCurve);
+inline constexpr AUParameterAddress combine1Input3Address =
+   MODULE_PARAM_ADDRESS(ModuleParamKindCombine, ModuleInstance1, CombineParamItemInput3);
+
 // --- Pitch bend converter (channel bend + MIDI 2.0 per-note bend → octaves) ---------------
 inline constexpr AUParameterAddress pitchBend1Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindPitchBendConverter, ModuleInstance1, 0);

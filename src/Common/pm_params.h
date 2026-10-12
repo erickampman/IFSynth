@@ -282,6 +282,12 @@ enum PitchConverterParamItem : NSUInteger {
    PitchConverterParamItemDummy = 1,
 };
 
+enum VelocityParamItem : NSUInteger {
+   VelocityParamItemIgnoreNoteOff = 1, // boolean
+   VelocityParamItemMin,               // percent, 0..100
+   VelocityParamItemCurve,             // 0 concave .. 1 convex
+};
+
 enum PitchBendConverterParamItem : NSUInteger {
    PitchBendConverterParamItemQuarterTones = 1, // channel bend range, 0..8 quarter-tones; also the
                                                 // per-note range until registered controller 7 sets one

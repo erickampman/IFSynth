@@ -15,6 +15,7 @@
 #include "LPFilterModule.hpp"
 #include "LevelModule.hpp"
 #include "PitchBendConverterModule.hpp"
+#include "VelocityConverterModule.hpp"
 #include "PitchConverterModule.hpp"
 #include "SinOscillatorModule.hpp"
 #include "SlewModule.hpp"
@@ -30,6 +31,10 @@ const std::vector<ModuleInitSpec>& getModuleInitSpecs() {
       {pitchBend1Address, &pitchBendConverterConstantsGroup, InitPitchBendConverter,
        DeinitPitchBendConverter, ProcessPitchBendConverter, MIDIPitchBendConverter, nullptr,
        ResetPitchBendConverter, nullptr},
+      // Velocity → the VCA's third factor (the Velocity dropdown; Off = a constant 1).
+      {velocity1Address, &velocityConverterConstantsGroup, InitVelocityConverter,
+       DeinitVelocityConverter, ProcessVelocityConverter, MIDIVelocityConverter, nullptr,
+       ResetVelocityConverter, nullptr},
       {slew1Address, &slewModuleConstantsGroup, InitSlewModule, DeinitSlewModule, ProcessSlewModule,
        nullptr, nullptr, nullptr, nullptr},
       {sinOsc1Address, &sinOscConstantsGroup, InitSinOscillator, DeinitSinOscillator,

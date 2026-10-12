@@ -12,7 +12,8 @@
         "vcaEnv": "0",
         "spread": "1.000000",
         "sinLevel": "0.271602",
-        "ifsLevel": "0.992813"
+        "ifsLevel": "0.992813",
+        "velocityAmp": "0"
       },
       "SinOsc1": {
         "pitch": "6",

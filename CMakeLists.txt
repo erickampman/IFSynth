@@ -31,6 +31,7 @@ add_library(pm_framework STATIC
     src/Module/SlewModule.cpp
     src/Module/PitchConverterModule.cpp
     src/Module/PitchBendConverterModule.cpp
+    src/Module/VelocityConverterModule.cpp
     src/Module/ModuleFactory.cpp
     src/Voice/ModuleMap.cpp
     src/Voice/pm_module_specs.cpp

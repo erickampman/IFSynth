@@ -206,6 +206,17 @@ const ModuleParamConstantsGroup pitchConverterModuleConstantsGroup = {
    const_cast<char*>("pitchConverter"),
    sizeof(pitchConverterConstants) / sizeof(pitchConverterConstants[0]), pitchConverterConstants};
 
+// Velocity converter — note-on velocity → a held 0..1 level: min + (1 - min) · velocity^exponent,
+// Curve 0..1 → exponent 0.3..3.0. The plugin sets all three from the Velocity dropdown.
+static const ModuleParamConstants velocityConverterConstants[] = {
+   {"ignoreNoteOff", VelocityParamItemIgnoreNoteOff, 0, 0, nullptr, 0.0f, 1.0f,   1.0f,  0},
+   {"velocityMin",   VelocityParamItemMin,           0, 0, nullptr, 0.0f, 100.0f, 100.0f, 0},
+   {"curve",         VelocityParamItemCurve,         0, 0, nullptr, 0.0f, 1.0f,   0.5f,  0},
+};
+const ModuleParamConstantsGroup velocityConverterConstantsGroup = {
+   const_cast<char*>("Velocity"),
+   sizeof(velocityConverterConstants) / sizeof(velocityConverterConstants[0]), velocityConverterConstants};
+
 // Pitch bend converter — MIDI 2.0 pitch bend → a bipolar octaves signal. Bend range in quarter-tones
 // (±2 semitones by default), used by per-note bend too until registered controller 7 sets its own.
 static const ModuleParamConstants pitchBendConverterConstants[] = {

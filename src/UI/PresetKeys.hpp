@@ -107,6 +107,7 @@ static constexpr PresetKey kPresetKeys[kParamCount] = {
    // MPE describes the controller, not the sound: factory presets leave it out, and the loader keeps
    // the current value for any key a preset does not mention.
    /*Mpe*/             {"Global",  "mpe"},
+   /*Velocity*/        {"Global",  "velocityAmp"},
 };
 
 } // namespace ifsynth

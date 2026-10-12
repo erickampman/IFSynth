@@ -87,6 +87,8 @@ void VoiceManager::buildDefaultPatch(Voice& voice)
     voice.connectModules(oscMixModule, lpfModule, lpf1InputAddress);
 	voice.connectModules(lpfModule, combineModule, combine1Input1Address);
 	voice.connectModules(envModule, combineModule, combine1Input2Address);
+    // Velocity → loudness: the VCA's third factor. At the Velocity dropdown's Off it is a constant 1.
+    voice.connectModules(voice.getModule(velocity1Address), combineModule, combine1Input3Address);
     // Both oscillators track the note pitch (via the shared Slew).
     voice.connectModules(slewModule, ifsOscModule, ifsOsc1PitchInputAddress);
     voice.connectModules(slewModule, sinOscModule, sinOsc1PitchInputAddress);

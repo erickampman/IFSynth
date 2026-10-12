@@ -978,6 +978,39 @@ int main(int argc, char** argv) {
                       "a tuning expression for another note id leaves C4 alone");
     }
 
+    // --- velocity: scaling and the Velocity (loudness) dropdown ------------------------------------
+    std::printf("Velocity:\n");
+    {
+        auto peakFor = [&](const clap_event_header_t* note, double velocityChoice) {
+            Instance inst;
+            if (!inst.create(lib)) return -1.0f;
+            installTestPatch(inst.plugin);
+            sendParam(inst.plugin, kParamVelocity, velocityChoice);
+            const clap_event_header_t* events[] = { note };
+            float peak = 0.0f;
+            for (float v : render(inst.plugin, 4096, events, 1)) peak = std::max(peak, std::fabs(v));
+            inst.destroy();
+            return peak;
+        };
+        const clap_event_midi_t vel127 = makeMidi1(0x90, uint8_t(kNote), 127);
+        const clap_event_midi_t vel64  = makeMidi1(0x90, uint8_t(kNote), 64);
+        const clap_event_note_t clapFull = makeClapNoteOn(int16_t(kNote), 1.0);
+        const float a = peakFor(&vel127.header, 3.0), b = peakFor(&clapFull.header, 3.0);
+        std::printf("        peak at Full: MIDI 1.0 vel 127 %.6f | CLAP vel 1.0 %.6f\n", double(a), double(b));
+        check(a > 0.01f && a == b, "MIDI 1.0 velocity 127 is full scale, exactly as CLAP velocity 1.0");
+
+        // Velocity 64 upscales to exactly half; the dropdown's shapes put it at these levels.
+        const char* names[] = { "Off", "Light", "Medium", "Full" };
+        const double expectedDb[] = { 0.0, 20.0 * std::log10(0.75), 20.0 * std::log10(0.2 + 0.8 * std::pow(0.5, 1.5)),
+                                      20.0 * std::log10(0.25) };
+        for (int c = 0; c < 4; ++c) {
+            const double db = 20.0 * std::log10(double(peakFor(&vel64.header, c)) / double(peakFor(&vel127.header, c)));
+            std::printf("        %-6s velocity 64: %+.2f dB (expected %+.2f)\n", names[c], db, expectedDb[c]);
+            check(std::fabs(db - expectedDb[c]) < 0.1,
+                  std::string("Velocity ") + names[c] + ": velocity 64 sounds at the expected level");
+        }
+    }
+
     // --- a MIDI 2.0 note-on with velocity 0 is a note-on (M2-104 4.2.8) ------------------------------
     // It used to count as a note-off, so the note never sounded.
     std::printf("MIDI 2.0 velocity 0:\n");
