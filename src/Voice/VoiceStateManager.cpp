@@ -400,6 +400,16 @@ void  VoiceStateManager::copyNoteOnMessageToCurrentNoteOn(const pm::UmpMessage& 
     }
     currentNoteOn = noteOn;
 }
+bool VoiceStateManager::holdsNote(const pm::UmpMessage& noteOn) const
+{
+    if (state == VoiceState::Inactive) return false;
+    if (currentNoteOn && pm::isSameNote(*currentNoteOn, noteOn)) return true;
+    if (deferredNoteOn && pm::isSameNote(*deferredNoteOn, noteOn)) return true;
+    for (const auto& held : heldNoteStack)
+        if (pm::isSameNote(held, noteOn)) return true;
+    return false;
+}
+
 void  VoiceStateManager::clearCurrentNoteOn()
 {
     LOG_VOICE("VoiceStateManager::clearCurrentNoteOn");

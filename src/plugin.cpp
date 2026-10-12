@@ -26,6 +26,7 @@
 #include <clap/clap.h>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cmath>
 #include <cstdio>
@@ -135,6 +136,18 @@ struct Plugin {
 
     GuiEditRing guiEdits;
     std::string scratch;    // state-save buffer; reused so save() need not allocate
+
+    // CLAP note-ons the engine may still be playing, so CLAP_EVENT_NOTE_END can be reported when it
+    // stops (audio thread only). Fixed capacity: the audio thread never allocates. A note that does
+    // not fit is simply not reported.
+    struct HostNote {
+        pm::UmpMessage on;                         // what the engine matches against (holdsNote)
+        int32_t noteId; int16_t port, channel, key; // echoed back exactly as the host sent them
+    };
+    std::array<HostNote, 128> hostNotes{};
+    uint32_t hostNoteCount = 0;
+
+    uint32_t reportedVoiceCount = 0;   // main thread: the voice count the host last heard about
 };
 
 Plugin* self(const clap_plugin_t* plugin) { return static_cast<Plugin*>(plugin->plugin_data); }
@@ -307,17 +320,20 @@ void applySlew(Plugin* plugin) {
     setEngine(plugin, slew1FallAddress, rate);
 }
 
+constexpr uint32_t kPolyVoices = 10;
+
 // Voice mode: Mono = 1 voice + VoiceManager legato (the last-note note-stack) + each envelope's
 // Legato mode (Steal / Match Y, default Match Y for a click-free retrigger). Poly = 10 voices,
 // none of that.
 void applyVoiceMode(Plugin* plugin) {
     const bool mono = isMonoMode(plugin);
-    setVoiceManager(plugin, midiParam(MIDIParamItemVoiceCount), mono ? 1.0f : 10.0f);
+    setVoiceManager(plugin, midiParam(MIDIParamItemVoiceCount), mono ? 1.0f : float(kPolyVoices));
     setVoiceManager(plugin, midiParam(MIDIParamItemLegato),     mono ? 1.0f : 0.0f);
     // 0 = NoteSteal, 1 = FindMatchingY. Only meaningful in mono; poly always steals.
     setEngine(plugin, ifsEnv1LegatoModeAddress, mono ? paramOf(plugin, kParamEnvLegatoMode)  : 0.0f);
     setEngine(plugin, ifsEnv2LegatoModeAddress, mono ? paramOf(plugin, kParamEnv2LegatoMode) : 0.0f);
     applySlew(plugin);
+    requestMainThread(plugin);   // the voice count may have changed: tell the host (voice-info)
 }
 
 // One host parameter → the engine. Gain (Spread) is applied on the output bus in process();
@@ -389,8 +405,12 @@ void processEvent(Plugin* plugin, const clap_event_header_t* header) {
     switch (header->type) {
     case CLAP_EVENT_NOTE_ON: {
         const auto* note = reinterpret_cast<const clap_event_note_t*>(header);
-        if (plugin->voiceManager)
-            plugin->voiceManager->handleMIDIMessage(pm::fromClapNote(*note, true));
+        if (!plugin->voiceManager) break;
+        const pm::UmpMessage on = pm::fromClapNote(*note, true);
+        plugin->voiceManager->handleMIDIMessage(on);
+        if (plugin->hostNoteCount < plugin->hostNotes.size())
+            plugin->hostNotes[plugin->hostNoteCount++] =
+                { on, note->note_id, note->port_index, note->channel, note->key };
         break;
     }
     case CLAP_EVENT_NOTE_OFF:
@@ -438,6 +458,31 @@ void processEvent(Plugin* plugin, const clap_event_header_t* header) {
     }
     default:
         break;
+    }
+}
+
+// CLAP_EVENT_NOTE_END for every host note the engine has stopped playing. A struck voice rings on
+// after note-off, so this is usually long after the note-off: the moment the voice falls silent, or
+// is stolen, or (mono) the note leaves the held stack. Hosts such as Bitwig keep a note's per-voice
+// modulation and expressions alive until they see it. `time` is the frame the check runs at.
+void reportEndedNotes(Plugin* plugin, const clap_output_events_t* out, uint32_t time) {
+    for (uint32_t i = 0; i < plugin->hostNoteCount; ) {
+        const Plugin::HostNote& note = plugin->hostNotes[i];
+        if (plugin->voiceManager && plugin->voiceManager->holdsNote(note.on)) { ++i; continue; }
+        if (out != nullptr && out->try_push != nullptr) {
+            clap_event_note_t event{};
+            event.header.size     = sizeof(event);
+            event.header.time     = time;
+            event.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+            event.header.type     = CLAP_EVENT_NOTE_END;
+            event.note_id    = note.noteId;
+            event.port_index = note.port;
+            event.channel    = note.channel;
+            event.key        = note.key;
+            event.velocity   = 0.0;
+            out->try_push(out, &event.header);
+        }
+        plugin->hostNotes[i] = plugin->hostNotes[--plugin->hostNoteCount];   // order does not matter
     }
 }
 
@@ -499,7 +544,9 @@ bool plug_activate(const clap_plugin_t* plugin, double sampleRate, uint32_t, uin
 }
 
 void plug_deactivate(const clap_plugin_t* plugin) {
-    self(plugin)->voiceManager.reset();
+    Plugin* p = self(plugin);
+    p->voiceManager.reset();
+    p->hostNoteCount = 0;   // deactivation ends every note; the host does not expect NOTE_END for them
 }
 
 bool plug_start_processing(const clap_plugin_t*) { return true; }
@@ -511,8 +558,20 @@ void plug_reset(const clap_plugin_t* plugin) {
     if (p->voiceManager) p->voiceManager->reset();
 }
 
+uint32_t currentVoiceCount(const Plugin* plugin) { return isMonoMode(plugin) ? 1 : kPolyVoices; }
+
 void plug_on_main_thread(const clap_plugin_t* plugin) {
     Plugin* p = self(plugin);
+
+    // voice-info: CLAP asks for changed() whenever the voice count changes (Mono/Poly switch).
+    const uint32_t voices = currentVoiceCount(p);
+    if (voices != p->reportedVoiceCount && p->host != nullptr) {
+        p->reportedVoiceCount = voices;
+        const auto* info = static_cast<const clap_host_voice_info_t*>(
+            p->host->get_extension(p->host, CLAP_EXT_VOICE_INFO));
+        if (info != nullptr && info->changed != nullptr) info->changed(p->host);
+    }
+
     if (p->gui == nullptr) return;
     for (uint32_t i = 0; i < uint32_t(kParamCount); ++i) {
         if (!p->paramDirtyForGui[i].exchange(false, std::memory_order_acq_rel)) continue;
@@ -577,6 +636,7 @@ clap_process_status plug_process(const clap_plugin_t* plugin, const clap_process
         if (end - offset > MODULE_BUFF_SIZE) end = offset + MODULE_BUFF_SIZE;
 
         p->voiceManager->process(end - offset, left + offset, right + offset);
+        reportEndedNotes(p, process->out_events, end - 1);
         offset = end;
     }
 
@@ -860,6 +920,23 @@ void plug_on_timer(const clap_plugin_t* plugin, clap_id timerId) {
 
 const clap_plugin_timer_support_t kTimerExt = { plug_on_timer };
 
+// ---------------------------------------------------------------------------------------------
+// voice-info
+// ---------------------------------------------------------------------------------------------
+// Tells the host (Bitwig) how many voices to expect, and that it may overlap notes on the same key:
+// with note ids the engine keeps them apart (pm::isSameNote), so each gets its own voice.
+bool voice_info_get(const clap_plugin_t* plugin, clap_voice_info_t* info) {
+    Plugin* p = self(plugin);
+    const uint32_t voices = currentVoiceCount(p);
+    p->reportedVoiceCount = voices;
+    info->voice_count    = voices;
+    info->voice_capacity = kPolyVoices;
+    info->flags          = CLAP_VOICE_INFO_SUPPORTS_OVERLAPPING_NOTES;
+    return true;
+}
+
+const clap_plugin_voice_info_t kVoiceInfoExt = { voice_info_get };
+
 const void* plug_get_extension(const clap_plugin_t*, const char* id) {
     if (std::strcmp(id, CLAP_EXT_AUDIO_PORTS)    == 0) return &kAudioPorts;
     if (std::strcmp(id, CLAP_EXT_NOTE_PORTS)     == 0) return &kNotePorts;
@@ -867,6 +944,7 @@ const void* plug_get_extension(const clap_plugin_t*, const char* id) {
     if (std::strcmp(id, CLAP_EXT_STATE)          == 0) return &kStateExt;
     if (std::strcmp(id, CLAP_EXT_GUI)            == 0) return ifs_gui_extension();
     if (std::strcmp(id, CLAP_EXT_TIMER_SUPPORT)  == 0) return &kTimerExt;
+    if (std::strcmp(id, CLAP_EXT_VOICE_INFO)     == 0) return &kVoiceInfoExt;
     return nullptr;
 }
 

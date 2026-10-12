@@ -316,6 +316,12 @@ int VoiceManager::keyForNoteId(int32_t noteId) {
     return -1;
 }
 
+bool VoiceManager::holdsNote(const pm::UmpMessage& noteOn) {
+    for (auto& voice : voices)
+        if (voice->voiceStateManager.holdsNote(noteOn)) return true;
+    return false;
+}
+
 void VoiceManager::allNotesOff() {
     // Clear pedal state so no deferred NoteOffs linger after all-notes-off.
     sustainPedalActive = false;

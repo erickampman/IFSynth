@@ -185,8 +185,28 @@ struct StereoAudio {
     std::vector<float> left, right;
 };
 
+// Collects what a plugin pushes to out_events: every NOTE_END with the absolute frame it arrived at,
+// and whether any block's events went backwards in time (CLAP requires them in order).
+struct OutputSink {
+    struct End { clap_event_note_t event; uint64_t frame; };
+    std::vector<End> ends;
+    uint64_t blockStart = 0;
+    uint32_t lastTime = 0;
+    bool outOfOrder = false;
+    static bool tryPush(const clap_output_events_t* list, const clap_event_header_t* header) {
+        auto* sink = static_cast<OutputSink*>(list->ctx);
+        if (header->time < sink->lastTime) sink->outOfOrder = true;
+        sink->lastTime = header->time;
+        if (header->space_id == CLAP_CORE_EVENT_SPACE_ID && header->type == CLAP_EVENT_NOTE_END)
+            sink->ends.push_back({ *reinterpret_cast<const clap_event_note_t*>(header),
+                                   sink->blockStart + header->time });
+        return true;
+    }
+};
+
 StereoAudio renderStereo(const clap_plugin_t* plugin, uint32_t frames,
-                         const clap_event_header_t** events, uint32_t eventCount) {
+                         const clap_event_header_t** events, uint32_t eventCount,
+                         OutputSink* sink = nullptr) {
     StereoAudio audio;
     audio.left.assign(frames, 0.0f);
     audio.right.assign(frames, 0.0f);
@@ -216,7 +236,11 @@ StereoAudio renderStereo(const clap_plugin_t* plugin, uint32_t frames,
     process.audio_outputs = &out;
     process.audio_outputs_count = 1;
     process.in_events = &in;
-    process.out_events = nullptr;
+    clap_output_events_t outEvents{};
+    outEvents.ctx = sink;
+    outEvents.try_push = OutputSink::tryPush;
+    process.out_events = sink != nullptr ? &outEvents : nullptr;
+    if (sink != nullptr) sink->lastTime = 0;
 
     plugin->process(plugin, &process);
     return audio;
@@ -761,6 +785,62 @@ int main(int argc, char** argv) {
             checkInterval(pitchOfEvents(lib, events, 4, kC4Hz, "Pitch 7.25, then a new note-on"), 0.0,
                           "Pitch 7.25 lasts only for the sounding note");
         }
+    }
+
+    // --- note end + voice-info ---------------------------------------------------------------------
+    // A note rings on through the IFS envelope's release after note-off; CLAP_EVENT_NOTE_END must
+    // come when the voice falls silent, not at the note-off, and only for notes that arrived as CLAP
+    // note events.
+    std::printf("Note end and voice info:\n");
+    {
+        Instance inst;
+        check(inst.create(lib), "fresh instance");
+        installTestPatch(inst.plugin);
+        sendParam(inst.plugin, kParamEnvDuration, 0.5);   // default Green hold: ~0.28 s of release
+        sendParam(inst.plugin, kParamEnv2Duration, 0.5);
+
+        clap_event_note_t noteOn = makeClapNoteOn(int16_t(kNote), 1.0);
+        noteOn.note_id = 42;
+        clap_event_note_t noteOff = noteOn;
+        noteOff.header.type = CLAP_EVENT_NOTE_OFF;
+        noteOff.header.time = 64;
+        const clap_event_midi_t midiOn = makeMidi1(0x90, 72, 100);
+        const clap_event_midi_t midiOff = [] { auto e = makeMidi1(0x80, 72, 0); e.header.time = 64; return e; }();
+        const clap_event_header_t* first[] = { &noteOn.header, &midiOn.header, &noteOff.header, &midiOff.header };
+
+        OutputSink sink;
+        const uint32_t block = 512;
+        for (uint32_t b = 0; b < uint32_t(4.0 * kSampleRate) / block; ++b) {
+            sink.blockStart = uint64_t(b) * block;
+            if (b == 0) renderStereo(inst.plugin, block, first, 4, &sink);
+            else        renderStereo(inst.plugin, block, nullptr, 0, &sink);
+        }
+        check(sink.ends.size() == 1, "exactly one NOTE_END, for the CLAP note only (got "
+                                         + std::to_string(sink.ends.size()) + ")");
+        if (!sink.ends.empty()) {
+            const auto& end = sink.ends[0];
+            std::printf("        NOTE_END at %.3f s (note-off at %.4f s)\n",
+                        double(end.frame) / kSampleRate, 64.0 / kSampleRate);
+            check(end.event.note_id == 42 && end.event.key == int16_t(kNote) && end.event.channel == 0
+                      && end.event.port_index == 0,
+                  "NOTE_END echoes the note-on's id, key, channel and port");
+            check(double(end.frame) / kSampleRate > 0.1, "NOTE_END waits for the release, not the note-off");
+        }
+        check(!sink.outOfOrder, "output events stay in time order within each block");
+
+        const auto* voiceInfo = static_cast<const clap_plugin_voice_info_t*>(
+            inst.plugin->get_extension(inst.plugin, CLAP_EXT_VOICE_INFO));
+        check(voiceInfo != nullptr, "voice-info extension is offered");
+        if (voiceInfo != nullptr) {
+            clap_voice_info_t info{};
+            check(voiceInfo->get(inst.plugin, &info) && info.voice_count == 10 && info.voice_capacity == 10
+                      && (info.flags & CLAP_VOICE_INFO_SUPPORTS_OVERLAPPING_NOTES) != 0,
+                  "poly: 10 voices, overlapping notes supported");
+            sendParam(inst.plugin, kParamVoiceMode, 0.0);
+            check(voiceInfo->get(inst.plugin, &info) && info.voice_count == 1 && info.voice_capacity == 10,
+                  "mono: 1 voice");
+        }
+        inst.destroy();
     }
 
     // --- CLAP note expressions + note ids, as Bitwig sends them ---------------------------------------

@@ -64,7 +64,10 @@ bend; on a mono legato note it ramps rather than jumps. The filter's key trackin
 which, so a re-struck key is a new note and an expression can name only the id. Note expressions:
 **tuning** arrives as Pitch 7.25 at key + tuning, so it is exact at any size, not clamped to the
 bend range; **pressure** and **brightness** become polyphonic pressure and per-note controller #74
-(nothing in the voice responds to them yet).
+(nothing in the voice responds to them yet). A CLAP note gets `CLAP_EVENT_NOTE_END` when its voice
+falls silent at the end of the envelope's release (or is stolen, or leaves the mono stack), not at
+note-off, so Bitwig keeps its per-voice modulation running through the release. The voice-info
+extension reports 10 voices (1 in Mono) and supports overlapping notes on one key.
 
 Next: pressure and timbre as modulation sources, and MPE input; see
 [docs/MIDI2-PORT.md](docs/MIDI2-PORT.md).

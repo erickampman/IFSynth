@@ -47,6 +47,9 @@ public:
     // Used to build note-offs that match on channel and group, not just note number.
     const std::optional<pm::UmpMessage>& currentNote() const { return currentNoteOn; }
     const std::vector<pm::UmpMessage>& heldNotes() const { return heldNoteStack; }
+    // Whether this voice still holds `noteOn` in any form: sounding (held or ringing out), arriving
+    // through a steal, or waiting in the mono stack. False once the voice has rung down to silence.
+    bool holdsNote(const pm::UmpMessage& noteOn) const;
     inline const char* stateString() const;
     
 private:
