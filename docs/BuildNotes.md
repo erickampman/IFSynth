@@ -2,7 +2,7 @@ CONFIGURE
 
 cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 
-BUILD (also symlinks build/bin/IFSynth.clap into ~/.clap via a post-build step)
+BUILD (the .clap lands at build/IFSynth.clap; a post-build step symlinks it into ~/.clap)
 
 cmake --build build -j
 
