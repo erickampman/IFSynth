@@ -3,6 +3,11 @@ cmake_minimum_required(VERSION 3.17)
 # C is needed for DPF's pugl / dgl sources.
 project(IFSynth VERSION 0.3.0 LANGUAGES C CXX)
 
+# Everything is linked into the .clap, a shared module, so every static library in it (the engine,
+# the plugin core, DPF's DGL) must be position-independent. clang on Linux defaults to PIE and
+# hides this; gcc does not ("relocation R_X86_64_PC32 ... recompile with -fPIC"). As PlainOldSynth.
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 set(CMAKE_CXX_STANDARD 20)          # PM framework uses std::numbers / std::span
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
