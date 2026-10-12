@@ -124,7 +124,7 @@ public:
         // given, so an unconstrained host resize (previously keepAspectRatio=false, with a
         // minimum pair that didn't even match 980:900) is what let a host open the window
         // taller than intended.
-        setGeometryConstraints(784, 592, true, false); // matches the 980:740 design ratio
+        setGeometryConstraints(784, 624, true, false); // matches the 980:780 design ratio
 
         // Per-module accent colours, following PM's category scheme (sound=green, filter=purple,
         // control signals=amber, combiner=orange, modulation=teal).
@@ -778,18 +778,21 @@ private:
         // CV Mixer | OscMod | Osc2Mod | LpfMod strip. Derived from the canvas height so it fills
         // any size (Retina-safe); the aspect ratio is locked in the constructor.
         // Row 0 gets a fixed extra band (the Osc's Iterations/Sync dropdowns sit under its knobs),
-        // and the bottom row is ~25% taller so the CV Mixer can stack its checkboxes in a column.
-        // Rows 1-2 share the rest equally.
+        // row 2 another (the Amp box's level knobs sit under a row of dropdowns, and are sized to
+        // fill their cells), and the bottom row is ~25% taller so the CV Mixer can stack its
+        // checkboxes in a column. Rows 1-2 share the rest equally.
         const int extraTop = static_cast<int>(20 * scale);
+        const int extraAmp = static_cast<int>(40 * scale);
         const int totalH = H - 2 * m - 3 * gap - topPad;
-        const int rowH   = ((totalH - extraTop) * 4) / 17;    // rows 1-2
-        const int row0H  = rowH + extraTop;                   // row 0
-        const int rowHb  = totalH - extraTop - 3 * rowH;      // bottom row ≈ 5/17
+        const int rowH   = ((totalH - extraTop - extraAmp) * 4) / 17;   // row 1
+        const int row0H  = rowH + extraTop;                              // row 0
+        const int row2H  = rowH + extraAmp;                              // row 2
+        const int rowHb  = totalH - extraTop - extraAmp - 3 * rowH;      // bottom row ≈ 5/17
         const int colL = m;
         const int top0 = m + topPad;
         const int row0 = top0, row1 = top0 + row0H + gap;
         const int row2 = row1 + rowH + gap;
-        const int modY = row2 + rowH + gap;
+        const int modY = row2 + row2H + gap;
 
         // Uniform knob size + text scale (scale computed above). No tight upper clamp on text
         // scale: a host can hand us a canvas much larger than the design size, and text needs to
@@ -856,10 +859,10 @@ private:
         placeGroup(fEnv1Group.get(), colL,   row1, envW,              rowH);
         placeGroup(fEnv2Group.get(), colL,   row1, envW,              rowH);
         placeGroup(fLpfGroup.get(),  rightX, row1, W - m - rightX,    rowH);
-        placeGroup(fLfo1Group.get(), colL,   row2, envW,              rowH);
-        placeGroup(fLfo2Group.get(), colL,   row2, envW,              rowH);
-        placeGroup(fAmpGroup.get(),  rightX, row2, ampW,              rowH);
-        placeGroup(fSlewGroup.get(), W - m - slewW, row2, slewW,      rowH);
+        placeGroup(fLfo1Group.get(), colL,   row2, envW,              row2H);
+        placeGroup(fLfo2Group.get(), colL,   row2, envW,              row2H);
+        placeGroup(fAmpGroup.get(),  rightX, row2, ampW,              row2H);
+        placeGroup(fSlewGroup.get(), W - m - slewW, row2, slewW,      row2H);
 
         // Row 3: CV Mixer (condensed) + IFS Osc modulation (wide, fills) + Osc 2 Mod + LPF modulation.
         const int mixW     = static_cast<int>(200 * fUiScale);   // condensed to give the IFS Osc Mod room
@@ -1082,6 +1085,7 @@ private:
         {
             levels[i]->setSize(static_cast<uint>(cellW), static_cast<uint>(kh));
             levels[i]->setAbsolutePos(cx + i * cellW, ky);
+            levels[i]->setDiameter(0.0f, fUiScale);   // 0 = fill the cell (larger than the shared size)
         }
     }
 
@@ -1351,7 +1355,7 @@ bool gui_can_resize(const clap_plugin_t*) { return true; }
 
 bool gui_get_resize_hints(const clap_plugin_t*, clap_gui_resize_hints_t* hints)
 {
-    // The UI locks the 980:740 design ratio via setGeometryConstraints(), so tell the host the same.
+    // The UI locks the 980:780 design ratio via setGeometryConstraints(), so tell the host the same.
     hints->can_resize_horizontally = true;
     hints->can_resize_vertically   = true;
     hints->preserve_aspect_ratio   = true;

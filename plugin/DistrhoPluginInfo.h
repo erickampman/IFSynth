@@ -39,6 +39,7 @@
                                           // DistrhoUI.cpp / DistrhoUI_win32.cpp, not from dgl.
 #define DISTRHO_UI_USER_RESIZABLE      1
 #define DISTRHO_UI_DEFAULT_WIDTH       980
-#define DISTRHO_UI_DEFAULT_HEIGHT      740   // 4 rows (Env/LFO/Mixer are tab groups); row 0 is ~20 px taller
+#define DISTRHO_UI_DEFAULT_HEIGHT      780   // 4 rows (Env/LFO/Mixer are tab groups); row 0 is ~20 px
+                                             // taller, row 2 ~40 px (larger Amp knobs)
 
 #endif // DISTRHO_PLUGIN_INFO_H_INCLUDED
