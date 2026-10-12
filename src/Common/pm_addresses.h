@@ -127,4 +127,16 @@ inline constexpr AUParameterAddress finalAddress =
 inline constexpr AUParameterAddress finalInputAddress =
    MODULE_PARAM_ADDRESS(ModuleParamKindFinalOutput, ModuleInstance1, FinalOutputParamItemInput);
 
+// Second pitch inputs: the pitch-bend CV, which bypasses the Slew (glide must not smear a bend).
+inline constexpr AUParameterAddress sinOsc1PitchMod2InputAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindSinOsc, ModuleInstance1, SinOscParamItemModPitch2);
+inline constexpr AUParameterAddress sinOsc1PitchMod2LevelAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindSinOsc, ModuleInstance1, SinOscParamItemFreqModLevel2);
+inline constexpr AUParameterAddress ifsOsc1PitchMod2InputAddress =
+   MODULE_PARAM_ADDRESS(ModuleParamKindIFSOsc, ModuleInstance1, IFSOscParamItemPitchMod2Input);
+
+// --- Pitch bend converter (channel bend + MIDI 2.0 per-note bend → octaves) ---------------
+inline constexpr AUParameterAddress pitchBend1Address =
+   MODULE_PARAM_ADDRESS(ModuleParamKindPitchBendConverter, ModuleInstance1, 0);
+
 #endif // PM_ADDRESSES_H

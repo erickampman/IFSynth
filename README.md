@@ -46,7 +46,17 @@ The plugin implements the CLAP entry point itself (`src/plugin.cpp`) and keeps t
 [DISTRHO Plugin Framework (DPF)](https://github.com/DISTRHO/DPF) purely as the GUI layer, so it can
 receive MIDI 2.0 7.9-pitch notes that DPF's generated CLAP wrapper drops.
 
-Next: MIDI 2.0 per-note pitch bend and expression, MPE input, and CLAP note expressions; see
+**MIDI 2.0.** Notes match on note + channel + group, so the same key on two channels is two
+voices, and per-note messages reach only their own note. Pitch bend has two parts, summed:
+
+- **Channel bend**, ±2 semitones (MIDI 1.0 or 2.0).
+- **Per-note bend** (MIDI 2.0), ±48 semitones unless the controller announces its range with
+  registered controller 7 (KeyboardEDO sends ±2), which is kept per channel.
+
+The bend goes into both oscillators' second pitch input, after the glide, so glide never smears a
+bend. The filter's key tracking follows the note, not the bend.
+
+Next: per-note expression, MPE input, and CLAP note expressions; see
 [docs/MIDI2-PORT.md](docs/MIDI2-PORT.md).
 
 ## Layout
@@ -76,7 +86,7 @@ src/Common/           shim + MIDI + params + utilities
 src/Module/           Module core + modules
                         IFSCore.* (fractal evaluation, wavetables, mip pyramid), IFSOsc, IFSEnv,
                         IFSLFO, SinOscillator, LPFilter (+ ButterLow4), CVMixer, Combine, Level,
-                        Slew, PitchConverter, Final; ModuleSharedState.hpp (cross-voice state);
+                        Slew, PitchConverter, PitchBendConverter, Final; ModuleSharedState.hpp (cross-voice state);
                         ADSR stays instantiated but unconnected
 src/Voice/            voice engine
                         Voice.*, VoiceStateManager.*, VoiceManager.*, ModuleMap.*, ModuleGraph.hpp,

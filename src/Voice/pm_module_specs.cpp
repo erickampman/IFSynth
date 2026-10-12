@@ -14,6 +14,7 @@
 #include "IFSOscModule.hpp"
 #include "LPFilterModule.hpp"
 #include "LevelModule.hpp"
+#include "PitchBendConverterModule.hpp"
 #include "PitchConverterModule.hpp"
 #include "SinOscillatorModule.hpp"
 #include "SlewModule.hpp"
@@ -24,6 +25,11 @@ const std::vector<ModuleInitSpec>& getModuleInitSpecs() {
    static const std::vector<ModuleInitSpec> specs = {
       {pitchConverter1Address, &pitchConverterModuleConstantsGroup, InitPitchConverter,
        DeinitPitchConverter, ProcessPitchConverter, MIDIPitchConverter, nullptr, nullptr, nullptr},
+      // Pitch bend → octaves: channel bend and MIDI 2.0 per-note bend, into both oscillators'
+      // second pitch inputs. It deliberately bypasses the Slew below, so glide never smears a bend.
+      {pitchBend1Address, &pitchBendConverterConstantsGroup, InitPitchBendConverter,
+       DeinitPitchBendConverter, ProcessPitchBendConverter, MIDIPitchBendConverter, nullptr,
+       ResetPitchBendConverter, nullptr},
       {slew1Address, &slewModuleConstantsGroup, InitSlewModule, DeinitSlewModule, ProcessSlewModule,
        nullptr, nullptr, nullptr, nullptr},
       {sinOsc1Address, &sinOscConstantsGroup, InitSinOscillator, DeinitSinOscillator,

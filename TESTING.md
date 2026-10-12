@@ -47,7 +47,7 @@ the CLAP C API (`clap-validator`, below, covers CLAP conformance):
 | `pm-voice`       | `pm-voice-test`          | One full voice renders a note end-to-end and releases |
 | `pm-modroute`    | `pm-modroute-test`       | Mod routing: connecting an LFO to IFSOsc's Bx input switches it to the eval path, which still renders |
 | `pm-voicemanager`| `pm-voicemanager-test`   | Polyphony: a 3-note chord allocates 3 voices and frees them on release |
-| `ifs-clap`       | `ifs-clap-host-test`     | The built `.clap`: ports, note dialects (MIDI 2.0 preferred), params, state (incl. the legacy DPF blob and loading while active), and 7.9-pitch / CLAP / MIDI 1.0 notes measured end to end |
+| `ifs-clap`       | `ifs-clap-host-test`     | The built `.clap`: ports, note dialects (MIDI 2.0 preferred), params, state (incl. the legacy DPF blob and loading while active), 7.9-pitch / CLAP / MIDI 1.0 notes, and channel / per-note / RC 7 pitch bend (on both oscillators, past the glide, matched on note + channel), all measured end to end |
 
 ## Running a single test
 

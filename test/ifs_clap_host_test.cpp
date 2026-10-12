@@ -84,8 +84,20 @@ double estimatePitch(const std::vector<float>& samples, double minHz, double max
         best = std::max(best, correlation[lag]);
     }
     if (best <= 0.0) return 0.0;
-    for (size_t lag = minLag; lag <= maxLag; ++lag)
-        if (correlation[lag] >= 0.95 * best) return kSampleRate / double(lag);
+    // The first lag that comes near the best correlation is the fundamental period (later ones are
+    // its multiples). Climb from there to that peak's top, then interpolate the peak with a parabola:
+    // returning the first qualifying whole-sample lag read sharp, by up to a few percent.
+    for (size_t lag = minLag; lag <= maxLag; ++lag) {
+        if (correlation[lag] < 0.95 * best) continue;
+        while (lag < maxLag && correlation[lag + 1] > correlation[lag]) ++lag;
+        double period = double(lag);
+        if (lag > minLag && lag < maxLag) {
+            const double y0 = correlation[lag - 1], y1 = correlation[lag], y2 = correlation[lag + 1];
+            const double denom = y0 - 2.0 * y1 + y2;
+            if (denom < 0.0) period += 0.5 * (y0 - y2) / denom;
+        }
+        return kSampleRate / period;
+    }
     return 0.0;
 }
 
@@ -316,18 +328,23 @@ clap_event_midi_t makeMidi1(uint8_t status, uint8_t data1, uint8_t data2) {
     return event;
 }
 
-// Render one note through a fresh instance with the test patch, and report the measured pitch.
-double pitchOfNote(Library& lib, const clap_event_header_t* noteEvent, double expectedHz,
-                   const char* what) {
+// Render events (a note, plus anything that shapes it) through a fresh instance with the test patch,
+// and report the measured pitch. sineOnly swaps the IFS oscillator for Osc 2 (the sine), so a check
+// can prove something reaches both oscillators.
+double pitchOfEvents(Library& lib, const clap_event_header_t** events, uint32_t eventCount,
+                     double expectedHz, const char* what, bool sineOnly = false) {
     Instance inst;
     if (!inst.create(lib)) {
         check(false, std::string(what) + ": plugin instance created");
         return 0.0;
     }
     installTestPatch(inst.plugin);
+    if (sineOnly) {
+        sendParam(inst.plugin, kParamIfsLevel, 0.0);
+        sendParam(inst.plugin, kParamSinLevel, 1.0);
+    }
 
-    const clap_event_header_t* events[] = { noteEvent };
-    const std::vector<float> audio = render(inst.plugin, uint32_t(kSampleRate * 1.5), events, 1);
+    const std::vector<float> audio = render(inst.plugin, uint32_t(kSampleRate * 1.5), events, eventCount);
 
     bool finite = true;
     float peak = 0.0f;
@@ -343,6 +360,27 @@ double pitchOfNote(Library& lib, const clap_event_header_t* noteEvent, double ex
     check(peak > 0.01f, std::string(what) + ": produces audio");
     inst.destroy();
     return pitch;
+}
+
+double pitchOfNote(Library& lib, const clap_event_header_t* noteEvent, double expectedHz,
+                   const char* what) {
+    const clap_event_header_t* events[] = { noteEvent };
+    return pitchOfEvents(lib, events, 1, expectedHz, what);
+}
+
+// A MIDI 2.0 per-note pitch bend UMP (status 0x6). value is the 32-bit bend, 0x80000000 = centre.
+clap_event_midi2_t makeUmpPerNoteBend(uint8_t note, uint32_t value) {
+    clap_event_midi2_t event = makeUmpNoteOn(note, 0, 0, 0);
+    event.data[0] = (0x4u << 28) | (0x6u << 20) | (uint32_t(note) << 8);
+    event.data[1] = value;
+    return event;
+}
+
+// The 32-bit bend value for `semitones` of a ±range bend. Clamped: a full-scale bend computes 2^32,
+// which wraps to 0 (full down) in a uint32_t.
+uint32_t bendValue(double semitones, double range) {
+    const double v = 2147483648.0 + semitones / range * 2147483648.0;
+    return uint32_t(std::clamp(std::llround(v), 0LL, 4294967295LL));
 }
 
 } // namespace
@@ -570,10 +608,91 @@ int main(int argc, char** argv) {
         const double errorPercent = 100.0 * std::fabs(ratio - expectedRatio) / expectedRatio;
         std::printf("        ratio %.6f (expected %.6f, error %.3f%%)\n",
                     ratio, expectedRatio, errorPercent);
-        check(errorPercent < 1.5,
+        check(errorPercent < 0.3,
               "the 7.9 fraction moves the measured pitch by half a semitone");
     } else {
         check(false, "both 7.9-pitch notes produced a measurable pitch");
+    }
+
+    // --- pitch bend through the real plugin -------------------------------------------------------
+    // Proves the bend CV reaches both oscillators' second pitch input at full depth. Measured against
+    // the unbent C4 above, so only the interval matters.
+    std::printf("Pitch bend through the real plugin:\n");
+    auto checkInterval = [&](double hz, double semitones, const char* what) {
+        const double expected = std::pow(2.0, semitones / 12.0);
+        check(hzZero > 0.0 && std::fabs(hz / hzZero - expected) / expected < 0.003, what);
+    };
+    {
+        const clap_event_midi2_t noteOn = makeUmpNoteOn(uint8_t(kNote), 0xFFFF, 0, 0);
+        const clap_event_midi2_t bend = makeUmpPerNoteBend(uint8_t(kNote), bendValue(3.0, 48.0));
+        const clap_event_header_t* events[] = { &noteOn.header, &bend.header };
+        const double up3 = kC4Hz * std::pow(2.0, 3.0 / 12.0);
+        checkInterval(pitchOfEvents(lib, events, 2, up3, "per-note bend +3 (IFS)"), 3.0,
+                      "a per-note bend of +3 semitones moves the IFS oscillator from C4 to D#4");
+        checkInterval(pitchOfEvents(lib, events, 2, up3, "per-note bend +3 (Osc 2)", true), 3.0,
+                      "a per-note bend of +3 semitones moves Osc 2 from C4 to D#4");
+    }
+    {
+        // A bend sent for another key must not touch the sounding note.
+        const clap_event_midi2_t noteOn = makeUmpNoteOn(uint8_t(kNote), 0xFFFF, 0, 0);
+        const clap_event_midi2_t bend = makeUmpPerNoteBend(uint8_t(kNote + 1), bendValue(12.0, 48.0));
+        const clap_event_header_t* events[] = { &noteOn.header, &bend.header };
+        checkInterval(pitchOfEvents(lib, events, 2, kC4Hz, "per-note bend, other key"), 0.0,
+                      "a per-note bend for another key leaves C4 alone");
+    }
+    {
+        // Notes match on note + channel + group: the same key's per-note bend on channel 2 is for a
+        // different note.
+        const clap_event_midi2_t noteOn = makeUmpNoteOn(uint8_t(kNote), 0xFFFF, 0, 0);
+        clap_event_midi2_t bend = makeUmpPerNoteBend(uint8_t(kNote), bendValue(12.0, 48.0));
+        bend.data[0] |= 1u << 16;   // channel 2
+        const clap_event_header_t* events[] = { &noteOn.header, &bend.header };
+        checkInterval(pitchOfEvents(lib, events, 2, kC4Hz, "per-note bend, other channel"), 0.0,
+                      "a per-note bend on another channel leaves C4 alone");
+    }
+    {
+        // KeyboardEDO's setup: announce a ±2 per-note range (registered controller 7), then bend
+        // half way up, which it means as +1 semitone.
+        clap_event_midi2_t range = makeUmpNoteOn(0, 0, 0, 0);
+        range.data[0] = (0x4u << 28) | (0x2u << 20) | (0u << 8) | 7u;
+        range.data[1] = 2u << 25;
+        const clap_event_midi2_t noteOn = makeUmpNoteOn(uint8_t(kNote), 0xFFFF, 0, 0);
+        const clap_event_midi2_t bend = makeUmpPerNoteBend(uint8_t(kNote), 0xC0000000u);  // half way up
+        const clap_event_header_t* events[] = { &range.header, &noteOn.header, &bend.header };
+        checkInterval(pitchOfEvents(lib, events, 3, kC4Hz * std::pow(2.0, 1.0 / 12.0),
+                                    "per-note bend at RC7 = 2"), 1.0,
+                      "registered controller 7 sets the per-note range: half way at ±2 is +1 semitone");
+    }
+    {
+        const clap_event_midi_t bend = makeMidi1(0xE0, 0x00, 0x60);   // half way up: +1 of ±2
+        const clap_event_midi_t noteOn = makeMidi1(0x90, uint8_t(kNote), 100);
+        const clap_event_header_t* events[] = { &bend.header, &noteOn.header };
+        const double up1 = kC4Hz * std::pow(2.0, 1.0 / 12.0);
+        checkInterval(pitchOfEvents(lib, events, 2, up1, "MIDI 1.0 channel bend +1"), 1.0,
+                      "a MIDI 1.0 channel bend of +1 semitone moves C4 to C#4");
+        checkInterval(pitchOfEvents(lib, events, 2, up1, "MIDI 1.0 channel bend +1 (Osc 2)", true), 1.0,
+                      "a MIDI 1.0 channel bend of +1 semitone moves Osc 2 to C#4");
+    }
+    {
+        // Glide must not smear a bend. Mono, and the note starts with the test patch's near-zero glide
+        // (the first mono note after load glides up from the voice's rest pitch, A440). 0.1 s later
+        // the glide becomes 2 s and the bend arrives: it must still land at once.
+        const uint32_t later = uint32_t(kSampleRate * 0.1);
+        clap_event_param_value_t mono{}, glide{};
+        for (clap_event_param_value_t* e : { &mono, &glide }) {
+            e->header.size = sizeof(*e);
+            e->header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+            e->header.type = CLAP_EVENT_PARAM_VALUE;
+        }
+        mono.param_id = kParamVoiceMode;  mono.value = 0.0;
+        glide.param_id = kParamSlewRate;  glide.value = 2.0;  glide.header.time = later;
+        const clap_event_midi2_t noteOn = makeUmpNoteOn(uint8_t(kNote), 0xFFFF, 0, 0);
+        clap_event_midi2_t bend = makeUmpPerNoteBend(uint8_t(kNote), bendValue(3.0, 48.0));
+        bend.header.time = later;
+        const clap_event_header_t* events[] = { &mono.header, &noteOn.header, &glide.header, &bend.header };
+        checkInterval(pitchOfEvents(lib, events, 4, kC4Hz * std::pow(2.0, 3.0 / 12.0),
+                                    "per-note bend +3, mono, 2 s glide"), 3.0,
+                      "a bend bypasses the glide");
     }
 
     // --- the MIDI-1.0 / CLAP dialects still work -------------------------------------------------

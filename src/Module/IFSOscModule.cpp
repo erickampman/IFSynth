@@ -275,6 +275,12 @@ const KPBuffPair* ProcessIFSOscModule(uint64_t processCallID, uint32_t count, Mo
     const float* pmrPtr = pitchModPair->second->data;
     const float pitchModLevel = module->paramByEnum(IFSOscParamItemPitchModLevel);
 
+    // Second pitch input: the pitch bend, which arrives after the Slew so glide never smears it.
+    auto pitchMod2Pair = module->retrieveInput(IFSOscParamItemPitchMod2Input, processCallID, count);
+    const float* pm2lPtr = pitchMod2Pair->first->data;
+    const float* pm2rPtr = pitchMod2Pair->second->data;
+    const float pitchMod2Level = module->paramByEnum(IFSOscParamItemPitchMod2Level);
+
     // Hard sync (per-channel): the IFS osc is the slave; on a zero crossing of the sync input
     // (the sine master, stereo) the corresponding channel's phase resets, so the L/R detune of
     // the sine drives the L/R sync rate and the stereo width survives. Output mix level too.
@@ -328,8 +334,8 @@ const KPBuffPair* ProcessIFSOscModule(uint64_t processCallID, uint32_t count, Mo
         bool crossfading      = st->crossfadePos > 0;
 
         for (uint32_t i = 0; i < count; ++i) {
-            deltaL = pitchConverter->pitchToFrequency(pilPtr[i] + midiPitch + freqParam + fineParam - detuneHalf + pmlPtr[i] * pitchModLevel) * freqScale;
-            deltaR = pitchConverter->pitchToFrequency(pirPtr[i] + midiPitch + freqParam + fineParam + detuneHalf + pmrPtr[i] * pitchModLevel) * freqScale;
+            deltaL = pitchConverter->pitchToFrequency(pilPtr[i] + midiPitch + freqParam + fineParam - detuneHalf + pmlPtr[i] * pitchModLevel + pm2lPtr[i] * pitchMod2Level) * freqScale;
+            deltaR = pitchConverter->pitchToFrequency(pirPtr[i] + midiPitch + freqParam + fineParam + detuneHalf + pmrPtr[i] * pitchModLevel + pm2rPtr[i] * pitchMod2Level) * freqScale;
             // Mip level tracks the phase increment (delta), so band-limiting follows pitch + pitch-mod.
             float sampleL = mipRead(activeMip, phaseL, deltaL);
             float sampleR = mipRead(activeMip, phaseR, deltaR);
@@ -372,8 +378,8 @@ const KPBuffPair* ProcessIFSOscModule(uint64_t processCallID, uint32_t count, Mo
         precomputeIFSVertices(ms, verts);
 
         for (uint32_t j = i0; j < i1; ++j) {
-            deltaL = pitchConverter->pitchToFrequency(pilPtr[j] + midiPitch + freqParam + fineParam - detuneHalf + pmlPtr[j] * pitchModLevel) * freqScale;
-            deltaR = pitchConverter->pitchToFrequency(pirPtr[j] + midiPitch + freqParam + fineParam + detuneHalf + pmrPtr[j] * pitchModLevel) * freqScale;
+            deltaL = pitchConverter->pitchToFrequency(pilPtr[j] + midiPitch + freqParam + fineParam - detuneHalf + pmlPtr[j] * pitchModLevel + pm2lPtr[j] * pitchMod2Level) * freqScale;
+            deltaR = pitchConverter->pitchToFrequency(pirPtr[j] + midiPitch + freqParam + fineParam + detuneHalf + pmrPtr[j] * pitchModLevel + pm2rPtr[j] * pitchMod2Level) * freqScale;
             outL[j] = evaluateIFSSmoothed(static_cast<float>(phaseL), verts) * levelParam;
             outR[j] = evaluateIFSSmoothed(static_cast<float>(phaseR), verts) * levelParam;
             advanceSync(phaseL, deltaL, syncOn, syncType, st->prevSyncL, syncLPtr[j]);

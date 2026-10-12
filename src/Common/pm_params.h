@@ -173,6 +173,9 @@ enum IFSOscParamItem : NSUInteger {
    IFSOscParamItemSyncInput,      // connection: hard-sync source (stereo, from the sine osc)
    IFSOscParamItemSyncMode,       // 0 Off, 1 Up, 2 Down, 3 Both (zero-crossing of the sync input)
    IFSOscParamItemLevel,          // output mix level
+   // Second pitch input, appended so existing addresses stay put.
+   IFSOscParamItemPitchMod2Input, // connection: pitch bend, octaves (bypasses the Slew)
+   IFSOscParamItemPitchMod2Level, // scales PitchMod2Input (1 = octaves in, octaves out)
 };
 
 // IFS fractal envelope — 3-transform shape (blue + green interior points), phase over Duration.
@@ -277,6 +280,11 @@ enum SlewParamItem : NSUInteger {
 
 enum PitchConverterParamItem : NSUInteger {
    PitchConverterParamItemDummy = 1,
+};
+
+enum PitchBendConverterParamItem : NSUInteger {
+   PitchBendConverterParamItemQuarterTones = 1, // channel bend range, 0..8 quarter-tones
+   PitchBendConverterParamItemPerNoteSemitones, // MIDI 2.0 per-note bend range, semitones
 };
 
 // Referenced by Voice::connectTunnelPairs (no tunnel modules in the v1 patch, but it must compile).

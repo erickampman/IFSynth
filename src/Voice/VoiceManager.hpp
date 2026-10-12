@@ -118,6 +118,7 @@ private:
 	Voice* findFreeVoice();
 	Voice* stealVoice(const pm::UmpMessage& msg);
 	Voice* findVoiceForMessage(const pm::UmpMessage& msg);
+	void releaseAllNotes(Voice& voice);
     Voice* oldestVoice();
     Voice* lowestVoice();
     Voice* highestVoice();

@@ -59,6 +59,8 @@ static const ModuleParamConstants ifsOscConstants[] = {
    {"syncIn",      IFSOscParamItemSyncInput,       0, 0, nullptr,  0.0f,  0.0f, 0.0f, 0}, // connection
    {"syncMode",    IFSOscParamItemSyncMode,        0, 0, nullptr,  0.0f,  3.0f, 0.0f, 0}, // 0=Off
    {"level",       IFSOscParamItemLevel,           0, 0, nullptr,  0.0f,  1.0f, 1.0f, 0}, // unity; plugin sets mix
+   {"pitchMod2In", IFSOscParamItemPitchMod2Input,  0, 0, nullptr,  0.0f,  0.0f, 0.0f, 0}, // connection (pitch bend)
+   {"pitchMod2Lvl",IFSOscParamItemPitchMod2Level,  0, 0, nullptr, -5.0f,  5.0f, 1.0f, 0},
 };
 const ModuleParamConstantsGroup ifsOscConstantsGroup = {
    const_cast<char*>("ifsOsc"),
@@ -203,3 +205,13 @@ static const ModuleParamConstants pitchConverterConstants[] = {
 const ModuleParamConstantsGroup pitchConverterModuleConstantsGroup = {
    const_cast<char*>("pitchConverter"),
    sizeof(pitchConverterConstants) / sizeof(pitchConverterConstants[0]), pitchConverterConstants};
+
+// Pitch bend converter — MIDI 2.0 pitch bend → a bipolar octaves signal. Channel bend range in
+// quarter-tones; per-note bend range in semitones (±48 by default, the MPE convention).
+static const ModuleParamConstants pitchBendConverterConstants[] = {
+   {"quarterTones",     PitchBendConverterParamItemQuarterTones,     0, 0, nullptr, 0.0f, 8.0f,  4.0f,  0},
+   {"perNoteSemitones", PitchBendConverterParamItemPerNoteSemitones, 0, 0, nullptr, 0.0f, 96.0f, 48.0f, 0},
+};
+const ModuleParamConstantsGroup pitchBendConverterConstantsGroup = {
+   const_cast<char*>("Pitch Bend"),
+   sizeof(pitchBendConverterConstants) / sizeof(pitchBendConverterConstants[0]), pitchBendConverterConstants};
