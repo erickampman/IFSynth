@@ -838,6 +838,53 @@ int main(int argc, char** argv) {
                                                 masterBend, makeMidi1(0x90, uint8_t(kNote), 100) });
         std::printf("        RPN 0 = 12, half way up: %.3f st\n", rpn);
         check(std::fabs(rpn - 6.0) < 0.02, "RPN 0 sets the channel bend range (±12: half way is +6)");
+
+        // Released notes (MPE §3.3.3: control of a note ceases once Note Off has occurred). The test
+        // patch's 10 s envelope rings ~5 s after note-off, so the pitch is measured in the tail.
+        // Note-off at 0.05 s, then the bend at 0.1 s.
+        auto at = [](clap_event_midi_t e, double seconds) {
+            e.header.time = uint32_t(seconds * kSampleRate);
+            return e;
+        };
+        const clap_event_midi_t memberOff = at(makeMidi1(0x81, uint8_t(kNote), 0), 0.05);
+        const double frozen = semitonesOf(true, { memberNote, memberOff,
+                                                  at(makeMidi1(0xE1, 0x7F, 0x7F), 0.1) });   // full up
+        std::printf("        MPE member bend after note-off: %.3f st\n", frozen);
+        check(std::fabs(frozen) < 0.02, "MPE: a member-channel bend after note-off does not move the released note");
+        const double master = semitonesOf(true, { memberNote, memberOff, at(masterBend, 0.1) });
+        std::printf("        MPE master bend after note-off: %.3f st\n", master);
+        check(std::fabs(master - 1.0) < 0.02, "MPE: the master channel still bends a released note");
+        const double wheel = semitonesOf(false, { makeMidi1(0x90, uint8_t(kNote), 100),
+                                                  at(makeMidi1(0x80, uint8_t(kNote), 0), 0.05),
+                                                  at(masterBend, 0.1) });
+        std::printf("        MPE off, channel bend after note-off: %.3f st\n", wheel);
+        check(std::fabs(wheel - 1.0) < 0.02, "MPE off: a pitch wheel still bends a releasing note");
+    }
+    {
+        // A released note ignores a MIDI 2.0 per-note bend addressed by key; a CLAP note named by its
+        // id keeps taking expression until NOTE_END.
+        const clap_event_midi2_t noteOn = makeUmpNoteOn(uint8_t(kNote), 0xFFFF, 0, 0);
+        clap_event_midi2_t noteOff = makeUmpNoteOn(uint8_t(kNote), 0, 0, 0);
+        noteOff.data[0] = (0x4u << 28) | (0x8u << 20) | (uint32_t(kNote) << 8);
+        noteOff.header.time = uint32_t(0.05 * kSampleRate);
+        clap_event_midi2_t bend = makeUmpPerNoteBend(uint8_t(kNote), 0xC0000000u);   // +1
+        bend.header.time = uint32_t(0.1 * kSampleRate);
+        const clap_event_header_t* events[] = { &noteOn.header, &noteOff.header, &bend.header };
+        checkInterval(pitchOfEvents(lib, events, 3, kC4Hz, "per-note bend after note-off"), 0.0,
+                      "a released note ignores a per-note bend addressed by key");
+
+        clap_event_note_t clapOn = makeClapNoteOn(int16_t(kNote), 1.0);
+        clapOn.note_id = 5;
+        clap_event_note_t clapOff = clapOn;
+        clapOff.header.type = CLAP_EVENT_NOTE_OFF;
+        clapOff.header.time = uint32_t(0.05 * kSampleRate);
+        clap_event_note_expression_t tuning =
+            makeNoteExpression(CLAP_NOTE_EXPRESSION_TUNING, 5, int16_t(kNote), 2.0);
+        tuning.header.time = uint32_t(0.1 * kSampleRate);
+        const clap_event_header_t* clapEvents[] = { &clapOn.header, &clapOff.header, &tuning.header };
+        checkInterval(pitchOfEvents(lib, clapEvents, 3, kC4Hz * std::pow(2.0, 2.0 / 12.0),
+                                    "CLAP tuning after note-off"), 2.0,
+                      "a released CLAP note still takes a tuning expression by id");
     }
 
     // --- note end + voice-info ---------------------------------------------------------------------

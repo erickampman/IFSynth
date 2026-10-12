@@ -62,6 +62,11 @@ it describes the controller, not the sound. Member channels 2–16 bend ±48, an
 bend (±2) adds to every member note. **RPN 0** (MIDI 1.0 CC 101/100/6/38, or the MIDI 2.0 registered
 controller) sets a channel's bend range; under MPE, any member sets all members. Ranges reset on the
 MPE Configuration Message and when the switch flips, and like RC 7 they survive `reset()`.
+Once a note is released (note-off, or held only by the pedal), "control of a note ceases"
+(MPE §3.3.3): under MPE its member channel's bend is frozen while the tail rings, though the master
+channel's still applies, and a released note ignores MIDI 2.0 per-note messages addressed by key.
+A CLAP note named by its id keeps taking expression until NOTE_END. With MPE off, a pitch wheel
+still bends releasing notes.
 Pressure and timbre are not routed yet.
 
 The bend goes into both oscillators' second pitch input, after the glide, so glide never smears a
