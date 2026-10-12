@@ -32,19 +32,22 @@ PolygraphModular headers stay on that code's own warning style.
 
 ## What each test covers
 
-The eight CTest cases exercise the `pm_framework` engine end-to-end (the DPF plugin wrapper
-itself is covered by `clap-validator`, below):
+Ten CTest cases exercise the `pm_framework` engine, and `ifs-clap` drives the built plugin through
+the CLAP C API (`clap-validator`, below, covers CLAP conformance):
 
 | CTest name       | Executable               | Verifies |
 |------------------|--------------------------|----------|
 | `pm`             | `pm-selftest`            | UMP MIDI layer: predicates, raw-word decode, microtonal pitch attribute, CLAP→UMP decoders |
 | `pm-module`      | `pm-module-test`         | `Module` + `ModuleMap` core: param read/write, process proc, map add/get |
 | `pm-sinosc`      | `pm-sinosc-test`         | The vendored sine oscillator produces an ~A440 sine |
+| `pm-ifscore`     | `pm-ifscore-test`        | IFSCore: the per-point smoothed eval matches the rendered wavetable |
 | `pm-adsr`        | `pm-adsr-test`           | ADSR envelope: note-on drives attack, note-off drives release to ~0 |
 | `pm-modules`     | `pm-modules-test`        | Combine / Final / Slew compile+run; PitchConverter maps note→pitch |
 | `pm-factory`     | `pm-factory-test`        | ModuleFactory + the trimmed init-specs build all six v1 modules |
 | `pm-voice`       | `pm-voice-test`          | One full voice renders a note end-to-end and releases |
+| `pm-modroute`    | `pm-modroute-test`       | Mod routing: connecting an LFO to IFSOsc's Bx input switches it to the eval path, which still renders |
 | `pm-voicemanager`| `pm-voicemanager-test`   | Polyphony: a 3-note chord allocates 3 voices and frees them on release |
+| `ifs-clap`       | `ifs-clap-host-test`     | The built `.clap`: ports, note dialects (MIDI 2.0 preferred), params, state (incl. the legacy DPF blob and loading while active), and 7.9-pitch / CLAP / MIDI 1.0 notes measured end to end |
 
 ## Running a single test
 
@@ -62,7 +65,7 @@ Validate the built plugin against the CLAP spec with
 [`clap-validator`](https://github.com/free-audio/clap-validator):
 
 ```sh
-clap-validator validate build/bin/IFSynth.clap
+clap-validator validate build/IFSynth.clap
 ```
 
 ## Continuous integration

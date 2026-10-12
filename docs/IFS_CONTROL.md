@@ -17,8 +17,10 @@ Interactive prototype (view in a browser signed into the same Claude account):
 - A cross-platform **CLAP synth** porting the PolygraphModular (PM) AUv3 voice framework off
   Apple. Polyphonic, real PM voice engine (VoiceManager → per-voice PitchConverter → Slew →
   SinOsc → Combine ×ADSR → Final). Passes `clap-validator` (18/18); 8 framework self-tests.
-- Plugin wrapper is **DPF** (generates the `.clap` from a DSP subclass + a UI subclass); the
-  `pm_framework` static lib is the reused engine. Output: `build/bin/SimpleSynth.clap`.
+- Plugin wrapper was **DPF** (generated the `.clap` from a DSP subclass + a UI subclass); the
+  `pm_framework` static lib is the reused engine. Output was `build/bin/SimpleSynth.clap`.
+  IFSynth now implements the CLAP entry point itself (`src/plugin.cpp`) with DPF kept for the GUI
+  only, so it can receive MIDI 2.0 7.9-pitch notes.
 - **UI** is a NanoVG panel with a reusable widget kit:
   - `src/UI/Knob.hpp` — labelled rotary knob (NanoSubWidget + DPF KnobEventHandler).
   - `src/UI/GroupBox.hpp` — titled container panel that frames + row-lays-out its child controls.

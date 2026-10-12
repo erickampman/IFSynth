@@ -7,6 +7,8 @@
 #ifndef IFSYNTH_PARAMS_H
 #define IFSYNTH_PARAMS_H
 
+#include <cstdint>
+
 namespace ifsynth {
 
 enum ParamIndex {
@@ -232,6 +234,83 @@ static constexpr ParamSpec kParams[kParamCount] = {
    {"Legato",      "env2Legato", "",   0.0f,   1.0f,   1.0f,  false, true },
    {"Scale Rel",   "env2ScRel",  "",   0.0f,   1.0f,   0.0f,  false, true },
 };
+
+// --- dropdowns -------------------------------------------------------------------------------
+// One source of truth for "is this parameter stepped-with-labels, and what are the labels": the
+// CLAP params extension (CLAP_PARAM_IS_ENUM + value/text conversion) and the UI dropdowns both read
+// it from here, so a label can never drift between the host's generic panel and our own.
+
+static constexpr const char* kOscIterationChoices[] = { "3", "4", nullptr };
+static constexpr const char* kIterationChoices[]    = { "1", "2", "3", "4", "5", "6", "7", "8", nullptr };
+static constexpr const char* kHoldChoices[]         = { "None", "Blue", "Green", "Loop", nullptr };
+static constexpr const char* kLegatoChoices[]       = { "Steal", "Match Y", nullptr };
+static constexpr const char* kMixModeChoices[]      = { "Add", "Multiply", nullptr };
+static constexpr const char* kVoiceModeChoices[]    = { "Mono", "10 Voices", nullptr };
+static constexpr const char* kSyncChoices[]         = { "Off", "Up", "Down", "Both", nullptr };
+static constexpr const char* kSinPitchChoices[]     = { "-3 oct", "-2 oct", "-1 oct", "0", "+5th", "+1 oct", "+1 oct +5th", nullptr };
+static constexpr const char* kSinWaveChoices[]      = { "Sine", "Triangle", "Saw", nullptr };
+static constexpr const char* kVcaSourceChoices[]    = { "Env 1", "Env 2", nullptr };
+static constexpr const char* kModSourceChoices[]    = { "None", "LFO 1", "LFO 2", "Env 1", "Env 2", "CV Mix 1", "CV Mix 2", nullptr };
+
+// Source dropdowns (osc mods + LPF cutoff). The VCA source shares this classification but its own
+// two-entry label list, so choicesFor() checks it first.
+inline bool isModSrcParam(uint32_t index)
+{
+   switch (index) {
+   case kParamOscPitchModSrc: case kParamOscBxModSrc: case kParamOscByModSrc:
+   case kParamOscSq1ModSrc: case kParamOscSq2ModSrc:
+   case kParamLpfCutoffModSrc: case kParamVCASource:
+   case kParamOsc2PitchModSrc:
+      return true;
+   default:
+      return false;
+   }
+}
+
+inline bool isDropdownParam(uint32_t index)
+{
+   switch (index) {
+   case kParamOscIterations:
+   case kParamEnvIterations: case kParamEnvHoldMode:
+   case kParamLfoIterations:
+   case kParamEnv2Iterations: case kParamEnv2HoldMode:
+   case kParamEnvLegatoMode: case kParamEnv2LegatoMode:
+   case kParamLfo2Iterations:
+   case kParamMix1Mode: case kParamMix2Mode:
+   case kParamVoiceMode:
+   case kParamIfsSyncMode:
+   case kParamSinPitch:
+   case kParamSinWaveform:
+      return true;
+   default:
+      return isModSrcParam(index); // mod source + VCA dropdowns
+   }
+}
+
+// Null-terminated label list for a dropdown parameter, or nullptr when it is a plain value.
+inline const char* const* choicesFor(uint32_t index)
+{
+   if (index == kParamVCASource) return kVcaSourceChoices;   // before the mod-source group
+   if (isModSrcParam(index))     return kModSourceChoices;
+   switch (index) {
+   case kParamOscIterations:  return kOscIterationChoices;
+   case kParamEnvIterations:
+   case kParamLfoIterations:
+   case kParamEnv2Iterations:
+   case kParamLfo2Iterations: return kIterationChoices;
+   case kParamEnvHoldMode:
+   case kParamEnv2HoldMode:   return kHoldChoices;
+   case kParamEnvLegatoMode:
+   case kParamEnv2LegatoMode: return kLegatoChoices;
+   case kParamMix1Mode:
+   case kParamMix2Mode:       return kMixModeChoices;
+   case kParamVoiceMode:      return kVoiceModeChoices;
+   case kParamIfsSyncMode:    return kSyncChoices;
+   case kParamSinPitch:       return kSinPitchChoices;
+   case kParamSinWaveform:    return kSinWaveChoices;
+   default:                   return nullptr;
+   }
+}
 
 } // namespace ifsynth
 

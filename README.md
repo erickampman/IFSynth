@@ -35,24 +35,34 @@ IFS Osc (× IFS level) ────────┘
 - **Presets**: factory presets in `Presets/*.json`, baked into the plugin at build time; in-UI
   help page (`Resources/help.html`).
 
-MIDI notes are sample-accurate: `run()` splits rendering at each event's frame offset.
-Parameter changes are applied per host block (DPF applies them before `run()`).
+MIDI notes are sample-accurate: `process()` splits rendering at each event's frame offset.
+Parameter changes from the host are applied at their event; edits from the editor are applied at
+the top of the next block.
 
 The envelope Legato and Scale Release params are exposed to the host but don't yet have
 custom-UI controls.
 
-The wrapper is built with the [DISTRHO Plugin Framework (DPF)](https://github.com/DISTRHO/DPF),
-which generates the CLAP around our DSP + UI subclasses.
+The plugin implements the CLAP entry point itself (`src/plugin.cpp`) and keeps the
+[DISTRHO Plugin Framework (DPF)](https://github.com/DISTRHO/DPF) purely as the GUI layer, so it can
+receive MIDI 2.0 7.9-pitch notes that DPF's generated CLAP wrapper drops.
+
+Next: MIDI 2.0 per-note pitch bend and expression, MPE input, and CLAP note expressions; see
+[docs/MIDI2-PORT.md](docs/MIDI2-PORT.md).
 
 ## Layout
 
-The engine (`src/`) mirrors PolygraphModular's structure; the DPF plugin assembly lives in
-`plugin/` + `src/UI/`:
+The engine (`src/`) mirrors PolygraphModular's structure. The DISTRHO Plugin Framework is used
+**only as the GUI layer** (UIExporter + NanoVG + pugl); the CLAP entry point is hand-written in
+`src/plugin.cpp`, because DPF's generated CLAP wrapper drops `CLAP_EVENT_MIDI2` and advertises only
+the MIDI/MPE note dialects, which would make MIDI 2.0 7.9-pitch notes unreachable.
 
 ```
-plugin/               the DPF plugin definition (the CLAP wrapper is generated from these)
-                        DistrhoPluginInfo.h (plugin flags), IFSynthParams.h (shared param
-                        table), IFSynthPlugin.cpp (DSP: MIDI + params → VoiceManager, mod routing)
+plugin/               the shared plugin definition
+                        DistrhoPluginInfo.h (UI flags; the plugin identity macros are inert),
+                        IFSynthParams.h (shared param table + dropdown labels)
+src/plugin.cpp        the raw CLAP plugin: entry point, note/audio/params/state/gui extensions,
+                        and the DSP glue (MIDI + params → VoiceManager)
+src/plugin_gui.h      the C seam between plugin.cpp and the GUI shell
 src/UI/               the plugin GUI (reusable NanoVG widgets + the panel)
                         IFSControl / IFSEnvControl (fractal editors, drawn from IFSCore so the
                         graph is exactly what you hear); Knob, Slider, Toggle, Dropdown,
@@ -75,13 +85,14 @@ Presets/              factory presets (JSON), compiled into GeneratedPresets.h b
                         tools/gen_presets.py
 Resources/            font, logo and help page, embedded into the binary at build time
 test/                 in-process self-tests (see TESTING.md)
-dpf/                  DISTRHO Plugin Framework (submodule, + nested pugl) — generates the .clap
-external/clap         CLAP headers (submodule, pinned 1.2.9) — used by the framework self-tests
+dpf/                  DISTRHO Plugin Framework (submodule, + nested pugl) — the GUI layer only
+external/clap         CLAP headers (submodule, pinned 1.2.9) — the plugin and the tests
 ```
 
 Vendored PolygraphModular files keep their original `#include "X.hpp"` form; every framework
-folder is on the include path so they resolve across `Common/` `Module/` `Voice/`. The DSP
-wrapper links the `pm_framework` static lib; DPF owns the plugin/UI lifecycle.
+folder is on the include path so they resolve across `Common/` `Module/` `Voice/`. The plugin
+links the `pm_framework` static lib; DPF's `UIExporter` hosts the editor inside the CLAP gui
+extension.
 
 ## Build
 
@@ -100,7 +111,7 @@ cmake --build build -j
 ctest --test-dir build --output-on-failure     # see TESTING.md for the full suite
 ```
 
-Produces `build/bin/IFSynth.clap`. A post-build step symlinks it into `~/.clap` (Linux) or
+Produces `build/IFSynth.clap` (a bundle on macOS). A post-build step symlinks it into `~/.clap` (Linux) or
 `~/Library/Audio/Plug-Ins/CLAP/` (macOS), so any CLAP host picks up the freshest build after a
 rescan. Validate with [`clap-validator`](https://github.com/free-audio/clap-validator). Test
 details in [TESTING.md](TESTING.md).
