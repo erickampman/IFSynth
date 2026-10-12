@@ -109,11 +109,11 @@ const void ResetSinOscillator(Module* module) {
 }
 
 void MIDISinOscillator(const pm::UmpMessage& message, Module* module) {
-	// Check for Note On and non-zero velocity
+	// Check for Note On
 
     // if pitchInput then the input parameter is controlling the frequency, not noteOn/noteOFf messages.
     if (!module->isInputConnected(SinOscParamItemPitchInput)) {
-        if (message.status == pm::kStatusNoteOn && message.velocity > 0) {
+        if (pm::isNoteOn(message)) {   // by status: a MIDI 2.0 velocity-0 note-on is a note-on
             double freq = 0.0;
 
             if (message.attributeType == pm::kAttrPitch7_9) { // MIDI 2.0 NoteOn with pitch attribute

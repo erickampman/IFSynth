@@ -978,6 +978,15 @@ int main(int argc, char** argv) {
                       "a tuning expression for another note id leaves C4 alone");
     }
 
+    // --- a MIDI 2.0 note-on with velocity 0 is a note-on (M2-104 4.2.8) ------------------------------
+    // It used to count as a note-off, so the note never sounded.
+    std::printf("MIDI 2.0 velocity 0:\n");
+    {
+        const clap_event_midi2_t noteOn = makeUmpNoteOn(uint8_t(kNote), 0, 0, 0);
+        const double hz = pitchOfNote(lib, &noteOn.header, kC4Hz, "MIDI 2.0 note-on, velocity 0");
+        checkInterval(hz, 0.0, "a MIDI 2.0 note-on with velocity 0 plays its note");
+    }
+
     // --- the MIDI-1.0 / CLAP dialects still work -------------------------------------------------
     std::printf("Other note dialects (must keep working):\n");
     {

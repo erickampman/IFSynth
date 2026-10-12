@@ -46,7 +46,9 @@ The plugin implements the CLAP entry point itself (`src/plugin.cpp`) and keeps t
 [DISTRHO Plugin Framework (DPF)](https://github.com/DISTRHO/DPF) purely as the GUI layer, so it can
 receive MIDI 2.0 7.9-pitch notes that DPF's generated CLAP wrapper drops.
 
-**MIDI 2.0.** Notes match on note + channel + group, so the same key on two channels is two
+**MIDI 2.0.** MIDI 1.0 values are upscaled with the spec's Min-Center-Max rule (M2-104 D.1.3), so
+127 / 16383 are full scale and 64 / 8192 the exact centre; a MIDI 2.0 note-on with velocity 0 is a
+note-on (M2-104 4.2.8), not a note-off. Notes match on note + channel + group, so the same key on two channels is two
 voices, and per-note messages reach only their own note. Pitch bend has two parts, summed:
 
 - **Channel bend**, ±2 semitones (MIDI 1.0 or 2.0).

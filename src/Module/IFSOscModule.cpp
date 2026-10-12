@@ -201,7 +201,7 @@ void MIDIIFSOscModule(const pm::UmpMessage& message, Module* module)
     // If pitch is driven by a connected input, note messages don't set frequency.
     if (module->isInputConnected(IFSOscParamItemPitchInput)) return;
 
-    if (message.status == pm::kStatusNoteOn && message.velocity > 0) {
+    if (pm::isNoteOn(message)) {   // by status: a MIDI 2.0 velocity-0 note-on is a note-on
         double freq = 0.0;
         if (message.attributeType == pm::kAttrPitch7_9) {
             uint16_t attr     = message.attribute;

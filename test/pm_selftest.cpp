@@ -36,8 +36,23 @@ int main() {
    auto off = pm::makeNoteOff(69);
    CHECK(pm::isNoteOff(off) && !pm::isNoteOn(off), "makeNoteOff");
    auto on0 = pm::makeNoteOn(60, 1);
-   on0.velocity = 0; // note-on with velocity 0 must read as note-off (spec convention)
-   CHECK(pm::isNoteOff(on0), "vel0 == noteOff");
+   on0.velocity = 0; // MIDI 2.0: a velocity-0 note-on is still a note-on (M2-104 §4.2.8)
+   CHECK(pm::isNoteOn(on0) && !pm::isNoteOff(on0), "MIDI 2.0 vel0 note-on is a note-on");
+   CHECK(pm::isNoteOff(pm::fromMidi1Bytes(0x90, 60, 0)), "MIDI 1.0 vel0 note-on decodes to a note-off");
+
+   // --- MIDI 1.0 → 2.0 value scaling (M2-104 D.1.3 Min-Center-Max) ---
+   CHECK(pm::scaleUp(0, 7, 16) == 0 && pm::scaleUp(64, 7, 16) == 0x8000 && pm::scaleUp(127, 7, 16) == 0xFFFF,
+         "scaleUp 7->16: 0, centre and max land on 0, 0x8000, 0xFFFF");
+   CHECK(pm::scaleUp(64, 7, 32) == 0x80000000u && pm::scaleUp(127, 7, 32) == 0xFFFFFFFFu,
+         "scaleUp 7->32: centre and max exact");
+   CHECK(pm::scaleUp(8192, 14, 32) == 0x80000000u && pm::scaleUp(16383, 14, 32) == 0xFFFFFFFFu,
+         "scaleUp 14->32: bend centre and max exact");
+   CHECK(pm::scaleUp(65, 7, 16) > 0x8200 && pm::scaleUp(126, 7, 16) < 0xFFFF,
+         "scaleUp is monotonic above the centre");
+   CHECK(pm::fromMidi1Bytes(0x90, 60, 127).velocity == 0xFFFF, "MIDI 1.0 velocity 127 is full scale");
+   CHECK(pm::fromMidi1Bytes(0xA0, 60, 127).status == pm::kStatusPolyPressure
+             && pm::fromMidi1Bytes(0xA0, 60, 127).data32 == 0xFFFFFFFFu,
+         "MIDI 1.0 poly pressure decodes, full scale at 127");
 
    // --- decode a raw MIDI 2.0 note-on UMP word pair ---
    uint32_t words[2] = {(0x4u << 28) | (0x9u << 20) | (69u << 8) | 0u, (0xC000u << 16)};
