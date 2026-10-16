@@ -375,7 +375,7 @@ protected:
     /* -- drawing / layout ------------------------------------------------- */
     void onNanoDisplay() override
     {
-        beginPath(); rect(0, 0, getWidth(), getHeight()); fillColor(24, 26, 31); fill();
+        beginPath(); rect(0, 0, getWidth(), getHeight()); fillColor(Color(14, 28, 28)); fill();
     }
     void onResize(const ResizeEvent& ev) override
     {
