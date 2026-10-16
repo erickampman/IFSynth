@@ -66,6 +66,15 @@ Never checked on Linux, so check these by hand and record what you find in this 
 
 macOS-only pieces: `src/UI/BackingScale_mac.mm` (Retina scale; built only on Apple).
 
+**NanoVG stencil (seen on Linux, 2026-10-16).** NanoVG fills non-convex paths through the stencil
+buffer and assumes it starts at zero, but DPF's `puglOnDisplayPrepare` clears only colour and depth.
+On Linux the stale stencil showed through as a speckled pattern across PlainOldSynth's envelope
+graphs (fixed there in `bfaa5e5`, `4ea736c`: `EnvelopeGraph::onNanoDisplay` sets `glStencilMask(0xff)`
+and clears the stencil before drawing); ModicumFM hit the same thing (`5d36246`, cleared in its
+top-level `onNanoDisplay`). This synth has no non-convex fills today, so it is unaffected, but any
+new widget that fills a non-convex shape (a filled waveform, a polygon) needs the same clear. Convex
+fills (rects, rounded rects, circles, triangles) and plain strokes don't use the stencil.
+
 Test MIDI sources: mpe-sender (`~/Dev-MIDI/mpe-sender` on the Mac) is macOS-only (CoreMIDI), and KeyboardEDO has no Linux MIDI
 output until uw-core's ALSA output (its roadmap milestone 3b). On Linux use a hardware controller,
 StageHand, or the headless `ifs-clap` host test, which sends MIDI 2.0, MPE and CLAP events itself.
