@@ -933,11 +933,17 @@ int main(int argc, char** argv) {
         check(voiceInfo != nullptr, "voice-info extension is offered");
         if (voiceInfo != nullptr) {
             clap_voice_info_t info{};
-            check(voiceInfo->get(inst.plugin, &info) && info.voice_count == 10 && info.voice_capacity == 10
+            check(voiceInfo->get(inst.plugin, &info) && info.voice_count == 10 && info.voice_capacity == 32
                       && (info.flags & CLAP_VOICE_INFO_SUPPORTS_OVERLAPPING_NOTES) != 0,
-                  "poly: 10 voices, overlapping notes supported");
+                  "poly: 10 voices by default, overlapping notes supported");
+            sendParam(inst.plugin, kParamVoiceMode, 2.0);
+            check(voiceInfo->get(inst.plugin, &info) && info.voice_count == 20 && info.voice_capacity == 32,
+                  "Poly 20: 20 voices");
+            sendParam(inst.plugin, kParamVoiceMode, 3.0);
+            check(voiceInfo->get(inst.plugin, &info) && info.voice_count == 32 && info.voice_capacity == 32,
+                  "Poly 32: 32 voices");
             sendParam(inst.plugin, kParamVoiceMode, 0.0);
-            check(voiceInfo->get(inst.plugin, &info) && info.voice_count == 1 && info.voice_capacity == 10,
+            check(voiceInfo->get(inst.plugin, &info) && info.voice_count == 1 && info.voice_capacity == 32,
                   "mono: 1 voice");
         }
         inst.destroy();

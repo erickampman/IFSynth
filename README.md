@@ -31,7 +31,7 @@ IFS Osc (× IFS level) ────────┘
   (add / multiply).
 - **Modulation**: source select (LFO 1/2, Env 1/2, CV Mix 1/2) + bipolar depth for IFS Osc
   pitch / Bx / By / Squash 1 / Squash 2, LPF cutoff and Osc 2 pitch.
-- **Voices**: 10-voice poly or mono (legato note-stack, glide, click-free phase continuation).
+- **Voices**: 10-, 20- or 32-voice poly, or mono (legato note-stack, glide, click-free phase continuation).
 - **Velocity**: how much note velocity sets loudness, as the VCA's third factor: Off (default;
   every note at full level, as before) / Light / Medium / Full (velocity squared: velocity 64 is
   -12 dB). Latched at note-on; a mono legato note ramps to its new level instead of stepping.
@@ -84,7 +84,7 @@ bend range; **pressure** and **brightness** become polyphonic pressure and per-n
 (nothing in the voice responds to them yet). A CLAP note gets `CLAP_EVENT_NOTE_END` when its voice
 falls silent at the end of the envelope's release (or is stolen, or leaves the mono stack), not at
 note-off, so Bitwig keeps its per-voice modulation running through the release. The voice-info
-extension reports 10 voices (1 in Mono) and supports overlapping notes on one key.
+extension reports 10, 20 or 32 voices (1 in Mono), capacity 32, and supports overlapping notes on one key.
 
 Next: pressure and timbre as modulation sources; see
 [docs/MIDI2-PORT.md](docs/MIDI2-PORT.md).

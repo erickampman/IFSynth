@@ -312,7 +312,7 @@ bool applyModRouting(Plugin* plugin, uint32_t index, float value) {
 }
 
 bool isMonoMode(const Plugin* plugin) {
-    return int(paramOf(plugin, kParamVoiceMode) + 0.5f) == 0;   // 0 = Mono, 1 = poly
+    return int(paramOf(plugin, kParamVoiceMode) + 0.5f) == 0;   // 0 = Mono, 1 = Poly 10, 2 = Poly 20, 3 = Poly 32
 }
 
 // Pitch glide (Slew Rise == Fall). Only active in mono; in poly it is forced near-instant so each
@@ -323,14 +323,28 @@ void applySlew(Plugin* plugin) {
     setEngine(plugin, slew1FallAddress, rate);
 }
 
-constexpr uint32_t kPolyVoices = 10;
+// Poly voice counts by Voices choice. The engine allocates MAX_VOICES (32) voices up front, in
+// plug_activate, so switching only changes how many the VoiceManager hands out.
+constexpr uint32_t kPolyVoices    = 10;
+constexpr uint32_t kMidPolyVoices = 20;
+constexpr uint32_t kMaxPolyVoices = 32;
+static_assert(kMaxPolyVoices <= MAX_VOICES, "the engine allocates no more than MAX_VOICES");
+
+uint32_t currentVoiceCount(const Plugin* plugin) {
+    switch (int(paramOf(plugin, kParamVoiceMode) + 0.5f)) {
+    case 0:  return 1;
+    case 2:  return kMidPolyVoices;
+    case 3:  return kMaxPolyVoices;
+    default: return kPolyVoices;
+    }
+}
 
 // Voice mode: Mono = 1 voice + VoiceManager legato (the last-note note-stack) + each envelope's
-// Legato mode (Steal / Match Y, default Match Y for a click-free retrigger). Poly = 10 voices,
-// none of that.
+// Legato mode (Steal / Match Y, default Match Y for a click-free retrigger). Poly = 10, 20 or
+// 32 voices, none of that.
 void applyVoiceMode(Plugin* plugin) {
     const bool mono = isMonoMode(plugin);
-    setVoiceManager(plugin, midiParam(MIDIParamItemVoiceCount), mono ? 1.0f : float(kPolyVoices));
+    setVoiceManager(plugin, midiParam(MIDIParamItemVoiceCount), float(currentVoiceCount(plugin)));
     setVoiceManager(plugin, midiParam(MIDIParamItemLegato),     mono ? 1.0f : 0.0f);
     // 0 = NoteSteal, 1 = FindMatchingY. Only meaningful in mono; poly always steals.
     setEngine(plugin, ifsEnv1LegatoModeAddress, mono ? paramOf(plugin, kParamEnvLegatoMode)  : 0.0f);
@@ -568,12 +582,10 @@ void plug_reset(const clap_plugin_t* plugin) {
     if (p->voiceManager) p->voiceManager->reset();
 }
 
-uint32_t currentVoiceCount(const Plugin* plugin) { return isMonoMode(plugin) ? 1 : kPolyVoices; }
-
 void plug_on_main_thread(const clap_plugin_t* plugin) {
     Plugin* p = self(plugin);
 
-    // voice-info: CLAP asks for changed() whenever the voice count changes (Mono/Poly switch).
+    // voice-info: CLAP asks for changed() whenever the voice count changes (Voices switch).
     const uint32_t voices = currentVoiceCount(p);
     if (voices != p->reportedVoiceCount && p->host != nullptr) {
         p->reportedVoiceCount = voices;
@@ -940,7 +952,7 @@ bool voice_info_get(const clap_plugin_t* plugin, clap_voice_info_t* info) {
     const uint32_t voices = currentVoiceCount(p);
     p->reportedVoiceCount = voices;
     info->voice_count    = voices;
-    info->voice_capacity = kPolyVoices;
+    info->voice_capacity = kMaxPolyVoices;
     info->flags          = CLAP_VOICE_INFO_SUPPORTS_OVERLAPPING_NOTES;
     return true;
 }

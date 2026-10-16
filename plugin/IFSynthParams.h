@@ -12,7 +12,7 @@
 namespace ifsynth {
 
 enum ParamIndex {
-   kParamVoiceMode = 0, // 0 = Mono (1 voice + legato note-stack + glide), 1 = 10-voice poly
+   kParamVoiceMode = 0, // 0 = Mono (1 voice + legato note-stack + glide), 1..3 = Poly 10 / 20 / 32
    kParamSlewRate,   // pitch glide — drives the Slew module's Rise and Fall together
    // IFS oscillator
    kParamOscPitch,
@@ -131,7 +131,7 @@ struct ParamSpec {
 };
 
 static constexpr ParamSpec kParams[kParamCount] = {
-   {"Voices",      "voices",     "",   0.0f,   1.0f,   1.0f,  false, true },
+   {"Voices",      "voices",     "",   0.0f,   3.0f,   1.0f,  false, true },
    {"Glide",       "glide",      "s",  0.0001f, 2.0f,  0.01f, true,  false},
    // IFS oscillator
    {"Osc Pitch",   "oscPitch",   "st", -24.0f, 24.0f,  0.0f,  false, false},
@@ -268,7 +268,7 @@ static constexpr VelocityShape kVelocityShapes[] = {
 // VelocityConverter maps Curve 0..1 onto an exponent 0.3..3.0; this is the inverse.
 constexpr float velocityCurveForExponent(float exponent) { return (exponent - 0.3f) / 2.7f; }
 static constexpr const char* kMixModeChoices[]      = { "Add", "Multiply", nullptr };
-static constexpr const char* kVoiceModeChoices[]    = { "Mono", "10 Voices", nullptr };
+static constexpr const char* kVoiceModeChoices[]    = { "Mono", "Poly 10", "Poly 20", "Poly 32", nullptr };
 static constexpr const char* kSyncChoices[]         = { "Off", "Up", "Down", "Both", nullptr };
 static constexpr const char* kSinPitchChoices[]     = { "-3 oct", "-2 oct", "-1 oct", "0", "+5th", "+1 oct", "+1 oct +5th", nullptr };
 static constexpr const char* kSinWaveChoices[]      = { "Sine", "Triangle", "Saw", nullptr };
