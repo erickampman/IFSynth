@@ -1,8 +1,8 @@
 # IFSynth: MIDI 2.0 / MPE / CLAP port
 
 Written 2026-10-11 to start the port; kept up to date as it went (last 2026-10-17). Status: **every
-row is done except item 3** (pressure and timbre as modulation sources). The author paused the port
-on 2026-10-12 to bring the Linux machine up to date, and resumed it on 2026-10-17; see
+row is done**. The author paused the port on 2026-10-12 to bring the Linux machine up to date,
+and resumed it on 2026-10-17; see
 [CLAUDE.md](../CLAUDE.md) for how to work here.
 
 The same work was done first in two sibling repos; port from them rather than re-deriving:
@@ -46,10 +46,10 @@ The SS # column is StruckSynth's step number, kept for cross-reference; it is no
 | 2 | CLAP note ids; `CLAP_EVENT_NOTE_EXPRESSION`; tuning as Pitch 7.25 | SS `c32681d`, POS `623a64f` + `69b455e` | **Done** (`153a6d0`). Pressure and brightness are decoded but nothing in the voice reads them until step 3. |
 | — | `CLAP_EVENT_NOTE_END` + voice-info extension | SS `3cf2f03`, POS `559b80b` | **Done** (`406a452`). GUI param events are pushed at the top of `process()`, before any NOTE_END, so no queueing was needed; the host test checks the order. |
 | 7 | MPE switch (lower zone) + RPN 0 | SS `d7258a2`, POS `5dfb576`, `714c808` | **Done** (`de5f654`): an Off/On dropdown in the Amp box beside Voices, kept out of presets. `6e8c43c` made the third row taller so the Amp knobs could grow. |
-| — | Released notes (MPE §3.3.3: control ceases at Note Off) | SS `b43e91b`, POS `228facb` | **Done** (`209008b`), bend only. When step 3 adds pressure and timbre, freeze their member-channel values at release too, as POS `228facb` does. |
+| — | Released notes (MPE §3.3.3: control ceases at Note Off) | SS `b43e91b`, POS `228facb` | **Done** (`209008b`) for the bend; pressure and timbre freeze too since step 3, whose modules came from POS with it. |
 | 8 | MIDI 1.0 → 2.0 `pm::scaleUp`; a MIDI 2.0 velocity-0 note-on is a note-on | SS `76d53ca`, POS `595fd50` + `3820e90` | **Done** (`2f30d3d`), plus POS's Velocity loudness dropdown (`8eb0d1d`) in the Amp box. |
 | — | All Notes Off (CC 123) / All Sound Off (CC 120), per channel | SS `30a1ca6`, POS `a3b94c7` | **Done** (2026-10-17), from POS. All Sound Off resets IFS Env 1/2, the ADSR, IFSOsc and SinOsc, never `Voice::reset()`: that also wipes the per-channel bend and pressure memory. Tests in `pm-voicemanager`. |
-| 3 | Pressure and Timbre as modulation sources | POS `a65a645` (+ later fixes) | IFSynth has routing dropdowns, so follow POS: add Pressure and Timbre (CC74 per note) to `kModSourceChoices`, appended so saved choices keep their meaning. Ask the author first; it is UI-visible. IFSynth's CVMixer only reads one CC on any channel. |
+| 3 | Pressure and Timbre as modulation sources | POS `a65a645` (+ later fixes) | **Done** (2026-10-17, approved by the author): Pressure and Timbre appended to `kModSourceChoices` (indices 7 and 8, so saved choices keep their meaning). POS's `ChannelPressureModule` and `CCConverterModule` (Per Note mode, CC74 as Timbre) copied as they are now, so POS `228facb`'s release freeze comes with them. The MPE switch sets both modules' MPE items as well as the bend's. IFSynth's CVMixer still reads its one CC on any channel. Tests in `ifs-clap`. |
 
 Ask the author before building anything UI-visible: new parameters, panel controls, dropdown entries.
 

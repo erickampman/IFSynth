@@ -294,6 +294,21 @@ enum PitchBendConverterParamItem : NSUInteger {
    PitchBendConverterParamItemMPE,              // 0/1: MPE lower zone (see pm::kMpeMasterChannel)
 };
 
+enum ChannelPressureParamItem : NSUInteger {
+   ChannelPressureParamItemDummy = 1,  // no params needed; one dummy slot for UI storage
+   ChannelPressureParamItemMPE,        // 0/1: MPE lower zone
+};
+
+enum CCParamItem : NSUInteger {
+   CCParamItemNumber = 1,   // indexed: CC controller number 0..127
+   CCParamItemIsBoolean,    // boolean: 0/1 gate vs continuous
+   CCParamItemInput,        // connection: when patched, CC scales it (VCA)
+   CCParamItemAmount,       // CC scale (1 = unity)
+   CCParamItemOffset,       // floor added to the scaled CC (0 = none)
+   CCParamItemPerNote,      // boolean: per-channel CC + same-index per-note controller
+   CCParamItemMPE,          // boolean: with Per Note, MPE lower zone
+};
+
 // Referenced by Voice::connectTunnelPairs (no tunnel modules in the v1 patch, but it must compile).
 enum TunnelOutParamItem : NSUInteger {
    TunnelOutParamItemInput = 1,

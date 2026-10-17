@@ -23,7 +23,7 @@ static int g_fails = 0;
 
 int main() {
    const auto& specs = getModuleInitSpecs();
-   CHECK(specs.size() == 18, "18 v1 module specs");
+   CHECK(specs.size() == 20, "20 v1 module specs");
 
    ModuleFactory factory(48000.0, 512);
    ModuleMap map;
@@ -37,7 +37,7 @@ int main() {
       mod->setPitchConverter(&pc);
       map.add(s.id, std::move(mod));
    }
-   CHECK(map.allModules().size() == 18, "18 modules built into the map");
+   CHECK(map.allModules().size() == 20, "20 modules built into the map");
 
    // Every named v1 module is present.
    CHECK(map.get(pitchConverter1Address) != nullptr, "pitchConverter present");

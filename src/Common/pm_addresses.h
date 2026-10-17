@@ -149,4 +149,13 @@ inline constexpr AUParameterAddress combine1Input3Address =
 inline constexpr AUParameterAddress pitchBend1Address =
    MODULE_PARAM_ADDRESS(ModuleParamKindPitchBendConverter, ModuleInstance1, 0);
 
+// The performance-control modulation sources: "Pressure" (channel pressure per channel, overridden per
+// note by poly pressure) and "Timbre" (CC74 per channel, overridden by MIDI 2.0 per-note controller
+// #74, which CLAP's Brightness note expression arrives as).
+inline constexpr AUParameterAddress channelPressure1Address =
+   MODULE_PARAM_ADDRESS(ModuleParamKindChannelPressure, ModuleInstance1, 0);
+inline constexpr AUParameterAddress timbre1Address =
+   MODULE_PARAM_ADDRESS(ModuleParamKindControlChangeConverter, ModuleInstance1, 0);
+inline constexpr uint8_t kTimbreCC = 74;   // MPE's "slide"; MIDI 2.0 registered per-note controller #74
+
 #endif // PM_ADDRESSES_H

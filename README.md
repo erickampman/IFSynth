@@ -29,8 +29,8 @@ IFS Osc (× IFS level) ────────┘
   legato mode (Steal / Match Y, mono only) and Scale Release. Either one drives the VCA.
 - **LFOs (×2)** and **CV mixers (×2)**: each mixer combines an LFO, an envelope and a MIDI CC
   (add / multiply).
-- **Modulation**: source select (LFO 1/2, Env 1/2, CV Mix 1/2) + bipolar depth for IFS Osc
-  pitch / Bx / By / Squash 1 / Squash 2, LPF cutoff and Osc 2 pitch.
+- **Modulation**: source select (LFO 1/2, Env 1/2, CV Mix 1/2, Pressure, Timbre) + bipolar depth
+  for IFS Osc pitch / Bx / By / Squash 1 / Squash 2, LPF cutoff and Osc 2 pitch.
 - **Voices**: 10-, 20- or 32-voice poly, or mono (legato note-stack, glide, click-free phase continuation).
 - **Velocity**: how much note velocity sets loudness, as the VCA's third factor: Off (default;
   every note at full level, as before) / Light / Medium / Full (velocity squared: velocity 64 is
@@ -72,7 +72,14 @@ Once a note is released (note-off, or held only by the pedal), "control of a not
 channel's still applies, and a released note ignores MIDI 2.0 per-note messages addressed by key.
 A CLAP note named by its id keeps taking expression until NOTE_END. With MPE off, a pitch wheel
 still bends releasing notes.
-Pressure and timbre are not routed yet.
+
+**Pressure and Timbre** are modulation sources in every source dropdown. **Pressure** is the
+channel pressure of the note's own channel, overridden for that note by polyphonic key pressure
+(MIDI 2.0, MIDI 1.0 0xA0, or CLAP's Pressure expression). **Timbre** is CC74 on the note's own
+channel, overridden for that note by MIDI 2.0 per-note controller #74 (CLAP's Brightness arrives as
+it). Both reset to the channel's value on each note-on and are de-zippered. Under MPE a member note
+takes the higher of its own value and the master channel's, and once released it keeps the
+member-channel value it had, as the bend does.
 
 **All Notes Off (CC 123)** releases the notes of the channel it arrives on, pedal-held ones included;
 they go into their release as after a note-off. **All Sound Off (CC 120)** silences that channel's
@@ -84,14 +91,13 @@ bend; on a mono legato note it ramps rather than jumps. The filter's key trackin
 **CLAP.** Note ids are kept: when a host supplies them (Bitwig does), they decide which note is
 which, so a re-struck key is a new note and an expression can name only the id. Note expressions:
 **tuning** arrives as Pitch 7.25 at key + tuning, so it is exact at any size, not clamped to the
-bend range; **pressure** and **brightness** become polyphonic pressure and per-note controller #74
-(nothing in the voice responds to them yet). A CLAP note gets `CLAP_EVENT_NOTE_END` when its voice
+bend range; **pressure** and **brightness** become polyphonic pressure and per-note controller #74,
+which the Pressure and Timbre sources read. A CLAP note gets `CLAP_EVENT_NOTE_END` when its voice
 falls silent at the end of the envelope's release (or is stolen, or leaves the mono stack), not at
 note-off, so Bitwig keeps its per-voice modulation running through the release. The voice-info
 extension reports 10, 20 or 32 voices (1 in Mono), capacity 32, and supports overlapping notes on one key.
 
-Next: pressure and timbre as modulation sources; see
-[docs/MIDI2-PORT.md](docs/MIDI2-PORT.md).
+The port's checklist and lessons are in [docs/MIDI2-PORT.md](docs/MIDI2-PORT.md).
 
 ## Layout
 

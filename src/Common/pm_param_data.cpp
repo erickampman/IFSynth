@@ -226,3 +226,28 @@ static const ModuleParamConstants pitchBendConverterConstants[] = {
 const ModuleParamConstantsGroup pitchBendConverterConstantsGroup = {
    const_cast<char*>("Pitch Bend"),
    sizeof(pitchBendConverterConstants) / sizeof(pitchBendConverterConstants[0]), pitchBendConverterConstants};
+
+// Channel pressure — channel pressure per channel, overridden per note by polyphonic key pressure:
+// the "Pressure" modulation source.
+static const ModuleParamConstants channelPressureConstants[] = {
+   {"dummy",            ChannelPressureParamItemDummy,               0, 0, nullptr, 0.0f, 0.0f,  0.0f,  0},
+   {"mpe",              ChannelPressureParamItemMPE,                 0, 0, nullptr, 0.0f, 1.0f,  0.0f,  0},
+};
+const ModuleParamConstantsGroup channelPressureConstantsGroup = {
+   const_cast<char*>("Channel Pressure"),
+   sizeof(channelPressureConstants) / sizeof(channelPressureConstants[0]), channelPressureConstants};
+
+// CC converter — a chosen CC → a held value. Instance 1 is the "Timbre" modulation source: CC74 in
+// Per Note mode.
+static const ModuleParamConstants ccConverterConstants[] = {
+   {"ccNumber",         CCParamItemNumber,                           0, 0, nullptr, 0.0f, 127.0f, 1.0f, 0},
+   {"ccIsBoolean",      CCParamItemIsBoolean,                        0, 0, nullptr, 0.0f, 1.0f,  0.0f,  0},
+   {"input",            CCParamItemInput,                            0, 0, nullptr, 0.0f, 0.0f,  0.0f,  0}, // connection
+   {"ccAmount",         CCParamItemAmount,                           0, 0, nullptr, 0.0f, 1.0f,  1.0f,  0},
+   {"ccOffset",         CCParamItemOffset,                           0, 0, nullptr, 0.0f, 1.0f,  0.0f,  0},
+   {"ccPerNote",        CCParamItemPerNote,                          0, 0, nullptr, 0.0f, 1.0f,  0.0f,  0},
+   {"ccMpe",            CCParamItemMPE,                              0, 0, nullptr, 0.0f, 1.0f,  0.0f,  0},
+};
+const ModuleParamConstantsGroup ccConverterConstantsGroup = {
+   const_cast<char*>("CC Converter"),
+   sizeof(ccConverterConstants) / sizeof(ccConverterConstants[0]), ccConverterConstants};

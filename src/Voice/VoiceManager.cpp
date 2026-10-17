@@ -122,6 +122,18 @@ void VoiceManager::buildDefaultPatch(Voice& voice)
     voice.connectModules(envModule,  cvMixer1Module, cvMixer1EnvInputAddress);
     voice.connectModules(lfo2Module, cvMixer2Module, cvMixer2LFOInputAddress);
     voice.connectModules(env2Module, cvMixer2Module, cvMixer2EnvInputAddress);
+
+    // The Pressure and Timbre sources have to keep receiving MIDI even while no dropdown selects them:
+    // their activeCount is what gates MIDI dispatch (see Voice::handleMIDIMessage), and they would
+    // otherwise miss the pressure and timbre a note was played with. Timbre is CC74 in Per Note mode:
+    // per channel, overridden by MIDI 2.0 per-note controller #74 (and CLAP Brightness, which arrives
+    // as it).
+    ++(voice.getModule(channelPressure1Address)->activeCount);
+    ++(voice.getModule(timbre1Address)->activeCount);
+    voice.setParameter(MODULE_PARAM_ADDRESS(ModuleParamKindControlChangeConverter, ModuleInstance1, CCParamItemNumber),
+                       float(kTimbreCC));
+    voice.setParameter(MODULE_PARAM_ADDRESS(ModuleParamKindControlChangeConverter, ModuleInstance1, CCParamItemPerNote),
+                       1.0f);
 #else
     // do nothing
 #endif

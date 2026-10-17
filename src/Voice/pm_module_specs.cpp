@@ -6,7 +6,9 @@
 #include "ModuleInitSpecs.hpp"
 
 #include "ADSRModule.hpp"
+#include "CCConverterModule.hpp"
 #include "CVMixerModule.hpp"
+#include "ChannelPressureModule.hpp"
 #include "CombineModule.hpp"
 #include "FinalModule.hpp"
 #include "IFSEnvModule.hpp"
@@ -31,6 +33,13 @@ const std::vector<ModuleInitSpec>& getModuleInitSpecs() {
       {pitchBend1Address, &pitchBendConverterConstantsGroup, InitPitchBendConverter,
        DeinitPitchBendConverter, ProcessPitchBendConverter, MIDIPitchBendConverter, nullptr,
        ResetPitchBendConverter, nullptr},
+      // The "Pressure" and "Timbre" modulation sources. They must be fed MIDI even while no dropdown
+      // selects them, so buildDefaultPatch bumps their activeCount (see there).
+      {channelPressure1Address, &channelPressureConstantsGroup, InitChannelPressure,
+       DeinitChannelPressure, ProcessChannelPressure, MIDIChannelPressure, nullptr,
+       ResetChannelPressure, nullptr},
+      {timbre1Address, &ccConverterConstantsGroup, InitCCConverter, DeinitCCConverter,
+       ProcessCCConverter, MIDICCConverter, nullptr, ResetCCConverter, nullptr},
       // Velocity → the VCA's third factor (the Velocity dropdown; Off = a constant 1).
       {velocity1Address, &velocityConverterConstantsGroup, InitVelocityConverter,
        DeinitVelocityConverter, ProcessVelocityConverter, MIDIVelocityConverter, nullptr,

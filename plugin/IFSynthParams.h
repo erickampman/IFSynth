@@ -199,15 +199,15 @@ static constexpr ParamSpec kParams[kParamCount] = {
    {"CC #",        "mix2CCnum",  "",   1.0f, 127.0f,   1.0f,  false, true },
    {"Mode",        "mix2Mode",   "",   0.0f,   1.0f,   0.0f,  false, true },
    // Modulation routing (source = int 0..6; depth = bipolar)
-   {"Pitch",       "oscPMsrc",   "",   0.0f,   6.0f,   0.0f,  false, true },
+   {"Pitch",       "oscPMsrc",   "",   0.0f,   8.0f,   0.0f,  false, true },
    {"Depth",       "oscPMdpt",   "",  -1.0f,   1.0f,   0.0f,  false, false},
-   {"Split",       "oscBxMsrc",  "",   0.0f,   6.0f,   0.0f,  false, true },
+   {"Split",       "oscBxMsrc",  "",   0.0f,   8.0f,   0.0f,  false, true },
    {"Depth",       "oscBxMdpt",  "",  -1.0f,   1.0f,   0.0f,  false, false},
-   {"Junction",    "oscByMsrc",  "",   0.0f,   6.0f,   0.0f,  false, true },
+   {"Junction",    "oscByMsrc",  "",   0.0f,   8.0f,   0.0f,  false, true },
    {"Depth",       "oscByMdpt",  "",  -1.0f,   1.0f,   0.0f,  false, false},
-   {"Squash 1",    "oscSq1Msrc", "",   0.0f,   6.0f,   0.0f,  false, true },
+   {"Squash 1",    "oscSq1Msrc", "",   0.0f,   8.0f,   0.0f,  false, true },
    {"Depth",       "oscSq1Mdpt", "",  -1.0f,   1.0f,   0.0f,  false, false},
-   {"Squash 2",    "oscSq2Msrc", "",   0.0f,   6.0f,   0.0f,  false, true },
+   {"Squash 2",    "oscSq2Msrc", "",   0.0f,   8.0f,   0.0f,  false, true },
    {"Depth",       "oscSq2Mdpt", "",  -1.0f,   1.0f,   0.0f,  false, false},
    {"VCA env",     "vcaSrc",     "",   0.0f,   1.0f,   0.0f,  false, true },
    // Low-pass filter. Cutoff is octaves above A440 (pitchToFrequency); Resonance is Q (1..20);
@@ -215,7 +215,7 @@ static constexpr ParamSpec kParams[kParamCount] = {
    {"Cutoff",      "lpfCutoff",  "",   -6.0f,  5.4f,   5.0f,  false, false},
    {"Resonance",   "lpfReso",    "",   1.0f,  20.0f,   1.0f,  false, false},
    {"Key Track",   "lpfKeyTrk",  "",   0.0f,   1.0f,   0.0f,  false, false},
-   {"Cutoff",      "lpfCMsrc",   "",   0.0f,   6.0f,   0.0f,  false, true },
+   {"Cutoff",      "lpfCMsrc",   "",   0.0f,   8.0f,   0.0f,  false, true },
    {"Depth",       "lpfCMdpt",   "",  -4.0f,   4.0f,   0.0f,  false, false},
    {"Spread",      "spread",     "",   0.0f,   1.0f,   1.0f,  false, false},
    // Sine oscillator (master). Pitch is an interval selector (index → semitones in the DSP),
@@ -229,7 +229,7 @@ static constexpr ParamSpec kParams[kParamCount] = {
    {"IFS",         "ifsLevel",   "",   0.0f,   1.0f,   0.5f,  false, false},
    {"Sync",        "ifsSync",    "",   0.0f,   3.0f,   0.0f,  false, true },
    // Osc 2 pitch modulation (source dropdown + depth)
-   {"Source",      "o2PMsrc",    "",   0.0f,   6.0f,   0.0f,  false, true },
+   {"Source",      "o2PMsrc",    "",   0.0f,   8.0f,   0.0f,  false, true },
    {"Depth",       "o2PMdpt",    "",  -1.0f,   1.0f,   0.0f,  false, false},
    // IFS envelope legato + release options
    {"Legato",      "envLegato",  "",   0.0f,   1.0f,   1.0f,  false, true },
@@ -273,7 +273,9 @@ static constexpr const char* kSyncChoices[]         = { "Off", "Up", "Down", "Bo
 static constexpr const char* kSinPitchChoices[]     = { "-3 oct", "-2 oct", "-1 oct", "0", "+5th", "+1 oct", "+1 oct +5th", nullptr };
 static constexpr const char* kSinWaveChoices[]      = { "Sine", "Triangle", "Saw", nullptr };
 static constexpr const char* kVcaSourceChoices[]    = { "Env 1", "Env 2", nullptr };
-static constexpr const char* kModSourceChoices[]    = { "None", "LFO 1", "LFO 2", "Env 1", "Env 2", "CV Mix 1", "CV Mix 2", nullptr };
+// Appended, never inserted: the index is what presets store.
+static constexpr const char* kModSourceChoices[]    = { "None", "LFO 1", "LFO 2", "Env 1", "Env 2", "CV Mix 1", "CV Mix 2",
+                                                        "Pressure", "Timbre", nullptr };
 
 // Source dropdowns (osc mods + LPF cutoff). The VCA source shares this classification but its own
 // two-entry label list, so choicesFor() checks it first.

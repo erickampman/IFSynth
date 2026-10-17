@@ -33,8 +33,8 @@ Sibling synths, on the same engine and the same raw-CLAP layout. Paths: `~/Dev-A
 
 ## Status (2026-10-17)
 
-The MIDI 2.0 / MPE / CLAP port from the siblings is done except one row: pressure and timbre as
-modulation sources. [docs/MIDI2-PORT.md](docs/MIDI2-PORT.md)
+The MIDI 2.0 / MPE / CLAP port from the siblings is done (M2 in MILESTONES.md); next is M3.
+[docs/MIDI2-PORT.md](docs/MIDI2-PORT.md)
 has the checklist, the commit for each row, and the lessons learned.
 
 ## On Linux

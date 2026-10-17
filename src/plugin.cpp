@@ -283,6 +283,8 @@ AUParameterAddress modSourceAddr(int idx) {
     case 4: return ifsEnv2Address;
     case 5: return cvMixer1Address;
     case 6: return cvMixer2Address;
+    case 7: return channelPressure1Address;
+    case 8: return timbre1Address;
     default: return 0; // None
     }
 }
@@ -377,6 +379,12 @@ void applyParam(Plugin* plugin, uint32_t index, float value) {
         setEngine(plugin, velocity1MinAddress,   shape.minPercent);
         setEngine(plugin, velocity1CurveAddress, velocityCurveForExponent(shape.exponent));
         return;
+    }
+    if (index == uint32_t(kParamMpe)) {
+        // One switch for all of MPE: the bend, and the Pressure and Timbre sources (zone-wide master
+        // values, and released notes no longer following their member channel).
+        setEngine(plugin, MODULE_PARAM_ADDRESS(ModuleParamKindChannelPressure, ModuleInstance1, ChannelPressureParamItemMPE), value);
+        setEngine(plugin, MODULE_PARAM_ADDRESS(ModuleParamKindControlChangeConverter, ModuleInstance1, CCParamItemMPE), value);
     }
     if (applyModRouting(plugin, index, value)) return;
     const AUParameterAddress a = vmAddress(index);

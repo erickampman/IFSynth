@@ -131,7 +131,7 @@ master for the IFS Oscillator, or just as a second sound source in its own right
   1 = cutoff tracks pitch 1:1).</dd>
   <dt>LPF Modulation</dt>
   <dd>A dedicated source + depth pair for modulating the cutoff — pick a source (an LFO, an
-  Envelope, or a CV Mixer) in the Modulation panel and set how far it pushes the cutoff.</dd>
+  Envelope, a CV Mixer, Pressure or Timbre) in the Modulation panel and set how far it pushes the cutoff.</dd>
 </dl>
 
 <h2 class="env">IFS Envelope</h2>
@@ -177,8 +177,11 @@ picked (Modulation panels, LPF cutoff mod).</p>
 
 <h2 class="neutral">Modulation (IFS Osc / Osc 2 / LPF panels)</h2>
 <p>Each modulation panel is a set of source-dropdown + depth-knob pairs — pick a source (an LFO,
-an Envelope, a CV Mixer, or None) for a given destination, and set how strongly it affects that
-destination. Depth is bipolar, so negative values invert the modulation.</p>
+an Envelope, a CV Mixer, Pressure, Timbre, or None) for a given destination, and set how strongly it
+affects that destination. Depth is bipolar, so negative values invert the modulation.
+<b>Pressure</b> is aftertouch: the channel's, or the note's own when the controller sends
+polyphonic pressure. <b>Timbre</b> is CC74 (MPE's slide), or the note's own per-note value from a
+MIDI 2.0 controller or a CLAP host's Brightness.</p>
 
 <h2 class="comb">Amp</h2>
 <dl>

@@ -887,6 +887,85 @@ int main(int argc, char** argv) {
                       "a released CLAP note still takes a tuning expression by id");
     }
 
+    // --- Pressure and Timbre modulation sources ----------------------------------------------------
+    // Each source is picked in the IFS oscillator's Pitch dropdown, through the real parameter, at a
+    // depth of 1/12, so the source's value reads off as a pitch shift. Checked as fractions of the
+    // shift at full scale, so only the routing and the values matter, not the depth's units.
+    std::printf("Pressure and Timbre sources:\n");
+    {
+        constexpr double kPressure = 7.0, kTimbre = 8.0;   // kModSourceChoices indices
+        auto semitonesWith = [&](double source, bool mpe, std::vector<const clap_event_header_t*> events) {
+            Instance inst;
+            if (!inst.create(lib)) return 0.0;
+            installTestPatch(inst.plugin);
+            sendParam(inst.plugin, kParamOscPitchModSrc, source);
+            sendParam(inst.plugin, kParamOscPitchModDepth, 1.0 / 12.0);
+            sendParam(inst.plugin, kParamMpe, mpe ? 1.0 : 0.0);
+            const std::vector<float> audio = render(inst.plugin, uint32_t(kSampleRate * 1.5),
+                                                    events.data(), uint32_t(events.size()));
+            inst.destroy();
+            return 12.0 * std::log2(estimatePitch(audio, 100.0, 2000.0) / hzZero);
+        };
+        const clap_event_midi_t note1 = makeMidi1(0x90, uint8_t(kNote), 100);   // channel 1
+        const clap_event_midi_t note2 = makeMidi1(0x91, uint8_t(kNote), 100);   // channel 2
+
+        const clap_event_midi_t fullPressure = makeMidi1(0xD0, 127, 0);
+        const double full = semitonesWith(kPressure, false, { &note1.header, &fullPressure.header });
+        std::printf("        full channel pressure: %.3f st\n", full);
+        check(full > 0.5, "full channel pressure moves the pitch when Pressure is the source");
+        auto fraction = [&](double semitones) { return full > 0.0 ? semitones / full : 0.0; };
+        auto near = [](double a, double b) { return std::fabs(a - b) < 0.02; };
+
+        const clap_event_midi_t halfPressure = makeMidi1(0xD0, 64, 0);
+        const double half = fraction(semitonesWith(kPressure, false, { &note1.header, &halfPressure.header }));
+        check(near(half, 0.5), "channel pressure 64 reads half of full (" + std::to_string(half) + ")");
+
+        const clap_event_midi_t otherPressure = makeMidi1(0xD1, 127, 0);
+        const double other = fraction(semitonesWith(kPressure, false, { &note1.header, &otherPressure.header }));
+        check(near(other, 0.0), "channel 2's pressure leaves a channel-1 note alone (" + std::to_string(other) + ")");
+
+        const clap_event_midi_t polyPressure = makeMidi1(0xA0, uint8_t(kNote), 64);
+        const double poly = fraction(semitonesWith(kPressure, false, { &note1.header, &polyPressure.header }));
+        check(near(poly, 0.5), "MIDI 1.0 poly aftertouch 64 reads half (" + std::to_string(poly) + ")");
+
+        const clap_event_note_t clapNote = makeClapNoteOn(int16_t(kNote), 1.0);
+        const clap_event_note_expression_t clapPressure =
+            makeNoteExpression(CLAP_NOTE_EXPRESSION_PRESSURE, -1, int16_t(kNote), 0.25);
+        const double expr = fraction(semitonesWith(kPressure, false, { &clapNote.header, &clapPressure.header }));
+        check(near(expr, 0.25), "CLAP's Pressure note expression reaches the source (" + std::to_string(expr) + ")");
+
+        // Timbre: CC74 per channel, overridden for its note by per-note controller #74 (CLAP Brightness).
+        const clap_event_midi_t cc74Full = makeMidi1(0xB0, 74, 127);
+        const double tFull = fraction(semitonesWith(kTimbre, false, { &note1.header, &cc74Full.header }));
+        check(near(tFull, 1.0), "Timbre: CC74 127 reads full (" + std::to_string(tFull) + ")");
+
+        const clap_event_midi_t cc74Half = makeMidi1(0xB0, 74, 64);
+        const double tHalf = fraction(semitonesWith(kTimbre, false, { &note1.header, &cc74Half.header }));
+        check(near(tHalf, 0.5), "Timbre: CC74 64 reads half (" + std::to_string(tHalf) + ")");
+
+        const clap_event_midi_t cc74Other = makeMidi1(0xB1, 74, 127);
+        const double tOther = fraction(semitonesWith(kTimbre, false, { &note1.header, &cc74Other.header }));
+        check(near(tOther, 0.0), "Timbre: channel 2's CC74 leaves a channel-1 note alone (" + std::to_string(tOther) + ")");
+
+        const clap_event_midi_t cc74FullForClap = makeMidi1(0xB0, 74, 127);
+        const clap_event_note_expression_t brightness =
+            makeNoteExpression(CLAP_NOTE_EXPRESSION_BRIGHTNESS, -1, int16_t(kNote), 0.25);
+        const double tExpr = fraction(semitonesWith(kTimbre, false,
+            { &clapNote.header, &cc74FullForClap.header, &brightness.header }));
+        check(near(tExpr, 0.25), "Timbre: CLAP Brightness overrides the channel's CC74 for its note ("
+                                     + std::to_string(tExpr) + ")");
+
+        // MPE: the master channel's (1) pressure and timbre reach a member note (channel 2), as the
+        // higher of the two; with MPE off they belong to channel 1 only.
+        const double mpeOn  = fraction(semitonesWith(kPressure, true,  { &note2.header, &halfPressure.header }));
+        const double mpeOff = fraction(semitonesWith(kPressure, false, { &note2.header, &halfPressure.header }));
+        check(near(mpeOn, 0.5) && near(mpeOff, 0.0),
+              "MPE: master-channel pressure reaches a member note only with MPE on (on "
+                  + std::to_string(mpeOn) + ", off " + std::to_string(mpeOff) + ")");
+        const double tMpe = fraction(semitonesWith(kTimbre, true, { &note2.header, &cc74Half.header }));
+        check(near(tMpe, 0.5), "MPE: master-channel CC74 reaches a member note (" + std::to_string(tMpe) + ")");
+    }
+
     // --- note end + voice-info ---------------------------------------------------------------------
     // A note rings on through the IFS envelope's release after note-off; CLAP_EVENT_NOTE_END must
     // come when the voice falls silent, not at the note-off, and only for notes that arrived as CLAP
