@@ -419,6 +419,31 @@ bool VoiceStateManager::holdsNote(const pm::UmpMessage& noteOn) const
     return false;
 }
 
+bool VoiceStateManager::holdsNoteOnChannel(uint8_t group, uint8_t channel) const
+{
+    if (state == VoiceState::Inactive) return false;
+    auto on = [group, channel](const std::optional<pm::UmpMessage>& m) {
+        return m && m->group == group && m->channel == channel;
+    };
+    if (on(currentNoteOn) || on(deferredNoteOn)) return true;
+    for (const auto& held : heldNoteStack)
+        if (held.group == group && held.channel == channel) return true;
+    return false;
+}
+
+void VoiceStateManager::silence()
+{
+    state = VoiceState::Inactive;
+    clearCurrentNoteOn();
+    heldNoteStack.clear();
+    deferredRetrigger = std::nullopt;
+    deferredNoteOn = std::nullopt;
+    deferredNoteOff = std::nullopt;
+    pedalSustained = false;
+    silentFrames = 0;
+    duckMultiplier = 1.0;
+}
+
 void  VoiceStateManager::clearCurrentNoteOn()
 {
     LOG_VOICE("VoiceStateManager::clearCurrentNoteOn");

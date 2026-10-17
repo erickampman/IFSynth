@@ -125,6 +125,11 @@ private:
 	Voice* stealVoice(const pm::UmpMessage& msg);
 	Voice* findVoiceForMessage(const pm::UmpMessage& msg);
 	void releaseAllNotes(Voice& voice);
+	void releaseNotesOnChannel(Voice& voice, uint8_t group, uint8_t channel);
+	void dropPedalSustain(Voice& voice);
+	// Channel mode messages, per MIDI: they act on the channel (and group) they arrive on.
+	void allNotesOffOnChannel(uint8_t group, uint8_t channel);   // CC 123
+	void allSoundOffOnChannel(uint8_t group, uint8_t channel);   // CC 120
     Voice* oldestVoice();
     Voice* lowestVoice();
     Voice* highestVoice();

@@ -74,6 +74,10 @@ A CLAP note named by its id keeps taking expression until NOTE_END. With MPE off
 still bends releasing notes.
 Pressure and timbre are not routed yet.
 
+**All Notes Off (CC 123)** releases the notes of the channel it arrives on, pedal-held ones included;
+they go into their release as after a note-off. **All Sound Off (CC 120)** silences that channel's
+voices at once, release included, without touching other channels' bend memory.
+
 The bend goes into both oscillators' second pitch input, after the glide, so glide never smears a
 bend; on a mono legato note it ramps rather than jumps. The filter's key tracking follows the note, not the bend.
 

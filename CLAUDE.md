@@ -31,12 +31,11 @@ Sibling synths, on the same engine and the same raw-CLAP layout. Paths: `~/Dev-A
 - MIDI 2.0 spec on the Mac: `~/Documents/MIDI/MIDI_2-0_Specification_Version_1-0 2/` (M2-104 is v1.0,
   Feb 2020; registered controller 7 is from a later revision and not in it).
 
-## Status (2026-10-12)
+## Status (2026-10-17)
 
-The MIDI 2.0 / MPE / CLAP port from the siblings is done except two rows: All Notes Off / All Sound Off
-(CC 123 / 120), and pressure and timbre as modulation sources. [docs/MIDI2-PORT.md](docs/MIDI2-PORT.md)
-has the checklist, the commit for each row, and the lessons learned. The author paused it to bring
-the Linux machine up to date.
+The MIDI 2.0 / MPE / CLAP port from the siblings is done except one row: pressure and timbre as
+modulation sources. [docs/MIDI2-PORT.md](docs/MIDI2-PORT.md)
+has the checklist, the commit for each row, and the lessons learned.
 
 ## On Linux
 

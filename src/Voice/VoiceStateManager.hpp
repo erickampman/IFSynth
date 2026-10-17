@@ -52,6 +52,10 @@ public:
     // Whether this voice still holds `noteOn` in any form: sounding (held or ringing out), arriving
     // through a steal, or waiting in the mono stack. False once the voice has rung down to silence.
     bool holdsNote(const pm::UmpMessage& noteOn) const;
+    // Whether any note this voice holds (as holdsNote) was played on this group/channel.
+    bool holdsNoteOnChannel(uint8_t group, uint8_t channel) const;
+    // All Sound Off: drop every note at once and go Inactive. The caller silences the modules.
+    void silence();
     inline const char* stateString() const;
     
 private:

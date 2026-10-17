@@ -19,7 +19,7 @@
 - [x] `CLAP_EVENT_NOTE_END`; voice-info extension (10 voices, overlapping notes)
 - [x] MPE lower zone: RPN 0 bend range, released-note control freeze (bend), MPE on/off dropdown
 - [x] MIDI 2.0 velocity-0 note-on treated as note-on; velocity loudness dropdown
-- [ ] All Notes Off (CC 123) and All Sound Off (CC 120), per channel
+- [x] All Notes Off (CC 123) and All Sound Off (CC 120), per channel
 - [ ] Pressure and Timbre (CC 74) as modulation sources (add to routing dropdowns)
 
 ## M3: Remaining polish
