@@ -204,7 +204,6 @@ bool VoiceManager::freeRunning() {
 
 void VoiceManager::noteOn(const pm::UmpMessage& msg) {
     LOG_VM("VoiceManager::noteOn entrypoint");
-    uint32_t maxVoices = uint32_t(voiceManagerParamByEnum(MIDIParamItemVoiceCount));
 
     // needed?
     if (freeRunning()) {
@@ -464,8 +463,6 @@ void VoiceManager::process(uint32_t frameCount, float *left, float *right)
     // Advance any cross-voice per-chunk shared state exactly once, before the voices read it
     // (the IFS Osc's shared mip pyramid ticks its re-render cooldown here).
     sharedStateRegistry.beginBlock(activeCount(), frameCount);
-
-    uint32_t maxVoices = uint32_t(voiceManagerParamByEnum(MIDIParamItemVoiceCount));
     
     for (size_t i = 0; i < voices.size(); ++i) {
         auto& v = voices[i];

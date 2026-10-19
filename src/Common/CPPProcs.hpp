@@ -85,7 +85,7 @@ static inline double adjustCyclesPerSampleWithCents(double cps, float cents) {
 	return cps * mult;
 }
 
-static float wrap01(float value) {
+static inline float wrap01(float value) {
     return value - std::floor(value);
 }
 
