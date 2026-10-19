@@ -74,6 +74,7 @@ top-level `onNanoDisplay`). This synth has no non-convex fills today, so it is u
 new widget that fills a non-convex shape (a filled waveform, a polygon) needs the same clear. Convex
 fills (rects, rounded rects, circles, triangles) and plain strokes don't use the stencil.
 
-Test MIDI sources: mpe-sender (`~/Dev-MIDI/mpe-sender` on the Mac) is macOS-only (CoreMIDI), and KeyboardEDO has no Linux MIDI
-output until uw-core's ALSA output (its roadmap milestone 3b). On Linux use a hardware controller,
-StageHand, or the headless `ifs-clap` host test, which sends MIDI 2.0, MPE and CLAP events itself.
+Test MIDI sources: mpe-sender (`~/Dev-MIDI/mpe-sender` on the Mac, `~/dev/dev-midi/mpe-sender` on the
+Linux PC) plays scripted MPE tests on both (CoreMIDI, or the ALSA sequencer as `mpe-sender:MPE Sender`),
+and KeyboardEDO sends MIDI 2.0 on both. Also a hardware controller, StageHand, or the headless
+`ifs-clap` host test, which sends MIDI 2.0, MPE and CLAP events itself.
