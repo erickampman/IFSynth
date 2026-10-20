@@ -130,7 +130,6 @@ public:
         // control signals=amber, combiner=orange, modulation=teal).
         fOscGroup  = makeGroup("IFS Oscillator", colSound());
         fSinGroup  = makeGroup("Osc 2", colSound());
-        fSlewGroup = makeGroup("Slew", colSound());
         fLpfGroup  = makeGroup("Low-Pass Filter", colFilter());
         // Env / LFO / Mixer are tab groups: the two instances share a rect + title, and a TabBar
         // switches which is visible, so the shared title is the module name (tabs say 1/2).
@@ -206,12 +205,13 @@ public:
             fKnobs[i] = std::move(knob);
         }
 
-        // Tab bars for the Env / LFO / Mixer tab groups (created after the panels so they draw on
-        // top of the title strip). Instance 2 of each starts hidden.
-        fEnvTab = makeTab(kTabEnv, colEnv());
-        fLfoTab = makeTab(kTabLfo, colLfo());
-        fMixTab = makeTab(kTabMix, colComb());
+        // Tab bars (created after the panels so they draw on top of the title strip). The two
+        // envelopes and two LFOs share one rect and one four-tab bar; the Mixer has its own 1/2
+        // pair. Only Env 1 and Mixer 1 start visible.
+        fModTab = makeTab(kTabMod, colEnv(), {"Env 1", "Env 2", "LFO 1", "LFO 2"});
+        fMixTab = makeTab(kTabMix, colComb(), {"1", "2"});
         fEnv2Group->hide();
+        fLfo1Group->hide();
         fLfo2Group->hide();
         fMix2Group->hide();
 
@@ -434,7 +434,7 @@ protected:
 
 private:
     // Panels declared before their child controls so the children are destroyed first.
-    std::unique_ptr<GroupBox>      fOscGroup, fSinGroup, fSlewGroup, fLpfGroup, fEnv1Group, fEnv2Group, fLfo1Group, fLfo2Group;
+    std::unique_ptr<GroupBox>      fOscGroup, fSinGroup, fLpfGroup, fEnv1Group, fEnv2Group, fLfo1Group, fLfo2Group;
     std::unique_ptr<GroupBox>      fMix1Group, fMix2Group, fOscModGroup, fOsc2ModGroup, fLpfModGroup, fAmpGroup;
     std::unique_ptr<IFSControl>    fOscPad, fLfo1Pad, fLfo2Pad;
     std::unique_ptr<IFSEnvControl> fEnv1Pad, fEnv2Pad;
@@ -442,7 +442,7 @@ private:
     std::unique_ptr<Dropdown>      fDropdowns[kParamCount];
     std::unique_ptr<Toggle>        fToggles[kParamCount];
     std::unique_ptr<Slider>        fSliders[kParamCount];
-    std::unique_ptr<TabBar>        fEnvTab, fLfoTab, fMixTab;
+    std::unique_ptr<TabBar>        fModTab, fMixTab;
     std::unique_ptr<Logo>          fLogo;
     std::unique_ptr<TitleText>     fTitleText;
     std::unique_ptr<Dropdown>      fPresetDropdown;
@@ -508,7 +508,7 @@ private:
     {
         if (i == kParamVoiceMode || i == kParamMpe || i == kParamVelocity || i == kParamSpread
             || i == kParamSinLevel
-            || i == kParamIfsLevel)
+            || i == kParamIfsLevel || i == kParamSlewRate)
             return colComb();
         if (i == kParamSinPitch || i == kParamSinFine || i == kParamSinDetune
             || i == kParamSinWaveform || i == kParamIfsSyncMode)
@@ -533,13 +533,12 @@ private:
     {
         if (i == kParamVoiceMode || i == kParamMpe || i == kParamVelocity || i == kParamSpread
             || i == kParamSinLevel
-            || i == kParamIfsLevel)
+            || i == kParamIfsLevel || i == kParamSlewRate)   // Glide sits under Voices' column
             return fAmpGroup.get();
         if (i == kParamSinPitch || i == kParamSinFine || i == kParamSinDetune
             || i == kParamSinWaveform)
             return fSinGroup.get();
         if (i == kParamIfsSyncMode) return fOscGroup.get();
-        if (i == kParamSlewRate) return fSlewGroup.get();
         if (i == kParamLpfCutoff || i == kParamLpfResonance || i == kParamLpfKeyTrack)
             return fLpfGroup.get();
         if (i == kParamLpfCutoffModSrc || i == kParamLpfCutoffModDepth)
@@ -705,35 +704,40 @@ private:
         return g;
     }
 
-    enum TabId { kTabEnv = 0, kTabLfo = 1, kTabMix = 2 };
+    enum TabId { kTabMod = 0, kTabMix = 1 };
 
-    std::unique_ptr<TabBar> makeTab(uint32_t id, Color accent)
+    std::unique_ptr<TabBar> makeTab(uint32_t id, Color accent, const std::vector<std::string>& tabs)
     {
         auto t = std::make_unique<TabBar>(this, this);
         t->setId(id);
-        t->setTabs({"1", "2"});
+        t->setTabs(tabs);
         t->setAccentColor(accent);
         t->setActive(0);
         return t;
     }
 
-    // TabBar::Callback — show the picked instance, hide the other. Hiding a GroupBox hides its
-    // whole child subtree (pad + knobs + dropdowns), so only the active tab is drawn/interactive.
+    // TabBar::Callback — show the picked panel, hide the rest. Hiding a GroupBox hides its whole
+    // child subtree (pad + knobs + dropdowns), so only the active tab is drawn/interactive. The
+    // modulator bar takes the accent of the panel it shows (yellow envelopes, pink LFOs).
     void tabSelected(TabBar* bar, int index) override
     {
         switch (bar->getId())
         {
-        case kTabEnv: showTab(fEnv1Group.get(), fEnv2Group.get(), index); break;
-        case kTabLfo: showTab(fLfo1Group.get(), fLfo2Group.get(), index); break;
-        case kTabMix: showTab(fMix1Group.get(), fMix2Group.get(), index); break;
+        case kTabMod:
+        {
+            GroupBox* panels[4] = { fEnv1Group.get(), fEnv2Group.get(), fLfo1Group.get(), fLfo2Group.get() };
+            for (int i = 0; i < 4; ++i)
+                i == index ? panels[i]->show() : panels[i]->hide();
+            bar->setAccentColor(index < 2 ? colEnv() : colLfo());
+            break;
+        }
+        case kTabMix:
+            index == 0 ? fMix1Group->show() : fMix1Group->hide();
+            index == 0 ? fMix2Group->hide() : fMix2Group->show();
+            break;
         default: break;
         }
         repaint();
-    }
-    static void showTab(GroupBox* a, GroupBox* b, int index)
-    {
-        if (index == 0) { a->show(); b->hide(); }
-        else            { a->hide(); b->show(); }
     }
 
     void pushPadDefaults()
@@ -786,20 +790,17 @@ private:
         const int logoH  = static_cast<int>(48 * scale);
         const int topPad = logoH + static_cast<int>(6 * scale);
         fTopPad = topPad;
-        // Four rows: IFS Osc | Osc 2, Env-tabs | LPF, LFO-tabs | Slew | Amp, and the
-        // CV Mixer | OscMod | Osc2Mod | LpfMod strip. Derived from the canvas height so it fills
-        // any size (Retina-safe); the aspect ratio is locked in the constructor.
-        // Row 0 gets a fixed extra band (the Osc's Iterations/Sync dropdowns sit under its knobs),
-        // row 2 another (the Amp box's level knobs sit under a row of dropdowns, and are sized to
-        // fill their cells), and the bottom row is ~25% taller so the CV Mixer can stack its
-        // checkboxes in a column. Rows 1-2 share the rest equally.
-        const int extraTop = static_cast<int>(20 * scale);
-        const int extraAmp = static_cast<int>(40 * scale);
+        // Four rows: IFS Osc | Osc 2, the Env/LFO tab panel | LPF, CV Mixer | Amp, and the
+        // OscMod | Osc2Mod | LpfMod strip. Derived from the canvas height so it fills any size
+        // (Retina-safe); the aspect ratio is locked in the constructor. Row 1 is the tallest so the
+        // envelope and LFO pads can grow; row 2 fits the CV Mixer's checkbox column and the Amp's
+        // dropdowns over knobs; the bottom strip takes the rest (a dropdown over a knob per cell).
         const int totalH = H - 2 * m - 3 * gap - topPad;
-        const int rowH   = ((totalH - extraTop - extraAmp) * 4) / 17;   // row 1
-        const int row0H  = rowH + extraTop;                              // row 0
-        const int row2H  = rowH + extraAmp;                              // row 2
-        const int rowHb  = totalH - extraTop - extraAmp - 3 * rowH;      // bottom row ≈ 5/17
+        // Rows 0 and 1 are the same height so the oscillator and Env/LFO pads can be the same size.
+        const int row0H  = totalH * 176 / 686;
+        const int rowH   = row0H;                                        // row 1 (Env/LFO | LPF)
+        const int row2H  = totalH * 167 / 686;
+        const int rowHb  = totalH - row0H - rowH - row2H;                // bottom row ≈ 167/686
         const int colL = m;
         const int top0 = m + topPad;
         const int row0 = top0, row1 = top0 + row0H + gap;
@@ -818,7 +819,7 @@ private:
         // Group titles / dropdown labels / popup menu text aren't part of the knob widget, so
         // they need the same scale applied explicitly. setUiScale scales each widget's own
         // internal box/label geometry along with its font, so text can't overflow its box.
-        GroupBox* allGroups[] = { fOscGroup.get(), fSinGroup.get(), fSlewGroup.get(), fLpfGroup.get(),
+        GroupBox* allGroups[] = { fOscGroup.get(), fSinGroup.get(), fLpfGroup.get(),
                                    fEnv1Group.get(), fEnv2Group.get(), fLfo1Group.get(), fLfo2Group.get(),
                                    fMix1Group.get(), fMix2Group.get(),
                                    fOscModGroup.get(), fOsc2ModGroup.get(), fLpfModGroup.get(), fAmpGroup.get() };
@@ -861,56 +862,58 @@ private:
         placeGroup(fOscGroup.get(), colL, row0, sinX - gap - colL, row0H);
         placeGroup(fSinGroup.get(), sinX, row0, sinW,              row0H);
 
-        // Rows 1-2: Env sits beside the LPF (which takes the rest of row 1), LFO beside Amp + Slew.
-        // The LFO is narrower than the Env by ampExtra, which the Amp box gets for its fourth
-        // dropdown (Velocity); layoutLfoPanel keeps the two pads the same width so they still line
-        // up. Each tab pair overlays one rect; the TabBar switches which is visible.
-        const int ampW     = static_cast<int>(300 * fUiScale);
-        const int ampExtra = static_cast<int>(100 * fUiScale);
-        const int slewW    = static_cast<int>(120 * fUiScale);
-        const int envW     = W - 2 * m - 2 * gap - slewW - ampW;
-        const int lfoW     = envW - ampExtra;
-        const int rightX   = colL + envW + gap;
-        const int ampX     = colL + lfoW + gap;
-        placeGroup(fEnv1Group.get(), colL,   row1, envW,              rowH);
-        placeGroup(fEnv2Group.get(), colL,   row1, envW,              rowH);
-        placeGroup(fLpfGroup.get(),  rightX, row1, W - m - rightX,    rowH);
-        placeGroup(fLfo1Group.get(), colL,   row2, lfoW,              row2H);
-        placeGroup(fLfo2Group.get(), colL,   row2, lfoW,              row2H);
-        placeGroup(fAmpGroup.get(),  ampX,   row2, ampW + ampExtra,   row2H);
-        placeGroup(fSlewGroup.get(), W - m - slewW, row2, slewW,      row2H);
+        // Row 1: the Env 1/2 + LFO 1/2 panels overlay one rect (the tab bar switches which is
+        // visible) beside a compact LPF.
+        const int lpfW = static_cast<int>(270 * fUiScale);
+        const int modW = W - 2 * m - gap - lpfW;
+        const int lpfX = colL + modW + gap;
+        placeGroup(fEnv1Group.get(), colL, row1, modW, rowH);
+        placeGroup(fEnv2Group.get(), colL, row1, modW, rowH);
+        placeGroup(fLfo1Group.get(), colL, row1, modW, rowH);
+        placeGroup(fLfo2Group.get(), colL, row1, modW, rowH);
+        placeGroup(fLpfGroup.get(),  lpfX, row1, lpfW, rowH);
 
-        // Row 3: CV Mixer (condensed) + IFS Osc modulation (wide, fills) + Osc 2 Mod + LPF modulation.
-        const int mixW     = static_cast<int>(200 * fUiScale);   // condensed to give the IFS Osc Mod room
-        const int lpfModW  = static_cast<int>(125 * fUiScale);
-        const int osc2ModW = static_cast<int>(125 * fUiScale);
+        // Row 2: CV Mixer tabs | Amp (four dropdowns over four knobs, Glide included).
+        const int ampW = static_cast<int>(560 * fUiScale);
+        const int ampX = W - m - ampW;
+        const int mixW = ampX - gap - colL;
+        placeGroup(fMix1Group.get(), colL, row2, mixW, row2H);
+        placeGroup(fMix2Group.get(), colL, row2, mixW, row2H);
+        placeGroup(fAmpGroup.get(),  ampX, row2, ampW, row2H);
+
+        // Row 3: IFS Osc modulation (wide, fills) + Osc 2 Mod + LPF modulation.
+        const int lpfModW  = static_cast<int>(140 * fUiScale);
+        const int osc2ModW = static_cast<int>(140 * fUiScale);
         const int lpfModX  = W - m - lpfModW;
         const int osc2ModX = lpfModX - gap - osc2ModW;
-        const int oscModX  = colL + mixW + gap;
-        const int oscModW  = osc2ModX - gap - oscModX;
-        placeGroup(fMix1Group.get(),    colL,     modY, mixW,     rowHb);
-        placeGroup(fMix2Group.get(),    colL,     modY, mixW,     rowHb);
-        placeGroup(fOscModGroup.get(),  oscModX,  modY, oscModW,  rowHb);
+        placeGroup(fOscModGroup.get(),  colL,     modY, osc2ModX - gap - colL, rowHb);
         placeGroup(fOsc2ModGroup.get(), osc2ModX, modY, osc2ModW, rowHb);
         placeGroup(fLpfModGroup.get(),  lpfModX,  modY, lpfModW,  rowHb);
 
         // Tab bars in each tab group's title strip (top-right).
-        placeTab(fEnvTab.get(), colL, row1, envW, scale);
-        placeTab(fLfoTab.get(), colL, row2, lfoW, scale);
-        placeTab(fMixTab.get(), colL, modY, mixW, scale);
+        placeTab(fModTab.get(), colL, row1, modW, 4, 46, scale);
+        placeTab(fMixTab.get(), colL, row2, mixW, 2, 28, scale);
+
+        // One pad size for the oscillator and the Env/LFO panels: 2:1, as large as the shorter
+        // content area and the narrower 42% column allow, less a little room for the well's rim.
+        {
+            int x, y, w0, h0, w1, h1;
+            fOscGroup->contentBounds(x, y, w0, h0);
+            fEnv1Group->contentBounds(x, y, w1, h1);
+            const int rim = static_cast<int>(3 * scale);
+            fPadH = std::min(std::min(h0, h1) - 2 * rim,
+                             static_cast<int>(std::min(w0, w1) * kPadFrac * 0.5f));
+            fPadW = 2 * fPadH;
+        }
 
         layoutOscPanel();
-
-        // Slew has its own group (row 2, far right).
-        SubWidget* slewG[1] = { fKnobs[kParamSlewRate].get() };
-        layoutRow(fSlewGroup.get(), slewG, 1);
 
         // Osc 2: Wave + Pitch dropdowns stacked in a left column; Fine, Detune knobs to the right.
         layoutOsc2Panel(fSinGroup.get(), fDropdowns[kParamSinWaveform].get(), fDropdowns[kParamSinPitch].get(),
                         fKnobs[kParamSinFine].get(), fKnobs[kParamSinDetune].get());
 
         // Env: Duration + Smoothing knobs, then a 2x2 grid of Hold / Legato over Iterations /
-        // Scale Release. The LFO below uses the same pad fraction so the two pads line up.
+        // Scale Release. The LFOs share the rect and the pad size, so the pad stays put.
         layoutEnvPanel(fEnv1Group.get(), fEnv1Pad.get(), kParamEnvDuration, kParamEnvSmoothing,
                        kParamEnvHoldMode, kParamEnvLegatoMode, kParamEnvIterations, kParamEnvScaleRelease);
         layoutEnvPanel(fEnv2Group.get(), fEnv2Pad.get(), kParamEnv2Duration, kParamEnv2Smoothing,
@@ -961,21 +964,24 @@ private:
 #endif
     }
 
-    // Pad width fraction shared by the Env and LFO panels (stacked, same width) so their pads align.
-    static constexpr float kEnvLfoPadFrac = 0.30f;
+    // Largest share of a panel's content width a pad may take (see the shared size in layout()).
+    static constexpr float kPadFrac = 0.42f;
+    int fPadW = 0, fPadH = 0;   // shared by every IFS pad (osc, envelopes, LFOs), set in layout()
 
-    // Pad on the left (fixed 2:1 landscape); returns the content area to its right.
-    void placePad(GroupBox* group, NanoSubWidget* pad, float padFrac, int& kx, int& cy, int& kw, int& ch)
+    // Pad on the left (the shared fPadW x fPadH), framed as a well; returns the content area to its
+    // right.
+    void placePad(GroupBox* group, NanoSubWidget* pad, int& kx, int& cy, int& kw, int& ch)
     {
         int cx, cw;
         group->contentBounds(cx, cy, cw, ch);
         const int gap = 8;
-        const int padW = static_cast<int>(cw * padFrac);
-        const int padH = std::min(ch, static_cast<int>(padW * 0.5f));   // fixed 2:1 landscape
-        pad->setSize(static_cast<uint>(padW), static_cast<uint>(padH));
-        pad->setAbsolutePos(cx, cy + (ch - padH) / 2);
-        kx = cx + padW + gap;
-        kw = cw - padW - gap;
+        const int inset = static_cast<int>(3 * fUiScale);   // keeps the rim off the box edge
+        const int px = cx + inset, py = cy + (ch - fPadH) / 2;
+        pad->setSize(static_cast<uint>(fPadW), static_cast<uint>(fPadH));
+        pad->setAbsolutePos(px, py);
+        group->setWell(px, py, fPadW, fPadH);
+        kx = px + fPadW + gap;
+        kw = cx + cw - kx;
     }
 
     // IFS Osc panel: pad, then the four knobs in a row with the Iterations and Sync dropdowns
@@ -983,7 +989,7 @@ private:
     void layoutOscPanel()
     {
         int kx, cy, kw, ch;
-        placePad(fOscGroup.get(), fOscPad.get(), 0.42f, kx, cy, kw, ch);
+        placePad(fOscGroup.get(), fOscPad.get(), kx, cy, kw, ch);
         const int dropH = static_cast<int>(46 * fUiScale);
         const int knobH = ch - dropH;
         const int cellW = kw / 4;
@@ -1009,7 +1015,7 @@ private:
                         uint32_t holdD, uint32_t legatoD, uint32_t itersD, uint32_t scaleRelT)
     {
         int kx, cy, kw, ch;
-        placePad(group, pad, kEnvLfoPadFrac, kx, cy, kw, ch);
+        placePad(group, pad, kx, cy, kw, ch);
         const int knobW = kw * 18 / 100;              // each knob; the grid gets the remaining ~64%
         Knob* knobs[2] = { fKnobs[durK].get(), fKnobs[smoothK].get() };
         for (int i = 0; i < 2; ++i)
@@ -1074,7 +1080,7 @@ private:
     }
 
     // Amp box: VCA-envelope source, Voices, MPE and Velocity dropdowns side by side on top, then the
-    // Sine / IFS mix levels + Spread knobs across the bottom.
+    // Osc 2 / IFS mix levels, Spread and Glide knobs across the bottom, one under each dropdown.
     void layoutAmp()
     {
         int cx, cy, cw, ch;
@@ -1090,13 +1096,13 @@ private:
 
         const int ky = cy + dropH + 6;
         const int kh = ch - dropH - 6;
-        const int cellW = cw / 3;
-        Knob* levels[3] = { fKnobs[kParamSinLevel].get(), fKnobs[kParamIfsLevel].get(),
-                            fKnobs[kParamSpread].get() };
-        for (int i = 0; i < 3; ++i)
+        Knob* levels[4] = { fKnobs[kParamSinLevel].get(), fKnobs[kParamIfsLevel].get(),
+                            fKnobs[kParamSpread].get(), fKnobs[kParamSlewRate].get() };
+        for (int i = 0; i < 4; ++i)
         {
-            levels[i]->setSize(static_cast<uint>(cellW), static_cast<uint>(kh));
-            levels[i]->setAbsolutePos(cx + i * cellW, ky);
+            const int x0 = cx + cw * i / 4, x1 = cx + cw * (i + 1) / 4;
+            levels[i]->setSize(static_cast<uint>(x1 - x0), static_cast<uint>(kh));
+            levels[i]->setAbsolutePos(x0, ky);
             levels[i]->setDiameter(0.0f, fUiScale);   // 0 = fill the cell (larger than the shared size)
         }
     }
@@ -1168,47 +1174,33 @@ private:
     }
 
     // Place a tab group's TabBar in the top-right of its panel title strip.
-    void placeTab(TabBar* t, int gx, int gy, int gw, float scale)
+    void placeTab(TabBar* t, int gx, int gy, int gw, int nTabs, int tabEachW, float scale)
     {
         const int tabH  = static_cast<int>(20 * scale);
-        const int tabW  = static_cast<int>(56 * scale);
+        const int tabW  = static_cast<int>(nTabs * tabEachW * scale);
         const int inset = static_cast<int>(8 * scale);
         t->setSize(static_cast<uint>(tabW), static_cast<uint>(tabH));
         t->setAbsolutePos(gx + gw - tabW - inset, gy + static_cast<int>(4 * scale));
     }
 
-    // LFO panel: the pad on the left, then Iterations centred at the top of the controls area with the
-    // Rate and Smoothing knobs below it. The LFO box is narrower than the Env box above it (the Amp
-    // box takes the difference), so the pad's width comes from the Env box: the two pads line up.
+    // LFO panel: laid out on the Env panel's grid (same rect, one tab bar), so switching tabs
+    // doesn't move the shared controls: Rate and Smoothing where the Env's Duration and Smoothing
+    // knobs are, Iterations in the Env's Iterations cell. The Hold/Legato/Scale Rel cells stay empty.
     void layoutLfoPanel(GroupBox* group, NanoSubWidget* pad, uint32_t rateK, uint32_t smoothK,
                         uint32_t itersD)
     {
-        int cx, cy, cw, ch, ex, ey, ew, eh;
-        group->contentBounds(cx, cy, cw, ch);
-        fEnv1Group->contentBounds(ex, ey, ew, eh);
-        const int gap = 8;
-        const int padW = static_cast<int>(ew * kEnvLfoPadFrac);
-        // Fixed 2:1 landscape, independent of row height — hosts vary in whether they honour
-        // setGeometryConstraints' keepAspectRatio, so this can't rely on a well-shaped `ch`.
-        const int padH = std::min(ch, static_cast<int>(padW * 0.5f));
-        pad->setSize(static_cast<uint>(padW), static_cast<uint>(padH));
-        pad->setAbsolutePos(cx, cy + (ch - padH) / 2);
-
-        const int kx = cx + padW + gap, kw = cw - padW - gap;
-        // Iterations: about one Amp-box dropdown wide (never wider than a knob's column), centred
-        // over the knobs rather than spanning them.
-        const int dropH = static_cast<int>(46 * fUiScale);
-        const int dropW = std::min(kw / 2, static_cast<int>(100 * fUiScale));
-        fDropdowns[itersD]->setSize(static_cast<uint>(dropW), static_cast<uint>(dropH));
-        fDropdowns[itersD]->setAbsolutePos(kx + (kw - dropW) / 2, cy);
-        const int ky = cy + dropH + 6, kh = ch - dropH - 6;
+        int kx, cy, kw, ch;
+        placePad(group, pad, kx, cy, kw, ch);
+        const int knobW = kw * 18 / 100;              // matches layoutEnvPanel
         Knob* knobs[2] = { fKnobs[rateK].get(), fKnobs[smoothK].get() };
         for (int i = 0; i < 2; ++i)
         {
-            const int x0 = kx + kw * i / 2, x1 = kx + kw * (i + 1) / 2;
-            knobs[i]->setSize(static_cast<uint>(x1 - x0), static_cast<uint>(kh));
-            knobs[i]->setAbsolutePos(x0, ky);
+            knobs[i]->setSize(static_cast<uint>(knobW), static_cast<uint>(ch));
+            knobs[i]->setAbsolutePos(kx + i * knobW, cy);
         }
+        const int gx = kx + 2 * knobW, cellW = (kw - 2 * knobW) / 2, cellH = ch / 2;
+        fDropdowns[itersD]->setSize(static_cast<uint>(cellW), static_cast<uint>(ch - cellH));
+        fDropdowns[itersD]->setAbsolutePos(gx, cy + cellH);
     }
 
     static std::function<std::string(float)> formatterFor(uint32_t index)

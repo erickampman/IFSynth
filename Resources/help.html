@@ -114,13 +114,6 @@ master for the IFS Oscillator, or just as a second sound source in its own right
   <dd>Fine tune (cents) and stereo detune, same idea as the IFS Oscillator's.</dd>
 </dl>
 
-<h2 class="sound">Slew</h2>
-<dl>
-  <dt>Glide</dt>
-  <dd>Portamento time between notes. Only audible in Mono voice mode (see Amp below) — in Poly
-  mode each voice starts fresh, so there's no previous pitch to glide from.</dd>
-</dl>
-
 <h2 class="filter">Low-Pass Filter</h2>
 <p>A 24 dB/octave Butterworth filter placed after the oscillators, before the amp stage.</p>
 <dl>
@@ -135,7 +128,7 @@ master for the IFS Oscillator, or just as a second sound source in its own right
 </dl>
 
 <h2 class="env">IFS Envelope</h2>
-<p>Two independent fractal envelopes (tabbed <code>1</code>/<code>2</code>). Envelope 1 normally
+<p>Two independent fractal envelopes (the <code>Env 1</code>/<code>Env 2</code> tabs). Envelope 1 normally
 drives amplitude via the Amp section's VCA source; either can also be routed as a modulation
 source elsewhere.</p>
 <dl>
@@ -152,7 +145,7 @@ source elsewhere.</p>
 </dl>
 
 <h2 class="lfo">IFS LFO</h2>
-<p>Two independent fractal LFOs (tabbed <code>1</code>/<code>2</code>), free-running modulation
+<p>Two independent fractal LFOs (the <code>LFO 1</code>/<code>LFO 2</code> tabs, beside the envelopes), free-running modulation
 sources for the CV Mixers and Modulation panels.</p>
 <dl>
   <dt>Rate</dt>
@@ -202,6 +195,9 @@ MIDI 2.0 controller or a CLAP host's Brightness.</p>
   <dd>Stereo width of the summed output (0% = mono, 100% = full width) — pairs with the
   oscillators' Detune controls: at 0% spread, detuned left/right signals fold back together and
   the detune shimmer disappears; at 100% you get the full stereo effect.</dd>
+  <dt>Glide</dt>
+  <dd>Portamento time between notes. Only active in Mono voice mode — in Poly mode each voice
+  starts fresh, so there's no previous pitch to glide from.</dd>
 </dl>
 
 <h2 class="neutral">Presets</h2>

@@ -41,6 +41,14 @@ public:
         fTitleHeight = static_cast<int>(28 * s);
     }
 
+    // Frame a child widget (an IFS pad) set into the panel with a flat accent-tinted rim drawn
+    // just outside its rect. Window-absolute, like contentBounds().
+    void setWell(int x, int y, int w, int h)
+    {
+        fWellX = x - getAbsoluteX(); fWellY = y - getAbsoluteY();
+        fWellW = w; fWellH = h;
+    }
+
     // Register a control (already parented to this box) for row layout.
     void addControl(SubWidget* control) { fControls.push_back(control); }
 
@@ -95,6 +103,17 @@ protected:
         strokeWidth(1.5f);
         stroke();
 
+        // well: an accent-tinted rim just outside the pad (the pad paints its own interior)
+        if (fWellW > 0 && fWellH > 0)
+        {
+            Color rim = fAccent; rim.alpha = 0.6f;
+            beginPath();
+            roundedRect(fWellX - 1.5f, fWellY - 1.5f, fWellW + 3.0f, fWellH + 3.0f, 6.5f);
+            strokeColor(rim);
+            strokeWidth(1.5f);
+            stroke();
+        }
+
         // title
         if (fHasFont)
         {
@@ -113,6 +132,7 @@ private:
     bool                    fHasFont = false;
     float                   fUiScale = 1.0f;
 
+    int fWellX = 0, fWellY = 0, fWellW = 0, fWellH = 0;
     int fPadding     = 10;
     int fTitleHeight = 28;
 
