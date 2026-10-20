@@ -131,14 +131,14 @@ public:
         fOscGroup  = makeGroup("IFS Oscillator", colSound());
         fSinGroup  = makeGroup("Osc 2", colSound());
         fLpfGroup  = makeGroup("Low-Pass Filter", colFilter());
-        // Env / LFO / Mixer are tab groups: the two instances share a rect + title, and a TabBar
-        // switches which is visible, so the shared title is the module name (tabs say 1/2).
+        // Env 1/2 and LFO 1/2 share one rect and a four-tab bar that switches which is visible, so
+        // each title is the module name (the tabs carry the number). The CV Mixers sit side by side.
         fEnv1Group = makeGroup("IFS Envelope", colEnv());
         fEnv2Group = makeGroup("IFS Envelope", colEnv());
         fLfo1Group = makeGroup("IFS LFO", colLfo());
         fLfo2Group = makeGroup("IFS LFO", colLfo());
-        fMix1Group = makeGroup("CV Mixer", colComb());
-        fMix2Group = makeGroup("CV Mixer", colComb());
+        fMix1Group = makeGroup("CV Mixer 1", colComb());
+        fMix2Group = makeGroup("CV Mixer 2", colComb());
         fOscModGroup = makeGroup("IFS Osc Modulation  (source + depth)", colNeutral());
         fOsc2ModGroup = makeGroup("Osc 2 Mod", colNeutral());
         fLpfModGroup = makeGroup("LPF Modulation", colNeutral());
@@ -205,15 +205,12 @@ public:
             fKnobs[i] = std::move(knob);
         }
 
-        // Tab bars (created after the panels so they draw on top of the title strip). The two
-        // envelopes and two LFOs share one rect and one four-tab bar; the Mixer has its own 1/2
-        // pair. Only Env 1 and Mixer 1 start visible.
+        // Tab bar (created after the panels so it draws on top of the title strip). The two
+        // envelopes and two LFOs share one rect and one four-tab bar; only Env 1 starts visible.
         fModTab = makeTab(kTabMod, colEnv(), {"Env 1", "Env 2", "LFO 1", "LFO 2"});
-        fMixTab = makeTab(kTabMix, colComb(), {"1", "2"});
         fEnv2Group->hide();
         fLfo1Group->hide();
         fLfo2Group->hide();
-        fMix2Group->hide();
 
 #if IFSYNTH_PRESET_DUMP
         fDumpBtn = std::make_unique<DumpButton>(this, [this] {
@@ -442,7 +439,7 @@ private:
     std::unique_ptr<Dropdown>      fDropdowns[kParamCount];
     std::unique_ptr<Toggle>        fToggles[kParamCount];
     std::unique_ptr<Slider>        fSliders[kParamCount];
-    std::unique_ptr<TabBar>        fModTab, fMixTab;
+    std::unique_ptr<TabBar>        fModTab;
     std::unique_ptr<Logo>          fLogo;
     std::unique_ptr<TitleText>     fTitleText;
     std::unique_ptr<Dropdown>      fPresetDropdown;
@@ -704,7 +701,7 @@ private:
         return g;
     }
 
-    enum TabId { kTabMod = 0, kTabMix = 1 };
+    enum TabId { kTabMod = 0 };
 
     std::unique_ptr<TabBar> makeTab(uint32_t id, Color accent, const std::vector<std::string>& tabs)
     {
@@ -731,10 +728,6 @@ private:
             bar->setAccentColor(index < 2 ? colEnv() : colLfo());
             break;
         }
-        case kTabMix:
-            index == 0 ? fMix1Group->show() : fMix1Group->hide();
-            index == 0 ? fMix2Group->hide() : fMix2Group->show();
-            break;
         default: break;
         }
         repaint();
@@ -873,12 +866,13 @@ private:
         placeGroup(fLfo2Group.get(), colL, row1, modW, rowH);
         placeGroup(fLpfGroup.get(),  lpfX, row1, lpfW, rowH);
 
-        // Row 2: CV Mixer tabs | Amp (four dropdowns over four knobs, Glide included).
-        const int ampW = static_cast<int>(560 * fUiScale);
-        const int ampX = W - m - ampW;
-        const int mixW = ampX - gap - colL;
-        placeGroup(fMix1Group.get(), colL, row2, mixW, row2H);
-        placeGroup(fMix2Group.get(), colL, row2, mixW, row2H);
+        // Row 2: CV Mixer 1 | CV Mixer 2 | Amp (four dropdowns over four knobs, Glide included).
+        const int ampW  = static_cast<int>(520 * fUiScale);
+        const int ampX  = W - m - ampW;
+        const int mixW  = (ampX - colL - 2 * gap) / 2;
+        const int mix2X = colL + mixW + gap;
+        placeGroup(fMix1Group.get(), colL,  row2, mixW, row2H);
+        placeGroup(fMix2Group.get(), mix2X, row2, mixW, row2H);
         placeGroup(fAmpGroup.get(),  ampX, row2, ampW, row2H);
 
         // Row 3: IFS Osc modulation (wide, fills) + Osc 2 Mod + LPF modulation.
@@ -890,9 +884,8 @@ private:
         placeGroup(fOsc2ModGroup.get(), osc2ModX, modY, osc2ModW, rowHb);
         placeGroup(fLpfModGroup.get(),  lpfModX,  modY, lpfModW,  rowHb);
 
-        // Tab bars in each tab group's title strip (top-right).
+        // The Env/LFO tab bar, in its panel's title strip (top-right).
         placeTab(fModTab.get(), colL, row1, modW, 4, 46, scale);
-        placeTab(fMixTab.get(), colL, row2, mixW, 2, 28, scale);
 
         // One pad size for the oscillator and the Env/LFO panels: 2:1, as large as the shorter
         // content area and the narrower 42% column allow, less a little room for the well's rim.
