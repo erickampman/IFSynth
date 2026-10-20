@@ -24,5 +24,6 @@
 
 ## M3: Remaining polish
 - [ ] Custom UI controls for Legato and Scale Release params (currently host-only)
+- [ ] Pitch 7.25 as persistent per-key tuning table (CLAP tuning stays per-note)
 - [ ] Move onto the DPF fork (erickampman/DPF) with own DGL_NAMESPACE
 - [ ] Use uw::ump for UMP decode (plugins-roadmap.md)
