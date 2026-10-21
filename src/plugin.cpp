@@ -991,7 +991,7 @@ const char* kFeatures[] = {
 
 const clap_plugin_descriptor_t kDescriptor = {
     .clap_version = CLAP_VERSION_INIT,
-    .id           = "com.example.ifsynth",
+    .id           = "com.unlikelyware.ifsynth",
     .name         = "IFSynth",
     .vendor       = "Unlikelyware",
     .url          = "https://www.unlikelyware.com",

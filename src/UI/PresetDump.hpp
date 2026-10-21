@@ -38,7 +38,7 @@ inline std::string buildPresetJson(const float* values, const char* name = "Unti
    std::string j;
    j += "{\n";
    j += "  \"app\": { \"name\": \"IFSynth\", \"version\": \"0.4.0\" },\n";
-   j += "  \"plugin\": { \"format\": \"clap\", \"id\": \"com.example.ifsynth\" },\n";
+   j += "  \"plugin\": { \"format\": \"clap\", \"id\": \"com.unlikelyware.ifsynth\" },\n";
    j += "  \"meta\": { \"author\": \"\", \"createdAt\": \"" + std::string(iso)
         + "\", \"name\": \"" + name + "\" },\n";
    j += "  \"schema\": \"ifsynth.preset\",\n";

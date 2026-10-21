@@ -437,7 +437,7 @@ int main(int argc, char** argv) {
 
     std::printf("descriptor: id=%s name=%s vendor=%s\n",
                 lib.descriptor->id, lib.descriptor->name, lib.descriptor->vendor);
-    check(std::strcmp(lib.descriptor->id, "com.example.ifsynth") == 0, "descriptor id");
+    check(std::strcmp(lib.descriptor->id, "com.unlikelyware.ifsynth") == 0, "descriptor id");
     check(std::strcmp(lib.descriptor->name, "IFSynth") == 0, "descriptor name");
 
     // --- audio ports -----------------------------------------------------------------------------
