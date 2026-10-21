@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.21)   # clap-wrapper needs 3.21
 
 # C is needed for DPF's pugl / dgl sources.
 project(IFSynth VERSION 0.3.0 LANGUAGES C CXX)
@@ -11,6 +11,14 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 20)          # PM framework uses std::numbers / std::span
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if(APPLE)
+    # clap-wrapper's AUv2 wrapper is Objective-C++ (as are DPF's DistrhoUI_macOS.mm and our
+    # BackingScale_mac.mm).
+    enable_language(OBJCXX)
+endif()
+
+option(IFSYNTH_BUILD_VST3 "Build a VST3 wrapper around the same plugin via clap-wrapper." ON)
+option(IFSYNTH_BUILD_AUV2 "Build an AUv2 (.component) wrapper via clap-wrapper (macOS only)." ${APPLE})
 option(IFSYNTH_WERROR "Treat warnings as errors (framework + tests)" OFF)
 option(IFSYNTH_PRESET_DUMP "Dev-only: press 'P' in the UI to dump the patch as JSON to \$HOME" OFF)
 
@@ -118,6 +126,9 @@ target_include_directories(ifsynth_core PUBLIC
     external/clap/include             # <clap/clap.h> (the raw entry point)
     "${CMAKE_BINARY_DIR}/generated"   # GeneratedPresets.h + EmbeddedResources.hpp
     "${DPF_ROOT_DIR}/distrho")        # DistrhoUI.hpp / DistrhoUIInternal.hpp
+# clap-wrapper's plugin-side extension header only (clapwrapper/vst3.h: which VST3 note expressions to
+# offer). Header-only and plain C, so the CLAP build needs it even with IFSYNTH_BUILD_VST3 off.
+target_include_directories(ifsynth_core PRIVATE external/clap-wrapper/include)
 target_compile_definitions(ifsynth_core PUBLIC
     DISTRHO_PLUGIN_TARGET_CLAP
     DISTRHO_IS_STANDALONE=0
@@ -197,6 +208,98 @@ add_custom_command(TARGET IFSynth POST_BUILD
         "${IFSYNTH_CLAP_DIR}/IFSynth.clap"
     COMMENT "Symlinking IFSynth.clap into ${IFSYNTH_CLAP_DIR}"
     VERBATIM)
+
+# --- VST3 / AUv2 via the vendored clap-wrapper, wrapping the very same CLAP ----------------------
+# Purely additive: neither block touches the .clap target above. Unlike the .clap, these are not
+# installed by every build: run `ninja -C build install-vst3 install-auv2`.
+if(IFSYNTH_BUILD_VST3 OR IFSYNTH_BUILD_AUV2)
+    if(NOT CLAP_SDK_ROOT)
+        set(CLAP_SDK_ROOT "${CMAKE_SOURCE_DIR}/external/clap" CACHE PATH "" FORCE)
+    endif()
+    add_subdirectory(external/clap-wrapper)
+endif()
+
+if(IFSYNTH_BUILD_VST3)
+    if(NOT VST3_SDK_ROOT)
+        set(VST3_SDK_ROOT "${CMAKE_SOURCE_DIR}/external/vst3sdk" CACHE PATH "" FORCE)
+    endif()
+
+    add_library(IFSynth_vst3 MODULE "${IFSYNTH_EMPTY_SOURCE}")
+    if(UNIX AND NOT APPLE)
+        # clap-wrapper's Linux branch tests a misspelled TCLP_RESOURCE_DIRECTORY, which is never
+        # set, so it always warns that RESOURCE_DIRECTORY is unsupported. Defining it empty
+        # silences that; we pass no RESOURCE_DIRECTORY.
+        set(TCLP_RESOURCE_DIRECTORY "")
+    endif()
+    target_link_libraries(IFSynth_vst3 PRIVATE ifsynth_core)
+    ifsynth_force_load_whole_archive(IFSynth_vst3 ifsynth_core)
+    target_add_vst3_wrapper(
+        TARGET IFSynth_vst3
+        OUTPUT_NAME "IFSynth"
+        BUNDLE_IDENTIFIER "com.unlikelyware.ifsynth.vst3"
+        BUNDLE_VERSION "${PROJECT_VERSION}")
+    if(TARGET base-sdk-vst3 AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        # The VST3 SDK still uses std::wstring_convert, deprecated since C++17.
+        target_compile_options(base-sdk-vst3 PRIVATE -Wno-deprecated-declarations)
+    endif()
+
+    if(APPLE)
+        set(IFSYNTH_VST3_DIR "$ENV{HOME}/Library/Audio/Plug-Ins/VST3")
+        set(IFSYNTH_VST3_ARTIFACT "$<TARGET_BUNDLE_DIR:IFSynth_vst3>")
+    else()
+        # On Linux $<TARGET_FILE> is the .so inside the bundle; hosts want the bundle folder, which
+        # clap-wrapper builds in build/Release (or build/Debug). As Retune's 9a2b6eb.
+        set(IFSYNTH_VST3_DIR "$ENV{HOME}/.vst3")
+        set(IFSYNTH_VST3_ARTIFACT "${CMAKE_BINARY_DIR}/$<IF:$<CONFIG:Debug>,Debug,Release>/IFSynth.vst3")
+    endif()
+    add_custom_target(install-vst3
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${IFSYNTH_VST3_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${IFSYNTH_VST3_DIR}/IFSynth.vst3"
+        COMMAND ${CMAKE_COMMAND} -E create_symlink "${IFSYNTH_VST3_ARTIFACT}" "${IFSYNTH_VST3_DIR}/IFSynth.vst3"
+        DEPENDS IFSynth_vst3
+        VERBATIM
+        COMMENT "Symlinking IFSynth.vst3 into ${IFSYNTH_VST3_DIR}")
+endif()
+
+if(IFSYNTH_BUILD_AUV2)
+    # AUv2 is an Apple-only format, and clap-wrapper's target_add_auv2_wrapper does not exist off
+    # Apple platforms. Say so plainly instead of failing with an unknown-command error.
+    if(NOT APPLE)
+        message(FATAL_ERROR
+            "IFSYNTH_BUILD_AUV2 is macOS-only (AUv2 is an Apple plugin format). "
+            "Reconfigure with -DIFSYNTH_BUILD_AUV2=OFF.")
+    endif()
+    # clap-wrapper fetches Apple's AudioUnitSDK itself (CPM) unless pointed at a local copy with
+    # -DAUDIOUNIT_SDK_ROOT=...
+    if(NOT AUDIOUNIT_SDK_ROOT)
+        set(CLAP_WRAPPER_DOWNLOAD_DEPENDENCIES ON)
+    endif()
+
+    add_library(IFSynth_auv2 MODULE "${IFSYNTH_EMPTY_SOURCE}")
+    target_link_libraries(IFSynth_auv2 PRIVATE ifsynth_core)
+    ifsynth_force_load_whole_archive(IFSynth_auv2 ifsynth_core)
+    # "IFSy" (IFSynth) as the subtype, under Unlikelyware's own "nLKL" manufacturer code.
+    target_add_auv2_wrapper(
+        TARGET IFSynth_auv2
+        OUTPUT_NAME "IFSynth"
+        BUNDLE_IDENTIFIER "com.unlikelyware.ifsynth.auv2"
+        BUNDLE_VERSION "${PROJECT_VERSION}"
+        MANUFACTURER_NAME "Unlikelyware"
+        MANUFACTURER_CODE "nLKL"
+        SUBTYPE_CODE "IFSy"
+        INSTRUMENT_TYPE "aumu")
+
+    # A copy, not a symlink: AU hosts don't reliably find symlinked components.
+    set(IFSYNTH_AUV2_DIR "$ENV{HOME}/Library/Audio/Plug-Ins/Components")
+    add_custom_target(install-auv2
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${IFSYNTH_AUV2_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${IFSYNTH_AUV2_DIR}/IFSynth.component"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "$<TARGET_BUNDLE_DIR:IFSynth_auv2>" "${IFSYNTH_AUV2_DIR}/IFSynth.component"
+        DEPENDS IFSynth_auv2
+        VERBATIM
+        COMMENT "Copying IFSynth.component into ${IFSYNTH_AUV2_DIR}")
+endif()
 
 # --- self-tests (the framework; headless, no DAW) --------------------------
 add_executable(pm-selftest test/pm_selftest.cpp)

@@ -22,7 +22,12 @@
 - [x] All Notes Off (CC 123) and All Sound Off (CC 120), per channel
 - [x] Pressure and Timbre (CC 74) as modulation sources (add to routing dropdowns)
 
-## M3: Remaining polish
+## M3: Plugin formats and polish
+- [x] Plugin id `com.unlikelyware.ifsynth` (was `com.example.ifsynth`; breaks saved CLAP sessions)
+- [x] VST3 via clap-wrapper (macOS + Linux); Tuning + Brightness + Pressure note expressions via
+      CLAP_PLUGIN_AS_VST3. Steinberg validator: 47 pass, 0 fail (macOS, 2026-10-21)
+- [x] AUv2 via clap-wrapper (macOS, `aumu IFSy nLKL`); auval passes; AUv2 GUI patch in patches/
+- [ ] By hand: Logic (AUv2), REAPER (VST3 + AUv2), Bitwig (VST3 per-note Tuning); Linux VST3
 - [ ] Custom UI controls for Legato and Scale Release params (currently host-only)
 - [ ] Pitch 7.25 as persistent per-key tuning table (CLAP tuning stays per-note)
 - [ ] Move onto the DPF fork (erickampman/DPF) with own DGL_NAMESPACE

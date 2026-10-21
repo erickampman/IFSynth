@@ -26,14 +26,18 @@ jobs:
       CXX: ${{ matrix.cxx }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - name: Install DPF UI deps (Linux)
+      # DPF's UI needs X11 + GL headers; the xcb/xkb/fontconfig ones are for the vendored VST3 SDK.
+      - name: Install DPF UI and VST3 SDK deps (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y pkg-config libgl1-mesa-dev libx11-dev \
-            libxext-dev libxrandr-dev libxcursor-dev
+            libxext-dev libxrandr-dev libxcursor-dev \
+            libxinerama-dev libxcb1-dev libx11-xcb-dev libxcb-util-dev \
+            libxkbcommon-dev libxkbcommon-x11-dev libfontconfig1-dev
+      # Pinned submodules, only the four vst3sdk submodules the build needs, then patches/.
+      - name: Fetch pinned dependency submodules
+        run: tools/fetch_deps.sh
       - name: Configure
         run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DIFSYNTH_WERROR=ON
       - name: Build

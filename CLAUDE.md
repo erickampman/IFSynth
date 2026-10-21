@@ -46,7 +46,8 @@ and plays it headless; so the plugin loads and sounds right on Linux, but nobody
 
 A checkout from before 2026-10-12 is far behind. To catch up:
 
-1. `git pull` and `git submodule update --init --recursive`.
+1. `git pull` and `tools/fetch_deps.sh` (pinned submodules, only the four VST3 SDK submodules the
+   build needs, and the clap-wrapper patch in `patches/`).
 2. **Configure a fresh build directory** (`rm -rf build`). The move off `dpf_add_plugin` renamed the
    targets (`IFSynth-clap` → `IFSynth`) and moved the output from `build/bin/IFSynth.clap` to
    `build/IFSynth.clap`. A post-build step re-points `~/.clap/IFSynth.clap` at it.
@@ -60,6 +61,8 @@ Never checked on Linux, so check these by hand and record what you find in this 
   first-idle `setSize()` nudge in `uiIdle()` is for Linux hosts (REAPER) that apply the initial size
   late; it is Linux-only because it halves the editor on a Retina Mac.
 - The Help button's web view, the Presets menu, and the logo link.
+- The VST3 (`build/Release/IFSynth.vst3`, `ninja -C build install-vst3` links it into `~/.vst3`):
+  loads, draws, plays in REAPER and Bitwig.
 - Sound and MIDI in **StageHand** (`~/dev/dev-audio/StageHand`; Linux-first: JACK through PipeWire, the
   ALSA sequencer) and REAPER.
 

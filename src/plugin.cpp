@@ -24,6 +24,7 @@
 // converted to UMP (pm::fromClapNote / pm::fromClapMidi1).
 
 #include <clap/clap.h>
+#include <clapwrapper/vst3.h>       // CLAP_PLUGIN_AS_VST3: VST3 note expressions via clap-wrapper
 
 #include <algorithm>
 #include <array>
@@ -951,6 +952,20 @@ void plug_on_timer(const clap_plugin_t* plugin, clap_id timerId) {
 const clap_plugin_timer_support_t kTimerExt = { plug_on_timer };
 
 // ---------------------------------------------------------------------------------------------
+// clap-wrapper's VST3 info extension
+// ---------------------------------------------------------------------------------------------
+// Without it the VST3 wrapper offers hosts only the Pressure note expression. Tuning and Brightness
+// are the other two the engine accepts (see pm::fromClapNoteExpression); the wrapper turns VST3
+// note expression into CLAP_EVENT_NOTE_EXPRESSION, so they arrive through processEvent like Bitwig's.
+uint32_t vst3_midi_channels(const clap_plugin_t*, uint32_t) { return 16; }
+uint32_t vst3_note_expressions(const clap_plugin_t*) {
+    return AS_VST3_NOTE_EXPRESSION_TUNING | AS_VST3_NOTE_EXPRESSION_BRIGHTNESS
+         | AS_VST3_NOTE_EXPRESSION_PRESSURE;
+}
+
+const clap_plugin_as_vst3_t kAsVst3Ext = { vst3_midi_channels, vst3_note_expressions };
+
+// ---------------------------------------------------------------------------------------------
 // voice-info
 // ---------------------------------------------------------------------------------------------
 // Tells the host (Bitwig) how many voices to expect, and that it may overlap notes on the same key:
@@ -975,6 +990,7 @@ const void* plug_get_extension(const clap_plugin_t*, const char* id) {
     if (std::strcmp(id, CLAP_EXT_GUI)            == 0) return ifs_gui_extension();
     if (std::strcmp(id, CLAP_EXT_TIMER_SUPPORT)  == 0) return &kTimerExt;
     if (std::strcmp(id, CLAP_EXT_VOICE_INFO)     == 0) return &kVoiceInfoExt;
+    if (std::strcmp(id, CLAP_PLUGIN_AS_VST3)     == 0) return &kAsVst3Ext;
     return nullptr;
 }
 

@@ -137,6 +137,9 @@ Resources/            font, logo and help page, embedded into the binary at buil
 test/                 in-process self-tests (see TESTING.md)
 dpf/                  DISTRHO Plugin Framework (submodule, + nested pugl) — the GUI layer only
 external/clap         CLAP headers (submodule, pinned 1.2.9) — the plugin and the tests
+external/clap-wrapper free-audio's clap-wrapper (submodule, v0.16.0) — the VST3 and AUv2 builds
+external/vst3sdk      Steinberg's VST3 SDK (submodule; only base, cmake, pluginterfaces, public.sdk)
+patches/              local patches to the submodules, applied by tools/apply_dep_patches.sh
 ```
 
 Vendored PolygraphModular files keep their original `#include "X.hpp"` form; every framework
@@ -146,28 +149,45 @@ extension.
 
 ## Build
 
-DPF's OpenGL/NanoVG UI needs the usual X11 + GL dev packages (Linux):
+DPF's OpenGL/NanoVG UI needs the usual X11 + GL dev packages, and the VST3 SDK a few more (Linux):
 
 ```sh
-sudo apt install pkg-config libgl1-mesa-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev
+sudo apt install pkg-config libgl1-mesa-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev \
+  libxinerama-dev libxcb1-dev libx11-xcb-dev libxcb-util-dev libxkbcommon-dev \
+  libxkbcommon-x11-dev libfontconfig1-dev
 ```
 
 Then:
 
 ```sh
-git clone --recurse-submodules https://github.com/erickampman/IFSynth.git
-cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j
+git clone https://github.com/erickampman/IFSynth.git && cd IFSynth
+tools/fetch_deps.sh                            # pinned submodules + the AUv2 GUI patch
+cmake -B build -G Ninja -S . -DCMAKE_BUILD_TYPE=Release
+ninja -C build
 ctest --test-dir build --output-on-failure     # see TESTING.md for the full suite
+ninja -C build install-vst3 install-auv2       # install-auv2 on macOS only
 ```
+
+Use `tools/fetch_deps.sh` rather than `git submodule update --init --recursive`: it fetches only
+the four VST3 SDK submodules the build needs and applies `patches/` (clap-wrapper's AUv2 view never
+calls `gui->show()`, which is where the editor starts its render timer, so without the patch the AU
+window stays blank).
 
 Produces `build/IFSynth.clap` (a bundle on macOS). A post-build step symlinks it into `~/.clap` (Linux) or
 `~/Library/Audio/Plug-Ins/CLAP/` (macOS), so any CLAP host picks up the freshest build after a
 rescan. Validate with [`clap-validator`](https://github.com/free-audio/clap-validator). Test
 details in [TESTING.md](TESTING.md).
 
+The same plugin is also wrapped by clap-wrapper as `build/IFSynth.vst3` (macOS; on Linux
+`build/Release/IFSynth.vst3`) and, on macOS, `build/IFSynth.component` (AUv2 `aumu IFSy nLKL`).
+These are not installed by every build: `install-vst3` symlinks the VST3 into
+`~/Library/Audio/Plug-Ins/VST3` or `~/.vst3`, and `install-auv2` copies the component into
+`~/Library/Audio/Plug-Ins/Components` (AU hosts don't reliably follow symlinks). Check the AU with
+`auval -v aumu IFSy nLKL`. The VST3 offers hosts the Tuning, Brightness and Pressure note expressions.
+
 Configure options: `-DIFSYNTH_WERROR=ON` (warnings as errors), `-DIFSYNTH_PRESET_DUMP=ON`
-(dev-only DUMP button that writes the current patch as JSON to `$HOME`).
+(dev-only DUMP button that writes the current patch as JSON to `$HOME`), `-DIFSYNTH_BUILD_VST3=OFF`,
+`-DIFSYNTH_BUILD_AUV2=OFF` (on by default on macOS; macOS-only).
 
 ## License
 
