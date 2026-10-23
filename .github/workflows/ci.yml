@@ -26,6 +26,8 @@ jobs:
       CXX: ${{ matrix.cxx }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.SUBMODULES_TOKEN || github.token }}   # dpf + pugl are private forks
       # DPF's UI needs X11 + GL headers; the xcb/xkb/fontconfig ones are for the vendored VST3 SDK.
       - name: Install DPF UI and VST3 SDK deps (Linux)
         if: runner.os == 'Linux'
