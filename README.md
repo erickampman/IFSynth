@@ -3,7 +3,7 @@
 A cross-platform **CLAP fractal synth** from Unlikelyware — oscillator, envelopes and LFOs are
 all shaped by IFS (Iterated Function System) fractals, drawn and edited directly on custom
 fractal-editor controls. Built on the vendored PolygraphModular voice engine and a DPF/NanoVG UI
-kit, forked from the [SimpleSynth](https://github.com/erickampman/SimpleSynth) base (SimpleSynth
+kit, forked from SimpleSynth, an unreleased Unlikelyware base (SimpleSynth
 stays IFS-free; the fractal work lives here).
 
 ## Status
@@ -96,8 +96,6 @@ which the Pressure and Timbre sources read. A CLAP note gets `CLAP_EVENT_NOTE_EN
 falls silent at the end of the envelope's release (or is stolen, or leaves the mono stack), not at
 note-off, so Bitwig keeps its per-voice modulation running through the release. The voice-info
 extension reports 10, 20 or 32 voices (1 in Mono), capacity 32, and supports overlapping notes on one key.
-
-The port's checklist and lessons are in [docs/MIDI2-PORT.md](docs/MIDI2-PORT.md).
 
 ## Layout
 
