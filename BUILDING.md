@@ -108,13 +108,26 @@ built yourself has no quarantine flag, so macOS loads it without the steps a dow
 
 ## Options
 
-- `-DIFSYNTH_BUILD_VST3=OFF`, `-DIFSYNTH_BUILD_AUV2=OFF`: skip a format (AUv2 is on by default on
-  macOS, and exists only there).
-- `-DIFSYNTH_WERROR=ON`: warnings as errors.
-- `-DIFSYNTH_PRESET_DUMP=ON`: a dev-only DUMP button that writes the current patch as JSON to
-  `$HOME`.
+Pass these to the first command (`cmake -B build ... -DNAME=VALUE`).
+
+| Option | Default | Effect |
+|---|---|---|
+| `IFSYNTH_BUILD_VST3` | `ON` | Build `IFSynth.vst3` through clap-wrapper (with the vendored `external/vst3sdk`). |
+| `IFSYNTH_BUILD_AUV2` | `ON` on macOS, `OFF` elsewhere | Build `IFSynth.component` through clap-wrapper. **macOS only**. The first configure downloads Apple's AudioUnitSDK; `-DAUDIOUNIT_SDK_ROOT=...` uses a local copy. |
+| `IFSYNTH_WERROR` | `OFF` | Warnings as errors (CI turns it on). |
+| `IFSYNTH_PRESET_DUMP` | `OFF` | A dev-only DUMP button that writes the current patch as JSON to `$HOME`. |
 
 ## Checking a build
 
 Validate the CLAP with [clap-validator](https://github.com/free-audio/clap-validator)
 (`clap-validator validate build/IFSynth.clap`), and the AU with `auval -v aumu IFSy nLKL`.
+
+## How this differs from the other projects
+
+Every Unlikelyware project builds the same way: `git clone`, `tools/fetch_deps.sh`, the three
+commands under "Build and test", and for a plugin `cmake --build build --target install-clap`. The
+same package list, the same `build/` folder, the same option names (`<PROJECT>_BUILD_VST3`,
+`<PROJECT>_UW_CORE_DIR` and so on). What's different here, and why:
+
+- One of the five synths (PlainOldSynth, StruckSynth, StruckKit, IFSynth, ModicumFM), which share the PolygraphModular framework, vendored, and DPF for the UI. `tools/fetch_deps.sh` also applies `patches/` to clap-wrapper (its AUv2 view), so `external/clap-wrapper` shows a local change: that is the patch, not uncommitted work.
+- Its branch is `master`; every other project's is `main`. A plain `git clone` gets the right one.
