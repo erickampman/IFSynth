@@ -97,95 +97,18 @@ falls silent at the end of the envelope's release (or is stolen, or leaves the m
 note-off, so Bitwig keeps its per-voice modulation running through the release. The voice-info
 extension reports 10, 20 or 32 voices (1 in Mono), capacity 32, and supports overlapping notes on one key.
 
-## Layout
+## Building from source
 
-The engine (`src/`) mirrors PolygraphModular's structure. The DISTRHO Plugin Framework is used
-**only as the GUI layer** (UIExporter + NanoVG + pugl); the CLAP entry point is hand-written in
-`src/plugin.cpp`, because DPF's generated CLAP wrapper drops `CLAP_EVENT_MIDI2` and advertises only
-the MIDI/MPE note dialects, which would make MIDI 2.0 7.9-pitch notes unreachable.
-
-```
-plugin/               the shared plugin definition
-                        DistrhoPluginInfo.h (UI flags; the plugin identity macros are inert),
-                        IFSynthParams.h (shared param table + dropdown labels)
-src/plugin.cpp        the raw CLAP plugin: entry point, note/audio/params/state/gui extensions,
-                        and the DSP glue (MIDI + params → VoiceManager)
-src/plugin_gui.h      the C seam between plugin.cpp and the GUI shell
-src/UI/               the plugin GUI (reusable NanoVG widgets + the panel)
-                        IFSControl / IFSEnvControl (fractal editors, drawn from IFSCore so the
-                        graph is exactly what you hear); Knob, Slider, Toggle, Dropdown,
-                        PopupMenu, TabBar, GroupBox, TitleText, Logo, HelpButton; PresetKeys /
-                        PresetDump (preset menu + dev-only JSON dumper); IFSynthUI.cpp — the panel
-src/Common/           shim + MIDI + params + utilities
-                        pm_compat.h (Apple→portable), pm_midi.* (spec UMP + MIDI-1 decode),
-                        clap_ump.h (CLAP↔UMP), pm_params.h / pm_param_data.* / pm_addresses.h,
-                        ParamAddressMacros.h, ResonanceComp.hpp, CPPTypes.hpp, CPPProcs.hpp,
-                        KPBuffPairHelper.hpp
-src/Module/           Module core + modules
-                        IFSCore.* (fractal evaluation, wavetables, mip pyramid), IFSOsc, IFSEnv,
-                        IFSLFO, SinOscillator, LPFilter (+ ButterLow4), CVMixer, Combine, Level,
-                        Slew, PitchConverter, PitchBendConverter, Final; ModuleSharedState.hpp (cross-voice state);
-                        ADSR stays instantiated but unconnected
-src/Voice/            voice engine
-                        Voice.*, VoiceStateManager.*, VoiceManager.*, ModuleMap.*, ModuleGraph.hpp,
-                        ModuleInitSpecs.hpp, pm_module_specs.cpp, ConnectionCommandQueue.hpp
-Presets/              factory presets (JSON), compiled into GeneratedPresets.h by
-                        tools/gen_presets.py
-Resources/            font, logo and help page, embedded into the binary at build time
-test/                 in-process self-tests (see TESTING.md)
-dpf/                  DISTRHO Plugin Framework (submodule, + nested pugl) — the GUI layer only
-external/clap         CLAP headers (submodule, pinned 1.2.9) — the plugin and the tests
-external/clap-wrapper free-audio's clap-wrapper (submodule, v0.16.0) — the VST3 and AUv2 builds
-external/vst3sdk      Steinberg's VST3 SDK (submodule; only base, cmake, pluginterfaces, public.sdk)
-patches/              local patches to the submodules, applied by tools/apply_dep_patches.sh
+```bash
+git clone https://github.com/erickampman/IFSynth.git
+cd IFSynth
+tools/fetch_deps.sh
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build
 ```
 
-Vendored PolygraphModular files keep their original `#include "X.hpp"` form; every framework
-folder is on the include path so they resolve across `Common/` `Module/` `Voice/`. The plugin
-links the `pm_framework` static lib; DPF's `UIExporter` hosts the editor inside the CLAP gui
-extension.
-
-## Build
-
-DPF's OpenGL/NanoVG UI needs the usual X11 + GL dev packages, and the VST3 SDK a few more (Linux):
-
-```sh
-sudo apt install pkg-config libgl1-mesa-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev \
-  libxinerama-dev libxcb1-dev libx11-xcb-dev libxcb-util-dev libxkbcommon-dev \
-  libxkbcommon-x11-dev libfontconfig1-dev
-```
-
-Then:
-
-```sh
-git clone https://github.com/erickampman/IFSynth.git && cd IFSynth
-tools/fetch_deps.sh                            # pinned submodules + the AUv2 GUI patch
-cmake -B build -G Ninja -S . -DCMAKE_BUILD_TYPE=Release
-ninja -C build
-ctest --test-dir build --output-on-failure     # see TESTING.md for the full suite
-ninja -C build install-vst3 install-auv2       # install-auv2 on macOS only
-```
-
-Use `tools/fetch_deps.sh` rather than `git submodule update --init --recursive`: it fetches only
-the four VST3 SDK submodules the build needs and applies `patches/` (clap-wrapper's AUv2 view never
-calls `gui->show()`, which is where the editor starts its render timer, so without the patch the AU
-window stays blank).
-
-Produces `build/IFSynth.clap` (a bundle on macOS). A post-build step symlinks it into `~/.clap` (Linux) or
-`~/Library/Audio/Plug-Ins/CLAP/` (macOS), so any CLAP host picks up the freshest build after a
-rescan. Validate with [`clap-validator`](https://github.com/free-audio/clap-validator). Test
-details in [TESTING.md](TESTING.md).
-
-The same plugin is also wrapped by clap-wrapper as `build/IFSynth.vst3` (macOS; on Linux
-`build/Release/IFSynth.vst3`) and, on macOS, `build/IFSynth.component` (AUv2 `aumu IFSy nLKL`).
-These are not installed by every build: `install-vst3` symlinks the VST3 into
-`~/Library/Audio/Plug-Ins/VST3` or `~/.vst3`, and `install-auv2` copies the component into
-`~/Library/Audio/Plug-Ins/Components` (AU hosts don't reliably follow symlinks). Check the AU with
-`auval -v aumu IFSy nLKL`. The VST3 offers hosts the Tuning, Brightness and Pressure note expressions.
-
-Configure options: `-DIFSYNTH_WERROR=ON` (warnings as errors), `-DIFSYNTH_PRESET_DUMP=ON`
-(dev-only DUMP button that writes the current patch as JSON to `$HOME`), `-DIFSYNTH_BUILD_VST3=OFF`,
-`-DIFSYNTH_BUILD_AUV2=OFF` (on by default on macOS; macOS-only).
+[BUILDING.md](BUILDING.md) has what to install first on Linux and macOS, the tests, installing
+the plugin for hosts, and the build options.
 
 ## License
 
