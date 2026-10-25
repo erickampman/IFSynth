@@ -97,6 +97,26 @@ falls silent at the end of the envelope's release (or is stolen, or leaves the m
 note-off, so Bitwig keeps its per-voice modulation running through the release. The voice-info
 extension reports 10, 20 or 32 voices (1 in Mono), capacity 32, and supports overlapping notes on one key.
 
+## Installing
+
+The download holds `IFSynth.clap`. Put it in your CLAP folder (create the folder if it isn't there),
+then rescan plugins in your host:
+
+| | Linux | macOS |
+|---|---|---|
+| For you | `~/.clap` | `~/Library/Audio/Plug-Ins/CLAP` |
+| For every user | `/usr/lib/clap` | `/Library/Audio/Plug-Ins/CLAP` |
+
+On macOS, `~/Library` is hidden in Finder: Go ▸ Go to Folder opens it. The 0.9 previews aren't
+notarized, so macOS won't load a downloaded plugin until its quarantine flag is cleared:
+
+```bash
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/CLAP/IFSynth.clap
+```
+
+A host that is already running keeps the plugins it loaded: quit and restart it. To build IFSynth
+yourself instead, see below.
+
 ## Building from source
 
 ```bash
