@@ -203,6 +203,13 @@ MIDI 2.0 controller or a CLAP host's Brightness.</p>
 <h2 class="neutral">Presets</h2>
 <p>The dropdown next to the logo recalls a saved patch, applying every parameter it specifies at
 once. Parameters a preset doesn't mention are left at their current value.</p>
+<p><b>Save</b> and <b>Load</b>, left of the Help button, write the patch to a file and read one back,
+through the system's file dialog. The first time, the dialog opens on <b>Documents/IFSynth</b>; after
+that, on the last folder you used. A saved patch has every sound parameter and leaves out MPE;
+loading one sets those parameters and leaves MPE alone. The preset menu then shows the patch's name,
+dimmed. The file is the same JSON as the factory presets, so a patch you save can be put in the
+source's <code>Presets</code> folder to build it in as a factory preset. The host still saves the
+patch with its project, whether or not you saved it to a file.</p>
 
 </body>
 </html>

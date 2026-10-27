@@ -66,8 +66,9 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
 endif()
 
 # --- presets: Presets/*.json compiled in as a C++ array, not loaded at runtime -------------
-# Avoids any runtime JSON parser in the plugin and doesn't depend on CLAP's own preset-discovery
-# extension — the UI presents its own dropdown. Adding/removing a preset file requires
+# Factory presets need no file on disk and don't depend on CLAP's own preset-discovery extension —
+# the UI presents its own dropdown. (The UI's Save / Load reads and writes the same JSON for the
+# user's own patches: src/UI/PresetFile.hpp.) Adding/removing a preset file requires
 # reconfiguring (CONFIGURE_DEPENDS re-globs on build, but a brand new file still needs `cmake -B
 # build -S .` rerun once to pick up the new match).
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
@@ -105,7 +106,8 @@ add_subdirectory(dpf)
 # directly. SHARED_RESOURCES=TRUE embeds DGL's DejaVu font. USE_WEB_VIEW=TRUE mirrors
 # dpf_add_plugin's USE_WEB_VIEW: it defines DGL_USE_WEB_VIEW PUBLIC (required by
 # DistrhoPluginChecks.h when DISTRHO_UI_WEB_VIEW is 1) and builds DGL's own WebView impl.
-# USE_FILE_BROWSER=TRUE brings in the Distrho String/ChildProcess helpers that impl uses.
+# USE_FILE_BROWSER=TRUE brings in the Distrho String/ChildProcess helpers that impl uses, and
+# builds the file dialog Save / Load open (DISTRHO_UI_FILE_BROWSER).
 dpf__add_dgl_opengl(TRUE TRUE TRUE)
 # IFSynth's own namespace (UmpireDAW's docs/decisions.md, "DPF fork"): on macOS pugl names its
 # Objective-C classes after it, so two DPF binaries with the same one in a host collide.
@@ -384,6 +386,15 @@ set_tests_properties(pm-modroute PROPERTIES PASS_REGULAR_EXPRESSION "ALL PASS")
 
 add_test(NAME pm-voicemanager COMMAND pm-voicemanager-test)
 set_tests_properties(pm-voicemanager PROPERTIES PASS_REGULAR_EXPRESSION "ALL PASS")
+
+# The UI's Save / Load file format, without the UI.
+add_executable(ifs-presetfile-test test/ifs_presetfile_test.cpp)
+target_include_directories(ifs-presetfile-test PRIVATE plugin src/UI)
+set_target_properties(ifs-presetfile-test PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
+
+add_test(NAME ifs-presetfile COMMAND ifs-presetfile-test "${CMAKE_SOURCE_DIR}/Presets"
+                                    "${CMAKE_BINARY_DIR}/presetfile-test")
+set_tests_properties(ifs-presetfile PROPERTIES PASS_REGULAR_EXPRESSION "ALL PASS")
 
 # --- end-to-end CLAP host test: note-port dialect negotiation + the MIDI 2.0 7.9-pitch path ------
 # Drives the real built .clap over the CLAP C API (no DAW, no GUI): dlopen + clap_entry + factory,
