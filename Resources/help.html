@@ -1,215 +1,467 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<title>IFSynth Help</title>
-<style>
-  :root {
-    --bg: #16181c;
-    --panel: #1e2126;
-    --text: #d8dce2;
-    --muted: #8a919c;
-    --sound: #3cc85a;
-    --filter: #aa70e2;
-    --env: #dcce48;
-    --lfo: #e9709e;
-    --comb: #f2962e;
-    --neutral: #78becd;
-  }
-  * { box-sizing: border-box; }
-  body {
+    <meta charset="utf-8" />
+    <title>help-IFSynth</title>
+    <style>
+:root {
+  --bg: #0f1115;
+  --page: #141823;
+  --text: #e6e2d8;
+  --muted: rgba(230, 226, 216, 0.72);
+  --border: rgba(230, 226, 216, 0.12);
+  --shadow: rgba(0, 0, 0, 0.35);
+
+  /* New: "card" surface (slightly lighter than page) */
+  --card: rgba(255, 255, 255, 0.04);
+  --card-hover: rgba(255, 255, 255, 0.055);
+}
+
+html, body {
     margin: 0;
-    padding: 32px 40px 64px;
-    background: var(--bg);
-    color: var(--text);
-    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
-    font-size: 15px;
-    line-height: 1.55;
-  }
-  h1 {
-    font-size: 26px;
-    margin: 0 0 4px;
-    color: #fff;
-  }
-  .subtitle {
-    color: var(--muted);
-    margin: 0 0 32px;
-  }
-  h2 {
-    font-size: 18px;
-    margin: 40px 0 10px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid #333;
-  }
-  h2.sound    { color: var(--sound); }
-  h2.filter   { color: var(--filter); }
-  h2.env      { color: var(--env); }
-  h2.lfo      { color: var(--lfo); }
-  h2.comb     { color: var(--comb); }
-  h2.neutral  { color: var(--neutral); }
-  p { margin: 0 0 12px; }
-  dl { margin: 0 0 12px; }
-  dt {
+    padding: 0;
+    background-color: #fbfaf7;
+}
+
+/* Page container — new */
+.page {
+    max-width: 900px;       /* or whatever you prefer */
+    margin: 0 auto;         /* center it */
+    padding: 2rem;          /* spacing around content */
+}
+
+/* Basic typography */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #222;
+
+    /* REMOVE padding: now applied by .page */
+    /* padding: 1rem; */
+}
+
+/* Headings */
+h1, h2, h3 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
     font-weight: 600;
-    color: #fff;
-    margin-top: 8px;
-  }
-  dd {
-    margin: 2px 0 0 0;
-    color: var(--text);
-  }
-  code {
-    background: var(--panel);
-    padding: 1px 5px;
-    border-radius: 3px;
-    font-size: 13px;
-  }
-  .panel {
-    background: var(--panel);
-    border: 1px solid #2b2f36;
-    border-radius: 8px;
-    padding: 16px 20px;
-    margin-bottom: 16px;
-  }
-  a { color: var(--neutral); }
-</style>
+}
+
+/* Paragraph spacing */
+p {
+    margin: 0.75rem 0;
+}
+
+/* Lists */
+ul, ol {
+    margin: 0.75rem 0 0.75rem 1.5rem;
+}
+
+/* Code blocks */
+pre, code {
+    font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+pre {
+    background: #f0f0f0;
+    padding: 1rem;
+    overflow-x: auto;
+    border-radius: 6px;
+}
+
+code {
+    background: #ececec;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+}
+
+/* Don't double-style code inside pre blocks */
+pre code {
+    background: none;
+    padding: 0;
+    border-radius: 0;
+}
+
+/* Hook for language-specific styles (future syntax highlighting) */
+code[class^="language-"],
+code[class*=" language-"] {
+    /* placeholder: add colors later if you want */
+}
+
+/* Blockquotes */
+blockquote {
+    margin: 1.5rem 0;
+    padding-left: 1rem;
+    border-left: 3px solid #ccc;
+    color: #555;
+    font-style: italic;
+}
+
+/* Horizontal rule */
+hr {
+    border: none;
+    border-top: 1px solid #ccc;
+    margin: 2rem 0;
+}
+
+.module-container {
+  display: flex; 
+  justify-content: center; 
+}
+
+/* Images */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 1rem 0;
+    border-radius: 12px;
+}
+
+.disclosure-content {
+  padding: 0.5em 1em;
+}
+
+.disclosure-content > p:first-child {
+  margin-top: 0;
+}
+
+.disclosure-content > p:last-child {
+  margin-bottom: 0;
+}
+
+:target {
+  scroll-margin-top: 1.5rem;
+  outline: 2px solid rgba(0,0,0,0.15);
+  border-radius: 8px;
+}
+
+figure img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+figure.float-right {
+  float: right;
+  margin: 0 0 1rem 1rem;
+  max-width: 45%;
+}
+
+figure.float-left {
+  float: left;
+  margin: 0 1rem 1rem 0;
+  max-width: 45%;
+}
+
+.clear {
+  clear: both;
+}
+
+figure {
+    display: inline-block;     /* shrink-wrap to image width */
+    margin: 1em 0;
+    text-align: center;        /* center caption under image */
+}
+
+figure img {
+    display: block;            /* prevent inline baseline quirks */
+    max-width: 100%;
+    height: auto;
+}
+
+figcaption {
+    font-size: 0.9em;
+    color: #666;
+    margin-top: 0.4em;
+}
+
+a.embed {
+  display: inline-block;
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+  background: rgba(0,0,0,0.05);
+  text-decoration: none;
+}
+
+.callout-note {
+  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1em;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+/* The generic rounded-rect card */
+.card {
+  display: block;                 /* important for headings */
+  padding: 0.9rem 1rem;
+  margin: 1.1rem 0 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: 0 10px 22px var(--shadow);
+}
+
+/* Only hover cards that are meant to be interactive */
+.card.is-interactive:hover {
+  background: var(--card-hover);
+}
+
+
+/* Make sure headings don’t add their own extra margins inside cards */
+.card h1, .card h2, .card h3,
+h1.card, h2.card, h3.card {
+  margin: 0;
+}
+
+.module-header {
+  position: relative;
+  display: flex;
+  justify-content: center;   /* center the title */
+  align-items: baseline;
+}
+
+.module-back {
+  position: absolute;
+  left: 0;
+  font-size: 0.85em;
+  opacity: 0.6;
+  text-decoration: none;
+  letter-spacing: 0.03em;
+}
+
+.module-back:hover {
+  opacity: 1.0;
+}
+
+.module-title {
+  margin: 0;
+  text-align: center;
+}
+
+/* breadcrumb trail */
+.breadcrumb { font-size: 0.85em; opacity: 0.7; letter-spacing: 0.03em; margin-bottom: 0.35rem; }
+.breadcrumb a { text-decoration: none; color: inherit; opacity: 0.75; }
+.breadcrumb a:hover { opacity: 1.0; }
+.breadcrumb .crumb-current { opacity: 1.0; }
+
+
+/* Tables (pipe tables from pandoc) */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+  font-size: 0.95em;
+}
+
+th, td {
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid #ddd;
+  text-align: left;
+  vertical-align: top;
+}
+
+thead th {
+  border-bottom: 2px solid #bbb;
+  font-weight: 600;
+}
+
+tbody tr:nth-child(even) {
+  background: rgba(0, 0, 0, 0.025);
+}    </style>
 </head>
 <body>
-
-<h1>IFSynth</h1>
-<p class="subtitle">A fractal (Iterated Function System) synthesizer — reference for every module.</p>
-
-<div class="panel">
-  <p>Most of IFSynth's sound sources and modulators share the same idea: a small 2D fractal
-  curve, edited directly by dragging its pad, gets read back as a waveform or a control signal.
-  <code>Split</code>, <code>Junction</code>, <code>Ends</code>, and the <code>Squash</code>
-  knobs reshape that curve; <code>Iterations</code> controls how many times the fractal
-  transform recurses (more = more detail/harmonics); <code>Smoothing</code> low-pass-filters the
-  result so the shape doesn't produce harsh steps.</p>
+<div class="page">
+<div style="display: flex; align-items: center; gap: 0.75rem; margin: 1.5rem 0 0.5rem;">
+  <a href="https://www.unlikelyware.com" target="_blank" rel="noopener noreferrer">
+    <img src="Unlikelyware.png" alt="Unlikelyware" style="width: 56px; height: auto; border-radius: 10px; margin: 0; display: block;">
+  </a>
+  <h1 style="margin: 0;">IFSynth</h1>
 </div>
 
-<h2 class="sound">IFS Oscillator</h2>
-<p>The primary sound source — a fractal-derived wavetable, redrawn from the pad every cycle.</p>
-<dl>
-  <dt>Pitch / Fine / Detune</dt>
-  <dd>Coarse tune (semitones), fine tune (cents), and stereo detune (splits left/right
-  frequency — pairs with <code>Spread</code> in the Amp section for a wider stereo image).</dd>
-  <dt>Smoothing / Iterations</dt>
-  <dd>See the fractal-curve note above.</dd>
-  <dt>Sync</dt>
-  <dd>Hard-sync mode against Osc 2 (Off / Up / Down / Both) — restarts the IFS curve's read
-  position in sync with Osc 2's cycle for classic sync tones.</dd>
-</dl>
+<p>
+  <em>IFSynth is a CLAP and VST3 plugin on macOS and Linux, and an AUv2 plugin on macOS. A fractal (Iterated Function System) synthesizer.</em>
+</p>
 
-<h2 class="sound">Osc 2</h2>
-<p>A conventional band-limited oscillator (Sine / Triangle / Saw) that can act as the hard-sync
-master for the IFS Oscillator, or just as a second sound source in its own right.</p>
-<dl>
-  <dt>Wave</dt>
-  <dd>Sine, Triangle, or Saw, band-limited to avoid aliasing.</dd>
-  <dt>Pitch</dt>
-  <dd>An interval selector (unison, octaves, fifths, etc.) rather than continuous tuning —
-  meant for locking Osc 2 to a musical interval above/below the IFS Oscillator.</dd>
-  <dt>Fine / Detune</dt>
-  <dd>Fine tune (cents) and stereo detune, same idea as the IFS Oscillator's.</dd>
-</dl>
-
-<h2 class="filter">Low-Pass Filter</h2>
-<p>A 24 dB/octave Butterworth filter placed after the oscillators, before the amp stage.</p>
-<dl>
-  <dt>Cutoff / Resonance</dt>
-  <dd>Standard filter cutoff frequency and resonance (Q).</dd>
-  <dt>Key Track</dt>
-  <dd>How much the cutoff follows the played note's pitch (0 = fixed cutoff regardless of note,
-  1 = cutoff tracks pitch 1:1).</dd>
-  <dt>LPF Modulation</dt>
-  <dd>A dedicated source + depth pair for modulating the cutoff — pick a source (an LFO, an
-  Envelope, a CV Mixer, Pressure or Timbre) in the Modulation panel and set how far it pushes the cutoff.</dd>
-</dl>
-
-<h2 class="env">IFS Envelope</h2>
-<p>Two independent fractal envelopes (the <code>Env 1</code>/<code>Env 2</code> tabs). Envelope 1 normally
-drives amplitude via the Amp section's VCA source; either can also be routed as a modulation
-source elsewhere.</p>
-<dl>
-  <dt>Duration</dt>
-  <dd>Total envelope time.</dd>
-  <dt>Blue X/Y, Green X/Y, Squash 1–3</dt>
-  <dd>Shape the fractal envelope curve — the two colored handles on the pad are Blue and Green;
-  dragging them reshapes the attack/decay contour directly.</dd>
-  <dt>Hold</dt>
-  <dd>Sustain behavior: None (envelope always runs to completion), or hold at the Green/Blue
-  point, or Loop the shape for as long as the note is held.</dd>
-  <dt>Smoothing / Iterations</dt>
-  <dd>See the fractal-curve note above.</dd>
-</dl>
-
-<h2 class="lfo">IFS LFO</h2>
-<p>Two independent fractal LFOs (the <code>LFO 1</code>/<code>LFO 2</code> tabs, beside the envelopes), free-running modulation
-sources for the CV Mixers and Modulation panels.</p>
-<dl>
-  <dt>Rate</dt>
-  <dd>LFO speed in Hz.</dd>
-  <dt>Split, Junction, Ends, Squash 1/2, Smoothing, Iterations</dt>
-  <dd>Same fractal-curve shaping as the Oscillator and Envelope pads, applied to the LFO's
-  waveform instead.</dd>
-</dl>
-
-<h2 class="comb">CV Mixer</h2>
-<p>Two mixers (side by side, <code>CV Mixer 1</code> and <code>CV Mixer 2</code>) that combine an LFO, an Envelope, and an
-incoming MIDI CC into a single modulation source, available anywhere a modulation source can be
-picked (Modulation panels, LPF cutoff mod).</p>
-<dl>
-  <dt>LFO / Env / CC checkboxes</dt>
-  <dd>Enable whichever inputs should feed this mixer.</dd>
-  <dt>CC #</dt>
-  <dd>Which MIDI CC number to listen to, if the CC input is enabled.</dd>
-  <dt>Mode</dt>
-  <dd>How the enabled inputs combine: Add (sum them) or Multiply (ring-modulate them together).</dd>
-</dl>
-
-<h2 class="neutral">Modulation (IFS Osc / Osc 2 / LPF panels)</h2>
-<p>Each modulation panel is a set of source-dropdown + depth-knob pairs — pick a source (an LFO,
-an Envelope, a CV Mixer, Pressure, Timbre, or None) for a given destination, and set how strongly it
-affects that destination. Depth is bipolar, so negative values invert the modulation.
-<b>Pressure</b> is aftertouch: the channel's, or the note's own when the controller sends
-polyphonic pressure. <b>Timbre</b> is CC74 (MPE's slide), or the note's own per-note value from a
-MIDI 2.0 controller or a CLAP host's Brightness.</p>
-
-<h2 class="comb">Amp</h2>
-<dl>
-  <dt>VCA env</dt>
-  <dd>Which envelope (1 or 2) drives overall amplitude.</dd>
-  <dt>Voices</dt>
-  <dd>Mono (one voice, with legato note-stacking and Glide) or Poly (up to 10 simultaneous
-  voices, each independent).</dd>
-  <dt>MPE</dt>
-  <dd>On: read MPE input (lower zone). Member channels 2–16 bend ±48 semitones, and channel 1's
-  bend adds to every note. Describes your controller, not the sound, so presets leave it alone.</dd>
-  <dt>Velocity</dt>
-  <dd>How much note velocity sets loudness: Off (every note at full level), Light, Medium, or
-  Full (velocity squared — a half-strength note is 12 dB quieter).</dd>
-  <dt>Osc 2 / IFS</dt>
-  <dd>Relative output level of each oscillator in the final mix.</dd>
-  <dt>Spread</dt>
-  <dd>Stereo width of the summed output (0% = mono, 100% = full width) — pairs with the
-  oscillators' Detune controls: at 0% spread, detuned left/right signals fold back together and
-  the detune shimmer disappears; at 100% you get the full stereo effect.</dd>
-  <dt>Glide</dt>
-  <dd>Portamento time between notes. Only active in Mono voice mode — in Poly mode each voice
-  starts fresh, so there's no previous pitch to glide from.</dd>
-</dl>
-
-<h2 class="neutral">Presets</h2>
-<p>The dropdown next to the logo recalls a saved patch, applying every parameter it specifies at
-once. Parameters a preset doesn't mention are left at their current value.</p>
-<p><b>Save</b> and <b>Load</b>, left of the Help button, write the patch to a file and read one back,
-through the system's file dialog. The first time, the dialog opens on <b>Documents/IFSynth</b>; after
-that, on the last folder you used. A saved patch has every sound parameter and leaves out MPE;
-loading one sets those parameters and leaves MPE alone. The preset menu then shows the patch's name,
-dimmed. The file is the same JSON as the factory presets, so a patch you save can be put in the
-source's <code>Presets</code> folder to build it in as a factory preset. The host still saves the
-patch with its project, whether or not you saved it to a file.</p>
-
+<section id="on-this-page" class="callout callout-note card">
+<h2>On This Page</h2>
+<p><a href="#overview">Overview</a></p>
+<p><strong>Sound —</strong> <a href="#ifs-oscillator">IFS Oscillator</a>
+· <a href="#osc-2">Osc 2</a> · <a href="#filter">Low-Pass Filter</a></p>
+<p><strong>Shapes —</strong> <a href="#envelope">IFS Envelope</a> · <a
+href="#lfo">IFS LFO</a></p>
+<p><strong>Routing and output —</strong> <a href="#cv-mixer">CV
+Mixer</a> · <a href="#modulation">Modulation</a> · <a
+href="#amp">Amp</a> · <a href="#presets">Presets</a></p>
+</section>
+<section id="overview" class="callout callout-note card">
+<h2>Overview</h2>
+<p>Most of IFSynth's sound sources and modulators share the same idea: a
+small 2D fractal curve, edited directly by dragging its pad, gets read
+back as a waveform or a control signal. <code>Split</code>,
+<code>Junction</code>, <code>Ends</code>, and the <code>Squash</code>
+knobs reshape that curve; <code>Iterations</code> controls how many
+times the fractal transform recurses (more = more detail/harmonics);
+<code>Smoothing</code> low-pass-filters the result so the shape doesn't
+produce harsh steps.</p>
+</section>
+<section id="ifs-oscillator" class="callout callout-note card">
+<h2>IFS Oscillator</h2>
+<p>The primary sound source — a fractal-derived wavetable, redrawn from
+the pad every cycle.</p>
+<ul>
+<li><strong>Pitch / Fine / Detune:</strong> Coarse tune (semitones),
+fine tune (cents), and stereo detune (splits left/right frequency —
+pairs with <code>Spread</code> in the Amp section for a wider stereo
+image).</li>
+<li><strong>Smoothing / Iterations:</strong> See the fractal-curve note
+in the <a href="#overview">Overview</a>.</li>
+<li><strong>Sync:</strong> Hard-sync mode against Osc 2 (Off / Up / Down
+/ Both) — restarts the IFS curve's read position in sync with Osc 2's
+cycle for classic sync tones.</li>
+</ul>
+</section>
+<section id="osc-2" class="callout callout-note card">
+<h2>Osc 2</h2>
+<p>A conventional band-limited oscillator (Sine / Triangle / Saw) that
+can act as the hard-sync master for the IFS Oscillator, or just as a
+second sound source in its own right.</p>
+<ul>
+<li><strong>Wave:</strong> Sine, Triangle, or Saw, band-limited to avoid
+aliasing.</li>
+<li><strong>Pitch:</strong> An interval selector (unison, octaves,
+fifths, etc.) rather than continuous tuning — meant for locking Osc 2 to
+a musical interval above/below the IFS Oscillator.</li>
+<li><strong>Fine / Detune:</strong> Fine tune (cents) and stereo detune,
+same idea as the IFS Oscillator's.</li>
+</ul>
+</section>
+<section id="filter" class="callout callout-note card">
+<h2>Low-Pass Filter</h2>
+<p>A 24 dB/octave Butterworth filter placed after the oscillators,
+before the amp stage.</p>
+<ul>
+<li><strong>Cutoff / Resonance:</strong> Standard filter cutoff
+frequency and resonance (Q).</li>
+<li><strong>Key Track:</strong> How much the cutoff follows the played
+note's pitch (0 = fixed cutoff regardless of note, 1 = cutoff tracks
+pitch 1:1).</li>
+<li><strong>LPF Modulation:</strong> A dedicated source + depth pair for
+modulating the cutoff — pick a source (an LFO, an Envelope, a CV Mixer,
+Pressure or Timbre) in the Modulation panel and set how far it pushes
+the cutoff.</li>
+</ul>
+</section>
+<section id="envelope" class="callout callout-note card">
+<h2>IFS Envelope</h2>
+<p>Two independent fractal envelopes (the
+<code>Env 1</code>/<code>Env 2</code> tabs). Envelope 1 normally drives
+amplitude via the Amp section's VCA source; either can also be routed as
+a modulation source elsewhere.</p>
+<ul>
+<li><strong>Duration:</strong> Total envelope time.</li>
+<li><strong>Blue X/Y, Green X/Y, Squash 1–3:</strong> Shape the fractal
+envelope curve — the two colored handles on the pad are Blue and Green;
+dragging them reshapes the attack/decay contour directly.</li>
+<li><strong>Hold:</strong> Sustain behavior: None (envelope always runs
+to completion), or hold at the Green/Blue point, or Loop the shape for
+as long as the note is held.</li>
+<li><strong>Smoothing / Iterations:</strong> See the fractal-curve note
+in the <a href="#overview">Overview</a>.</li>
+</ul>
+</section>
+<section id="lfo" class="callout callout-note card">
+<h2>IFS LFO</h2>
+<p>Two independent fractal LFOs (the
+<code>LFO 1</code>/<code>LFO 2</code> tabs, beside the envelopes),
+free-running modulation sources for the CV Mixers and Modulation
+panels.</p>
+<ul>
+<li><strong>Rate:</strong> LFO speed in Hz.</li>
+<li><strong>Split, Junction, Ends, Squash 1/2, Smoothing,
+Iterations:</strong> Same fractal-curve shaping as the Oscillator and
+Envelope pads, applied to the LFO's waveform instead.</li>
+</ul>
+</section>
+<section id="cv-mixer" class="callout callout-note card">
+<h2>CV Mixer</h2>
+<p>Two mixers (side by side, <code>CV Mixer 1</code> and
+<code>CV Mixer 2</code>) that combine an LFO, an Envelope, and an
+incoming MIDI CC into a single modulation source, available anywhere a
+modulation source can be picked (Modulation panels, LPF cutoff mod).</p>
+<ul>
+<li><strong>LFO / Env / CC checkboxes:</strong> Enable whichever inputs
+should feed this mixer.</li>
+<li><strong>CC #:</strong> Which MIDI CC number to listen to, if the CC
+input is enabled.</li>
+<li><strong>Mode:</strong> How the enabled inputs combine: Add (sum
+them) or Multiply (ring-modulate them together).</li>
+</ul>
+</section>
+<section id="modulation" class="callout callout-note card">
+<h2>Modulation (IFS Osc / Osc 2 / LPF panels)</h2>
+<p>Each modulation panel is a set of source-dropdown + depth-knob pairs
+— pick a source (an LFO, an Envelope, a CV Mixer, Pressure, Timbre, or
+None) for a given destination, and set how strongly it affects that
+destination. Depth is bipolar, so negative values invert the
+modulation.</p>
+<p><strong>Pressure</strong> is aftertouch: the channel's, or the note's
+own when the controller sends polyphonic pressure.
+<strong>Timbre</strong> is CC74 (MPE's slide), or the note's own
+per-note value from a MIDI 2.0 controller or a CLAP host's
+Brightness.</p>
+</section>
+<section id="amp" class="callout callout-note card">
+<h2>Amp</h2>
+<ul>
+<li><strong>VCA env:</strong> Which envelope (1 or 2) drives overall
+amplitude.</li>
+<li><strong>Voices:</strong> Mono (one voice, with legato note-stacking
+and Glide) or Poly (up to 10 simultaneous voices, each
+independent).</li>
+<li><strong>MPE:</strong> On: read MPE input (lower zone). Member
+channels 2–16 bend ±48 semitones, and channel 1's bend adds to every
+note. Describes your controller, not the sound, so presets leave it
+alone.</li>
+<li><strong>Velocity:</strong> How much note velocity sets loudness: Off
+(every note at full level), Light, Medium, or Full (velocity squared — a
+half-strength note is 12 dB quieter).</li>
+<li><strong>Osc 2 / IFS:</strong> Relative output level of each
+oscillator in the final mix.</li>
+<li><strong>Spread:</strong> Stereo width of the summed output (0% =
+mono, 100% = full width) — pairs with the oscillators' Detune controls:
+at 0% spread, detuned left/right signals fold back together and the
+detune shimmer disappears; at 100% you get the full stereo effect.</li>
+<li><strong>Glide:</strong> Portamento time between notes. Only active
+in Mono voice mode — in Poly mode each voice starts fresh, so there's no
+previous pitch to glide from.</li>
+</ul>
+</section>
+<section id="presets" class="callout callout-note card">
+<h2>Presets</h2>
+<p>The dropdown next to the logo recalls a saved patch, applying every
+parameter it specifies at once. Parameters a preset doesn't mention are
+left at their current value.</p>
+<p><strong>Save</strong> and <strong>Load</strong>, left of the Help
+button, write the patch to a file and read one back, through the
+system's file dialog. The first time, the dialog opens on
+<strong>Documents/IFSynth</strong>; after that, on the last folder you
+used.</p>
+<ul>
+<li>A saved patch has every sound parameter and leaves out MPE; loading
+one sets those parameters and leaves MPE alone.</li>
+<li>The preset menu then shows the patch's name, dimmed.</li>
+<li>The file is the same JSON as the factory presets, so a patch you
+save can be put in the source's <code>Presets</code> folder to build it
+in as a factory preset.</li>
+<li>The host still saves the patch with its project, whether or not you
+saved it to a file.</li>
+</ul>
+</section>
+</div>
 </body>
 </html>

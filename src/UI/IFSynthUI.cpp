@@ -264,6 +264,7 @@ public:
         // Help: toggles a native WebView overlay showing the bundled help.html. Right-aligned in
         // the top strip (see the dev DUMP button's placement, further right when both exist).
         fHelpButton = std::make_unique<HelpButton>(this, [this] { toggleHelp(); });
+        fHelpButton->setLabel("Help");
 
         // Save / Load the patch as a preset file (PresetFile.hpp), through the system file dialog.
         fSaveButton = std::make_unique<HeaderButton>(this, "Save", [this] { browseForPreset(true); });
@@ -768,25 +769,36 @@ private:
         webViewResize(fHelpWebView, static_cast<uint>(w), static_cast<uint>(h), fUiScale);
     }
 
-    static std::string helpFilePath()
+    static std::string helpDir()
     {
         const char* tmp = std::getenv("TMPDIR");
         std::string dir = (tmp && *tmp) ? tmp : "/tmp";
         if (!dir.empty() && dir.back() != '/') dir += '/';
-        return dir + "ifsynth-help.html";
+        return dir;
+    }
+
+    static bool writeFile(const std::string& path, const unsigned char* data, unsigned int size)
+    {
+        FILE* const f = std::fopen(path.c_str(), "wb");
+        if (f == nullptr)
+            return false;
+        std::fwrite(data, 1, size, f);
+        std::fclose(f);
+        return true;
     }
 
     // The WebView needs a real file:// URL, not an in-memory buffer, so the embedded HTML bytes
     // get written out here. Overwritten every time the panel opens, so it always matches
-    // whatever's actually embedded in this build.
+    // whatever's actually embedded in this build. help.html shows the logo as "Unlikelyware.png",
+    // so it is written out beside the page under that name.
     static std::string writeHelpFile()
     {
-        const std::string path = helpFilePath();
-        FILE* const f = std::fopen(path.c_str(), "wb");
-        if (f == nullptr)
+        const std::string dir = helpDir();
+        const std::string path = dir + "ifsynth-help.html";
+        if (!writeFile(path, EmbeddedResources::helpData, EmbeddedResources::helpDataSize))
             return "";
-        std::fwrite(EmbeddedResources::helpData, 1, EmbeddedResources::helpDataSize, f);
-        std::fclose(f);
+        writeFile(dir + "Unlikelyware.png", EmbeddedResources::Unlikelyware_Final_ColorData,
+                  EmbeddedResources::Unlikelyware_Final_ColorDataSize);
         return path;
     }
 
@@ -1066,13 +1078,15 @@ private:
 
         // Help button: far right of the top strip (the dev DUMP button, if present, sits just
         // left of it instead of also claiming the far-right corner).
-        const int helpW = static_cast<int>(34 * scale), helpH = static_cast<int>(28 * scale);
-        fHelpButton->setSize(static_cast<uint>(helpW), static_cast<uint>(helpH));
-        fHelpButton->setAbsolutePos(W - helpW - m, (topPad - helpH) / 2 + m / 2);
+        // Captioned and boxed like Save and Load, in the same strip-high slot.
+        const int helpW = static_cast<int>(44 * scale);
+        fHelpButton->setUiScale(txtScale);
+        fHelpButton->setSize(static_cast<uint>(helpW), static_cast<uint>(topPad));
+        fHelpButton->setAbsolutePos(W - helpW - m, m / 2);
 
         // Save and Load, left of Help, their boxes level with the Preset menu's.
         const int fileW = static_cast<int>(52 * scale);
-        const int loadX = W - helpW - m - gap - fileW;
+        const int loadX = W - helpW - m - fileW;
         fLoadButton->setUiScale(txtScale);
         fLoadButton->setSize(static_cast<uint>(fileW), static_cast<uint>(topPad));
         fLoadButton->setAbsolutePos(loadX, m / 2);

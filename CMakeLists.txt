@@ -88,11 +88,18 @@ add_custom_target(generate_presets DEPENDS "${IFSYNTH_GENERATED_PRESETS_H}")
 # on the resource file once built — same reasoning as the preset codegen above.
 set(IFSYNTH_RESOURCES_HPP "${CMAKE_BINARY_DIR}/generated/EmbeddedResources.hpp")
 set(IFSYNTH_RESOURCES_CPP "${CMAKE_BINARY_DIR}/generated/EmbeddedResources.cpp")
+# res2c.py embeds a whole folder and names each symbol by the file's stem, so help.md (the source of
+# help.html) would collide with help.html. Copy everything but *.md into a staging folder first.
 file(GLOB IFSYNTH_RESOURCE_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/Resources/*")
+list(FILTER IFSYNTH_RESOURCE_FILES EXCLUDE REGEX "\\.md$")
+set(IFSYNTH_RESOURCES_STAGING "${CMAKE_BINARY_DIR}/generated/Resources")
 add_custom_command(
     OUTPUT "${IFSYNTH_RESOURCES_HPP}" "${IFSYNTH_RESOURCES_CPP}"
+    COMMAND ${CMAKE_COMMAND} -E rm -rf "${IFSYNTH_RESOURCES_STAGING}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${IFSYNTH_RESOURCES_STAGING}"
+    COMMAND ${CMAKE_COMMAND} -E copy ${IFSYNTH_RESOURCE_FILES} "${IFSYNTH_RESOURCES_STAGING}"
     COMMAND ${Python3_EXECUTABLE} "${CMAKE_SOURCE_DIR}/dpf/utils/res2c.py"
-            EmbeddedResources "${CMAKE_SOURCE_DIR}/Resources" "${CMAKE_BINARY_DIR}/generated"
+            EmbeddedResources "${IFSYNTH_RESOURCES_STAGING}" "${CMAKE_BINARY_DIR}/generated"
     DEPENDS ${IFSYNTH_RESOURCE_FILES} "${CMAKE_SOURCE_DIR}/dpf/utils/res2c.py"
     COMMENT "Embedding Resources/* as compiled-in data")
 add_custom_target(generate_resources DEPENDS "${IFSYNTH_RESOURCES_HPP}" "${IFSYNTH_RESOURCES_CPP}")
