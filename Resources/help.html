@@ -289,7 +289,8 @@ tbody tr:nth-child(even) {
 
 <section id="on-this-page" class="callout callout-note card">
 <h2>On This Page</h2>
-<p><a href="#overview">Overview</a></p>
+<p><a href="#overview">Overview</a> · <a href="#window">The Window</a> ·
+<a href="#controls">Using the Controls</a></p>
 <p><strong>Sound —</strong> <a href="#ifs-oscillator">IFS Oscillator</a>
 · <a href="#osc-2">Osc 2</a> · <a href="#filter">Low-Pass Filter</a></p>
 <p><strong>Shapes —</strong> <a href="#envelope">IFS Envelope</a> · <a
@@ -301,43 +302,119 @@ href="#amp">Amp</a> · <a href="#presets">Presets</a></p>
 <section id="overview" class="callout callout-note card">
 <h2>Overview</h2>
 <p>Most of IFSynth's sound sources and modulators share the same idea: a
-small 2D fractal curve, edited directly by dragging its pad, gets read
-back as a waveform or a control signal. <code>Split</code>,
-<code>Junction</code>, <code>Ends</code>, and the <code>Squash</code>
-knobs reshape that curve; <code>Iterations</code> controls how many
-times the fractal transform recurses (more = more detail/harmonics);
-<code>Smoothing</code> low-pass-filters the result so the shape doesn't
-produce harsh steps.</p>
+small 2D fractal curve, edited directly by dragging on its pad, gets
+read back as a waveform or a control signal. On the pad,
+<code>Split</code>, <code>Junction</code>, <code>Ends</code>, and the
+<code>Squash</code> regions reshape that curve; the
+<code>Iterations</code> dropdown sets how many times the fractal
+transform recurses (more = more detail/harmonics); the
+<code>Smoothing</code> knob low-pass-filters the result so the shape
+doesn't produce harsh steps. The curve drawn on each pad is the exact
+shape the synth plays, smoothing and iterations included.</p>
+</section>
+<section id="window" class="callout callout-note card">
+<h2>The Window</h2>
+<p>Along the top: the Unlikelyware logo, the <strong>IFSynth</strong>
+wordmark, and the <strong>Preset</strong> menu; at the far right,
+<strong>Save</strong>, <strong>Load</strong>, and <strong>Help</strong>.
+<strong>Help</strong> opens this page in a panel inside the plugin
+window, covering everything below the top strip; click
+<strong>Help</strong> again to close it.</p>
+<p>Below that, four rows of panels:</p>
+<table>
+<thead>
+<tr>
+<th>Row</th>
+<th>Left</th>
+<th>Right</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><a href="#ifs-oscillator">IFS Oscillator</a></td>
+<td><a href="#osc-2">Osc 2</a></td>
+</tr>
+<tr>
+<td>2</td>
+<td><a href="#envelope">IFS Envelope / IFS LFO</a> (tabs
+<code>Env 1</code> <code>Env 2</code> <code>LFO 1</code>
+<code>LFO 2</code>)</td>
+<td><a href="#filter">Low-Pass Filter</a></td>
+</tr>
+<tr>
+<td>3</td>
+<td><a href="#cv-mixer">CV Mixer 1</a> · <a href="#cv-mixer">CV Mixer
+2</a></td>
+<td><a href="#amp">Amp</a></td>
+</tr>
+<tr>
+<td>4</td>
+<td><a href="#modulation">IFS Osc Modulation</a></td>
+<td><a href="#modulation">Osc 2 Mod</a> · <a href="#modulation">LPF
+Modulation</a></td>
+</tr>
+</tbody>
+</table>
+<p>The window can be resized from the host; it keeps its proportions,
+and everything scales with it.</p>
+</section>
+<section id="controls" class="callout callout-note card">
+<h2>Using the Controls</h2>
+<ul>
+<li><strong>Knobs:</strong> Drag up to increase, down to decrease. Hold
+<strong>Ctrl</strong> while dragging (or scrolling) for finer steps. The
+scroll wheel also turns a knob. <strong>Shift</strong>-click returns a
+knob to its default.</li>
+<li><strong>Dropdowns:</strong> Click to open the menu, then click a
+choice. Clicking outside the menu, pressing <strong>Escape</strong>, or
+switching to another window closes it without changing anything.</li>
+<li><strong>Checkboxes and tabs:</strong> Click to flip or select.</li>
+<li><strong>Pads:</strong> Drag the dots and regions directly; each
+pad's section below says what each part does.</li>
+</ul>
 </section>
 <section id="ifs-oscillator" class="callout callout-note card">
 <h2>IFS Oscillator</h2>
-<p>The primary sound source — a fractal-derived wavetable, redrawn from
-the pad every cycle.</p>
+<p>The primary sound source — a fractal-derived wavetable, drawn by the
+pad on the left of the panel.</p>
 <ul>
-<li><strong>Pitch / Fine / Detune:</strong> Coarse tune (semitones),
-fine tune (cents), and stereo detune (splits left/right frequency —
-pairs with <code>Spread</code> in the Amp section for a wider stereo
-image).</li>
-<li><strong>Smoothing / Iterations:</strong> See the fractal-curve note
-in the <a href="#overview">Overview</a>.</li>
-<li><strong>Sync:</strong> Hard-sync mode against Osc 2 (Off / Up / Down
-/ Both) — restarts the IFS curve's read position in sync with Osc 2's
-cycle for classic sync tones.</li>
+<li><strong>Pad:</strong> Drag the middle dot to move the
+<code>Split</code> (left/right) and the <code>Junction</code> (up/down).
+Drag either end dot up or down to set <code>Ends</code> — the two ends
+move together, so the wave always joins up. Drag up or down anywhere
+else left or right of the split to set <code>Squash 1</code> or
+<code>Squash 2</code> for that region.</li>
+<li><strong>Osc Pitch / Osc Fine / Detune:</strong> Coarse tune (±24
+semitones), fine tune (±100 cents), and stereo detune (0–25 cents,
+splitting left from right — pairs with <code>Spread</code> in the Amp
+section for a wider stereo image).</li>
+<li><strong>Smoothing:</strong> See the fractal-curve note in the <a
+href="#overview">Overview</a>.</li>
+<li><strong>Iterations:</strong> 3 or 4 (default 4).</li>
+<li><strong>Sync:</strong> Hard-sync to Osc 2: Off, Up, Down, or Both.
+When on, the IFS Oscillator restarts its cycle each time Osc 2 crosses
+zero — rising (Up), falling (Down), or either way (Both) — for classic
+sync tones. Left and right sync separately, so Osc 2's Detune carries
+through to the synced sound.</li>
 </ul>
 </section>
 <section id="osc-2" class="callout callout-note card">
 <h2>Osc 2</h2>
-<p>A conventional band-limited oscillator (Sine / Triangle / Saw) that
-can act as the hard-sync master for the IFS Oscillator, or just as a
-second sound source in its own right.</p>
+<p>A conventional band-limited oscillator that can act as the hard-sync
+master for the IFS Oscillator, or just as a second sound source in its
+own right. Its level is the <code>Osc 2</code> knob in the <a
+href="#amp">Amp</a> section, which starts at zero, so turn that up to
+hear it.</p>
 <ul>
 <li><strong>Wave:</strong> Sine, Triangle, or Saw, band-limited to avoid
 aliasing.</li>
-<li><strong>Pitch:</strong> An interval selector (unison, octaves,
-fifths, etc.) rather than continuous tuning — meant for locking Osc 2 to
-a musical interval above/below the IFS Oscillator.</li>
-<li><strong>Fine / Detune:</strong> Fine tune (cents) and stereo detune,
-same idea as the IFS Oscillator's.</li>
+<li><strong>Pitch:</strong> An interval rather than continuous tuning,
+for locking Osc 2 to a musical interval below or above the IFS
+Oscillator: -3 oct, -2 oct, -1 oct, 0 (unison, the default), +5th, +1
+oct, or +1 oct +5th.</li>
+<li><strong>Fine / Detune:</strong> Fine tune (±100 cents) and stereo
+detune (0–25 cents), same idea as the IFS Oscillator's.</li>
 </ul>
 </section>
 <section id="filter" class="callout callout-note card">
@@ -345,70 +422,108 @@ same idea as the IFS Oscillator's.</li>
 <p>A 24 dB/octave Butterworth filter placed after the oscillators,
 before the amp stage.</p>
 <ul>
-<li><strong>Cutoff / Resonance:</strong> Standard filter cutoff
-frequency and resonance (Q).</li>
+<li><strong>Cutoff:</strong> About 7 Hz to 18.5 kHz (default 14
+kHz).</li>
+<li><strong>Resonance:</strong> Filter Q, 1 to 20 (default 1).</li>
 <li><strong>Key Track:</strong> How much the cutoff follows the played
-note's pitch (0 = fixed cutoff regardless of note, 1 = cutoff tracks
-pitch 1:1).</li>
-<li><strong>LPF Modulation:</strong> A dedicated source + depth pair for
-modulating the cutoff — pick a source (an LFO, an Envelope, a CV Mixer,
-Pressure or Timbre) in the Modulation panel and set how far it pushes
-the cutoff.</li>
+note's pitch (0 = fixed cutoff regardless of note, the default; 1 =
+cutoff tracks pitch 1:1).</li>
 </ul>
+<p>The cutoff's modulation is in its own <strong>LPF Modulation</strong>
+panel at the bottom right — see <a
+href="#modulation">Modulation</a>.</p>
 </section>
 <section id="envelope" class="callout callout-note card">
 <h2>IFS Envelope</h2>
-<p>Two independent fractal envelopes (the
-<code>Env 1</code>/<code>Env 2</code> tabs). Envelope 1 normally drives
-amplitude via the Amp section's VCA source; either can also be routed as
-a modulation source elsewhere.</p>
+<p>Two independent fractal envelopes, <code>Env 1</code> and
+<code>Env 2</code>. They share one panel with the two LFOs: the four
+tabs at the top right of the panel (<code>Env 1</code>,
+<code>Env 2</code>, <code>LFO 1</code>, <code>LFO 2</code>) pick which
+one is shown. The Amp section's <code>VCA env</code> picks which
+envelope drives amplitude (Env 1 by default); either can also be routed
+as a modulation source elsewhere.</p>
 <ul>
-<li><strong>Duration:</strong> Total envelope time.</li>
-<li><strong>Blue X/Y, Green X/Y, Squash 1–3:</strong> Shape the fractal
-envelope curve — the two colored handles on the pad are Blue and Green;
-dragging them reshapes the attack/decay contour directly.</li>
-<li><strong>Hold:</strong> Sustain behavior: None (envelope always runs
-to completion), or hold at the Green/Blue point, or Loop the shape for
-as long as the note is held.</li>
-<li><strong>Smoothing / Iterations:</strong> See the fractal-curve note
-in the <a href="#overview">Overview</a>.</li>
+<li><strong>Pad:</strong> The envelope always starts and ends at zero.
+Drag the Blue and Green dots (Blue stays left of Green) to reshape the
+attack/decay contour; drag up or down anywhere else to set
+<code>Squash 1</code>, <code>Squash 2</code>, or <code>Squash 3</code>
+for the region left of Blue, between the dots, or right of Green.</li>
+<li><strong>Duration:</strong> Total envelope time, 10 ms to 10 s
+(default 1 s).</li>
+<li><strong>Smoothing:</strong> See the fractal-curve note in the <a
+href="#overview">Overview</a>.</li>
+<li><strong>Hold:</strong> Sustain behavior: None (the envelope always
+runs to completion), Blue or Green (hold at that dot while the note is
+held, the default being Green), or Loop (repeat the shape for as long as
+the note is held).</li>
+<li><strong>Legato:</strong> What a new note does to an envelope that is
+still running, in Mono voice mode only: Steal (restart from the top) or
+Match Y (the default: jump to the point in the shape at the level the
+envelope is already at, so the retrigger doesn't click). In Poly, every
+note starts from the top.</li>
+<li><strong>Iterations:</strong> 1 to 8 (default 3).</li>
+<li><strong>Scale Rel:</strong> Checkbox, off by default. With Hold set
+to Blue or Green, a note released before the envelope reaches the hold
+point jumps to the hold point and plays the rest of the shape scaled to
+start from the current level, instead of running the full cycle.</li>
 </ul>
 </section>
 <section id="lfo" class="callout callout-note card">
 <h2>IFS LFO</h2>
-<p>Two independent fractal LFOs (the
-<code>LFO 1</code>/<code>LFO 2</code> tabs, beside the envelopes),
-free-running modulation sources for the CV Mixers and Modulation
-panels.</p>
+<p>Two independent fractal LFOs, <code>LFO 1</code> and
+<code>LFO 2</code>, shown by the <code>LFO 1</code> and
+<code>LFO 2</code> tabs of the envelope panel. They are free-running
+modulation sources for the CV Mixers and Modulation panels.</p>
 <ul>
-<li><strong>Rate:</strong> LFO speed in Hz.</li>
-<li><strong>Split, Junction, Ends, Squash 1/2, Smoothing,
-Iterations:</strong> Same fractal-curve shaping as the Oscillator and
-Envelope pads, applied to the LFO's waveform instead.</li>
+<li><strong>Pad:</strong> Edited exactly like the <a
+href="#ifs-oscillator">IFS Oscillator's</a> pad — <code>Split</code>,
+<code>Junction</code>, <code>Ends</code>, <code>Squash 1/2</code> —
+applied to the LFO's waveform instead.</li>
+<li><strong>Rate:</strong> LFO speed, about 0.008 Hz to 128 Hz (default
+1 Hz).</li>
+<li><strong>Smoothing:</strong> See the fractal-curve note in the <a
+href="#overview">Overview</a>.</li>
+<li><strong>Iterations:</strong> 1 to 8 (default 4).</li>
 </ul>
 </section>
 <section id="cv-mixer" class="callout callout-note card">
 <h2>CV Mixer</h2>
 <p>Two mixers (side by side, <code>CV Mixer 1</code> and
-<code>CV Mixer 2</code>) that combine an LFO, an Envelope, and an
+<code>CV Mixer 2</code>) that each combine an LFO, an Envelope, and an
 incoming MIDI CC into a single modulation source, available anywhere a
-modulation source can be picked (Modulation panels, LPF cutoff mod).</p>
+modulation source can be picked (as <code>CV Mix 1</code> and
+<code>CV Mix 2</code>). CV Mixer 1 takes LFO 1 and Env 1; CV Mixer 2
+takes LFO 2 and Env 2.</p>
 <ul>
-<li><strong>LFO / Env / CC checkboxes:</strong> Enable whichever inputs
-should feed this mixer.</li>
-<li><strong>CC #:</strong> Which MIDI CC number to listen to, if the CC
-input is enabled.</li>
+<li><strong>LFO 1 / Env 1 / CC checkboxes</strong> (LFO 2 / Env 2 / CC
+on Mixer 2): Enable whichever inputs should feed this mixer. The LFO and
+Env are on by default, CC off.</li>
+<li><strong>CC #:</strong> Which MIDI CC number to listen to (1–127,
+default 1, the mod wheel), if the CC input is enabled.</li>
 <li><strong>Mode:</strong> How the enabled inputs combine: Add (sum
 them) or Multiply (ring-modulate them together).</li>
 </ul>
 </section>
 <section id="modulation" class="callout callout-note card">
 <h2>Modulation (IFS Osc / Osc 2 / LPF panels)</h2>
-<p>Each modulation panel is a set of source-dropdown + depth-knob pairs
-— pick a source (an LFO, an Envelope, a CV Mixer, Pressure, Timbre, or
-None) for a given destination, and set how strongly it affects that
-destination. Depth is bipolar, so negative values invert the
-modulation.</p>
+<p>The bottom row holds three modulation panels. Each is made of
+source-dropdown + depth-knob pairs: the dropdown, captioned with its
+destination, picks a source (None, LFO 1, LFO 2, Env 1, Env 2, CV Mix 1,
+CV Mix 2, Pressure, or Timbre), and the <strong>Depth</strong> knob
+under it sets how strongly it affects that destination. Depth is
+bipolar, so negative values invert the modulation; every depth starts at
+zero, and every source at None.</p>
+<ul>
+<li><strong>IFS Osc Modulation:</strong> Five pairs, one each for the
+IFS Oscillator's <strong>Pitch</strong>, <strong>Split</strong>,
+<strong>Junction</strong>, <strong>Squash 1</strong>, and <strong>Squash
+2</strong>. Depth -1 to +1.</li>
+<li><strong>Osc 2 Mod:</strong> One pair (<strong>Source</strong>) for
+Osc 2's pitch — vibrato from a CC through a CV Mixer, say, even while
+Osc 2 drives sync. Depth -1 to +1.</li>
+<li><strong>LPF Modulation:</strong> One pair (<strong>Cutoff</strong>)
+for the filter cutoff. Depth -4 to +4.</li>
+</ul>
 <p><strong>Pressure</strong> is aftertouch: the channel's, or the note's
 own when the controller sends polyphonic pressure.
 <strong>Timbre</strong> is CC74 (MPE's slide), or the note's own
@@ -417,35 +532,39 @@ Brightness.</p>
 </section>
 <section id="amp" class="callout callout-note card">
 <h2>Amp</h2>
+<p>Four dropdowns across the top, four knobs under them.</p>
 <ul>
-<li><strong>VCA env:</strong> Which envelope (1 or 2) drives overall
-amplitude.</li>
+<li><strong>VCA env:</strong> Which envelope (Env 1 or Env 2) drives
+overall amplitude.</li>
 <li><strong>Voices:</strong> Mono (one voice, with legato note-stacking
-and Glide) or Poly (up to 10 simultaneous voices, each
-independent).</li>
+and Glide), or Poly 10, Poly 20, or Poly 32 (that many simultaneous
+voices, each independent). Default Poly 10.</li>
 <li><strong>MPE:</strong> On: read MPE input (lower zone). Member
 channels 2–16 bend ±48 semitones, and channel 1's bend adds to every
 note. Describes your controller, not the sound, so presets leave it
-alone.</li>
+alone. Off by default.</li>
 <li><strong>Velocity:</strong> How much note velocity sets loudness: Off
-(every note at full level), Light, Medium, or Full (velocity squared — a
-half-strength note is 12 dB quieter).</li>
-<li><strong>Osc 2 / IFS:</strong> Relative output level of each
-oscillator in the final mix.</li>
+(every note at full level, the default), Light, Medium, or Full
+(velocity squared — a half-strength note is 12 dB quieter).</li>
+<li><strong>Osc 2 / IFS:</strong> Output level of each oscillator in the
+final mix (defaults: Osc 2 at 0, IFS at 0.5).</li>
 <li><strong>Spread:</strong> Stereo width of the summed output (0% =
-mono, 100% = full width) — pairs with the oscillators' Detune controls:
-at 0% spread, detuned left/right signals fold back together and the
-detune shimmer disappears; at 100% you get the full stereo effect.</li>
-<li><strong>Glide:</strong> Portamento time between notes. Only active
-in Mono voice mode — in Poly mode each voice starts fresh, so there's no
-previous pitch to glide from.</li>
+mono, 100% = full width, the default) — pairs with the oscillators'
+Detune controls: at 0% spread, detuned left/right signals fold back
+together and the detune shimmer disappears; at 100% you get the full
+stereo effect.</li>
+<li><strong>Glide:</strong> Portamento time between notes, 0.1 ms to 2 s
+(default 10 ms). Only active in Mono voice mode, and greyed out
+otherwise — in Poly mode each voice starts fresh, so there's no previous
+pitch to glide from.</li>
 </ul>
 </section>
 <section id="presets" class="callout callout-note card">
 <h2>Presets</h2>
-<p>The dropdown next to the logo recalls a saved patch, applying every
-parameter it specifies at once. Parameters a preset doesn't mention are
-left at their current value.</p>
+<p>The <strong>Preset</strong> menu, right of the IFSynth wordmark in
+the top strip, recalls a factory patch, applying every parameter it
+specifies at once. Parameters a preset doesn't mention are left at their
+current value. It shows <code>--</code> until you pick one.</p>
 <p><strong>Save</strong> and <strong>Load</strong>, left of the Help
 button, write the patch to a file and read one back, through the
 system's file dialog. The first time, the dialog opens on
@@ -454,7 +573,9 @@ used.</p>
 <ul>
 <li>A saved patch has every sound parameter and leaves out MPE; loading
 one sets those parameters and leaves MPE alone.</li>
-<li>The preset menu then shows the patch's name, dimmed.</li>
+<li>The preset menu then shows the patch's name, dimmed. If the file
+couldn't be written or read, it says <code>Couldn't save</code> or
+<code>Couldn't load</code> there instead.</li>
 <li>The file is the same JSON as the factory presets, so a patch you
 save can be put in the source's <code>Presets</code> folder to build it
 in as a factory preset.</li>
