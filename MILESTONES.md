@@ -27,16 +27,16 @@
 - [x] VST3 via clap-wrapper (macOS + Linux); Tuning + Brightness + Pressure note expressions via
       CLAP_PLUGIN_AS_VST3. Steinberg validator: 47 pass, 0 fail (macOS, 2026-10-21)
 - [x] AUv2 via clap-wrapper (macOS, `aumu IFSy nLKL`); auval passes; AUv2 GUI patch in patches/
-- [ ] By hand: Logic (AUv2), REAPER (VST3 + AUv2), Bitwig (VST3 per-note Tuning); Linux VST3
-- [ ] Custom UI controls for Legato and Scale Release params (currently host-only)
+- [ ] By hand: Logic (AUv2), REAPER (VST3 + AUv2), Bitwig (VST3 per-note Tuning); Linux VST3 (Logic done 2026-11-01)
+- [x] Custom UI controls for Legato and Scale Release params (in the IFS Envelope panel, both envelopes)
 - [ ] Pitch 7.25 as persistent per-key tuning table (CLAP tuning stays per-note)
-- [ ] Move onto the DPF fork (erickampman/DPF) with own DGL_NAMESPACE
-- [ ] Use uw::ump for UMP decode (plugins-roadmap.md)
+- [x] Move onto the DPF fork (erickampman/DPF) with own DGL_NAMESPACE (2026-10-23)
+- [ ] Use uw-core's uw::ump for UMP decode, as StruckKit does
 
 ## Save and Load (2026-10-27)
 - [x] Save / Load in the header write the patch as the factory presets' JSON and read it back (src/UI/PresetFile.hpp),
       through DPF's file dialog; MPE left out, loaded values clamped to each param's range.
-      Ported from StruckGaussian (ReleaseUMP R2-15). The patch mirror the
+      Ported from StruckGaussian. The patch mirror the
       dumper used is now always kept (Save writes it), and set to the defaults before the editor reads the patch, not
       after, which had made a reopened editor dump the defaults.
       ifs-presetfile checks the round trip, every factory preset, and non-presets
@@ -45,4 +45,4 @@
       set_parent; the home folder comes from the account, not the sandboxed $HOME; failures show in the Preset menu
       (StruckGaussian 3f0c97c)
 - [x] By hand on Linux (2026-11-01): Save and Load (DPF's own dialog)
-- [ ] By hand: Save and Load in Logic Pro (AUv2) and a CLAP host on macOS
+- [x] By hand on the Mac (2026-11-01): Save and Load in Logic Pro (AUv2) and StageHand (CLAP)
