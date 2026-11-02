@@ -33,10 +33,6 @@ source only.
 The [help page](Resources/help.md), also behind the editor's Help button, describes every control.
 [docs/how-it-works.md](docs/how-it-works.md) has the voice and the MIDI 2.0 details.
 
-## Known gaps
-
-- The envelopes' Legato and Scale Release are host parameters with no control in the editor yet.
-
 ## Installing
 
 The download holds `IFSynth.clap`. Put it in your CLAP folder (create the folder if it isn't there),
