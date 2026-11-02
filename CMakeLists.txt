@@ -116,9 +116,10 @@ add_subdirectory(dpf)
 # USE_FILE_BROWSER=TRUE brings in the Distrho String/ChildProcess helpers that impl uses, and
 # builds the file dialog Save / Load open (DISTRHO_UI_FILE_BROWSER).
 dpf__add_dgl_opengl(TRUE TRUE TRUE)
-# IFSynth's own namespace (UmpireDAW's docs/decisions.md, "DPF fork"): on macOS pugl names its
-# Objective-C classes after it, so two DPF binaries with the same one in a host collide.
-target_compile_definitions(dgl-opengl PUBLIC DGL_NAMESPACE=IFSynthDGL)
+# IFSynth's own namespaces: on macOS pugl names its Objective-C classes after DGL_NAMESPACE, and
+# DPF's web view (the Help page) its delegate after DISTRHO_NAMESPACE, so two DPF binaries
+# that share either in one host collide. PUBLIC, so every DPF source in the plugin agrees.
+target_compile_definitions(dgl-opengl PUBLIC DGL_NAMESPACE=IFSynthDGL DISTRHO_NAMESPACE=IFSynthDISTRHO)
 
 # --- ifsynth_core: the whole plugin (DSP + host glue + GUI shell) as one static archive ---------
 # Shared by the .clap output below. Hidden visibility for our own objects, so clap_entry — marked
