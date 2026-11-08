@@ -13,9 +13,9 @@
 #ifndef DISTRHO_PLUGIN_INFO_H_INCLUDED
 #define DISTRHO_PLUGIN_INFO_H_INCLUDED
 
-#define DISTRHO_PLUGIN_BRAND       "example"
+#define DISTRHO_PLUGIN_BRAND       "Unlikelyware"
 #define DISTRHO_PLUGIN_NAME        "IFSynth"
-#define DISTRHO_PLUGIN_URI         "https://example.com/ifsynth"
+#define DISTRHO_PLUGIN_URI         "https://unlikelyware.com/ifsynth"
 #define DISTRHO_PLUGIN_CLAP_ID     "com.unlikelyware.ifsynth"
 #define DISTRHO_PLUGIN_CLAP_FEATURES "instrument", "synthesizer", "stereo"
 #define DISTRHO_PLUGIN_BRAND_ID    Exmp
