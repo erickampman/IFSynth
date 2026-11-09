@@ -25,6 +25,7 @@
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <functional>
 #include <memory>
 #include <string>
@@ -56,9 +57,6 @@
 #include <cstdlib>
 #include <cstdio>
 
-#include "extra/WebView.hpp" // native WebView overlay (WKWebView/WebKitGTK/WebView2), for Help.
-                              // Must be included at global scope (see DPF's EmbedExternalUI
-                              // example); WebView.hpp opens the DISTRHO namespace itself.
 
 START_NAMESPACE_DISTRHO
 
@@ -261,9 +259,8 @@ public:
         fPresetDropdown->setPlaceholder("--");
         fPresetDropdown->setIndex(-1); // no preset selected until the user picks one
 
-        // Help: toggles a native WebView overlay showing the bundled help.html. Right-aligned in
-        // the top strip (see the dev DUMP button's placement, further right when both exist).
-        fHelpButton = std::make_unique<HelpButton>(this, [this] { toggleHelp(); });
+        // Help: opens the bundled help page in the default browser, as the other Unlikelyware synths do.
+        fHelpButton = std::make_unique<HelpButton>(this, [] { openHelp(); });
         fHelpButton->setLabel("Help");
 
         // Save / Load the patch as a preset file (PresetFile.hpp), through the system file dialog.
@@ -290,11 +287,6 @@ public:
         updateGlideEnabled();
     }
 
-    ~IFSynthUI() override
-    {
-        if (fHelpWebView != nullptr)
-            webViewDestroy(fHelpWebView);
-    }
 
 protected:
     /* -- host -> UI ------------------------------------------------------- */
@@ -512,16 +504,12 @@ protected:
     {
         UI::onResize(ev);
         layout();
-        if (fHelpWebView != nullptr)
-            resizeHelpWebView();
     }
 
-    // Two jobs on the idle tick:
-    //  1. Some Linux hosts (notably REAPER via pugl) don't apply the UI's initial size until the
+    // On the idle tick: Some Linux hosts (notably REAPER via pugl) don't apply the UI's initial size until the
     //     event loop starts pumping, so the window loads mis-sized (top gap, bottom row clipped)
     //     until a manual resize. Re-assert the default size once on the first tick to force the
     //     host to apply correct geometry, which drives onResize() -> layout().
-    //  2. WebViews need regular pumping to process their own event loop / message callbacks.
     void uiIdle() override
     {
 #ifndef __APPLE__
@@ -534,8 +522,6 @@ protected:
             setSize(DISTRHO_UI_DEFAULT_WIDTH, DISTRHO_UI_DEFAULT_HEIGHT);
         }
 #endif
-        if (fHelpWebView != nullptr)
-            webViewIdle(fHelpWebView);
     }
 
 #if IFSYNTH_PRESET_DUMP
@@ -573,8 +559,6 @@ private:
     Browse                         fBrowsing = Browse::None;
     std::string                    fPatchName;          // the saved / loaded patch, "" for none yet
     std::string                    fLastDir;            // where the last Save / Load went
-    WebViewHandle                  fHelpWebView = nullptr;
-    int                             fTopPad = 0; // set each layout() pass; read by the help-panel geometry below
     std::unique_ptr<PopupMenu>     fMenu;
     // Sentinel dropdown id, distinct from every real ParamIndex (which are all < kParamCount),
     // so dropdownClicked()/menuSelected() can tell the preset selector apart from a per-param
@@ -751,81 +735,42 @@ private:
         if (fKnobs[kParamSlewRate]) fKnobs[kParamSlewRate]->setEnabled(mono);
     }
 
-    // Help panel: a native WebView overlay covering everything below the top strip, so the
-    // always-visible Help button up there can toggle it closed again.
-    void helpPanelGeometry(int& x, int& y, int& w, int& h) const
+    // The help page is embedded (Resources/help.html), so it can't be pointed at in place: write it,
+    // plus the logo it shows as "Unlikelyware.png", to a temp folder and open that in the default
+    // browser, as the other Unlikelyware synths do. Rewritten on every click so it always matches
+    // this build.
+    static void openHelp()
     {
-        const int m = 8;
-        x = m;
-        y = fTopPad + m;
-        w = static_cast<int>(getWidth()) - 2 * m;
-        h = static_cast<int>(getHeight()) - fTopPad - 2 * m;
-    }
+        namespace fs = std::filesystem;
+        std::error_code ec;
+        const fs::path dir = fs::temp_directory_path(ec) / "IFSynth-help";
+        if (ec) return;
+        fs::create_directories(dir, ec);
+        if (ec) return;
 
-    void resizeHelpWebView()
-    {
-        int x, y, w, h;
-        helpPanelGeometry(x, y, w, h);
-        webViewResize(fHelpWebView, static_cast<uint>(w), static_cast<uint>(h), fUiScale);
-    }
-
-    static std::string helpDir()
-    {
-        const char* tmp = std::getenv("TMPDIR");
-        std::string dir = (tmp && *tmp) ? tmp : "/tmp";
-        if (!dir.empty() && dir.back() != '/') dir += '/';
-        return dir;
-    }
-
-    static bool writeFile(const std::string& path, const unsigned char* data, unsigned int size)
-    {
-        FILE* const f = std::fopen(path.c_str(), "wb");
-        if (f == nullptr)
-            return false;
-        std::fwrite(data, 1, size, f);
-        std::fclose(f);
-        return true;
-    }
-
-    // The WebView needs a real file:// URL, not an in-memory buffer, so the embedded HTML bytes
-    // get written out here. Overwritten every time the panel opens, so it always matches
-    // whatever's actually embedded in this build. help.html shows the logo as "Unlikelyware.png",
-    // so it is written out beside the page under that name.
-    static std::string writeHelpFile()
-    {
-        const std::string dir = helpDir();
-        const std::string path = dir + "ifsynth-help.html";
-        if (!writeFile(path, EmbeddedResources::helpData, EmbeddedResources::helpDataSize))
-            return "";
-        writeFile(dir + "Unlikelyware.png", EmbeddedResources::Unlikelyware_Final_ColorData,
-                  EmbeddedResources::Unlikelyware_Final_ColorDataSize);
-        return path;
-    }
-
-    void toggleHelp()
-    {
-        if (fHelpWebView != nullptr)
-        {
-            webViewDestroy(fHelpWebView);
-            fHelpWebView = nullptr;
-            fHelpButton->setOpen(false);
+        auto write = [&](const char* name, const unsigned char* data, unsigned int size) {
+            std::ofstream out(dir / name, std::ios::binary | std::ios::trunc);
+            out.write(reinterpret_cast<const char*>(data), static_cast<std::streamsize>(size));
+            return static_cast<bool>(out);
+        };
+        write("Unlikelyware.png", EmbeddedResources::Unlikelyware_Final_ColorData,
+              EmbeddedResources::Unlikelyware_Final_ColorDataSize);
+        if (!write("help.html", EmbeddedResources::helpData, EmbeddedResources::helpDataSize))
             return;
+
+        // Quoted for the shell: temp paths can contain spaces.
+        std::string quoted = "'";
+        for (const char c : (dir / "help.html").string()) {
+            if (c == '\'') quoted += "'\\''"; else quoted += c;
         }
-
-        const std::string path = writeHelpFile();
-        if (path.empty())
-            return;
-        const std::string url = "file://" + path;
-
-        int x, y, w, h;
-        helpPanelGeometry(x, y, w, h);
-
-        WebViewOptions options;
-        options.offset.x = x;
-        options.offset.y = y;
-        fHelpWebView = webViewCreate(url.c_str(), getWindow().getNativeWindowHandle(),
-                                      static_cast<uint>(w), static_cast<uint>(h), fUiScale, options);
-        fHelpButton->setOpen(fHelpWebView != nullptr);
+        quoted += "'";
+#if defined(DISTRHO_OS_MAC)
+        const std::string cmd = "open " + quoted;
+#else
+        const std::string cmd = "xdg-open " + quoted + " >/dev/null 2>&1 &"; // xdg-open can block
+#endif
+        const int rc = std::system(cmd.c_str());
+        (void)rc;
     }
 
     std::unique_ptr<GroupBox> makeGroup(const char* title, Color accent)
@@ -917,7 +862,6 @@ private:
         // breathing room above/below.
         const int logoH  = static_cast<int>(48 * scale);
         const int topPad = logoH + static_cast<int>(6 * scale);
-        fTopPad = topPad;
         // Four rows: IFS Osc | Osc 2, the Env/LFO tab panel | LPF, CV Mixer | Amp, and the
         // OscMod | Osc2Mod | LpfMod strip. Derived from the canvas height so it fills any size
         // (Retina-safe); the aspect ratio is locked in the constructor. Row 1 is the tallest so the

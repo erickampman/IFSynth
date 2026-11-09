@@ -105,19 +105,17 @@ add_custom_command(
 add_custom_target(generate_resources DEPENDS "${IFSYNTH_RESOURCES_HPP}" "${IFSYNTH_RESOURCES_CPP}")
 
 # --- DPF is used ONLY for the GUI ------------------------------------------
-# UIExporter + NanoVG + pugl (plus the native WebView the Help button needs). The CLAP entry point
+# UIExporter + NanoVG + pugl. The CLAP entry point
 # is ours (src/plugin.cpp), because DPF's generated CLAP wrapper cannot receive MIDI 2.0 note
 # events — see that file's header.
 add_subdirectory(dpf)
 # dgl-opengl is normally created by dpf_add_plugin()'s UI_TYPE branch; call the same helper
-# directly. SHARED_RESOURCES=TRUE embeds DGL's DejaVu font. USE_WEB_VIEW=TRUE mirrors
-# dpf_add_plugin's USE_WEB_VIEW: it defines DGL_USE_WEB_VIEW PUBLIC (required by
-# DistrhoPluginChecks.h when DISTRHO_UI_WEB_VIEW is 1) and builds DGL's own WebView impl.
-# USE_FILE_BROWSER=TRUE brings in the Distrho String/ChildProcess helpers that impl uses, and
-# builds the file dialog Save / Load open (DISTRHO_UI_FILE_BROWSER).
-dpf__add_dgl_opengl(TRUE TRUE TRUE)
+# directly. SHARED_RESOURCES=TRUE embeds DGL's DejaVu font. USE_FILE_BROWSER=TRUE builds the file
+# dialog Save / Load open (DISTRHO_UI_FILE_BROWSER). USE_WEB_VIEW=FALSE: Help opens in the default
+# browser, so no WebView (and no WebKit) is built.
+dpf__add_dgl_opengl(TRUE TRUE FALSE)
 # IFSynth's own namespaces: on macOS pugl names its Objective-C classes after DGL_NAMESPACE, and
-# DPF's web view (the Help page) its delegate after DISTRHO_NAMESPACE, so two DPF binaries
+# DPF's file dialog its delegate after DISTRHO_NAMESPACE, so two DPF binaries
 # that share either in one host collide. PUBLIC, so every DPF source in the plugin agrees.
 target_compile_definitions(dgl-opengl PUBLIC DGL_NAMESPACE=IFSynthDGL DISTRHO_NAMESPACE=IFSynthDISTRHO)
 
@@ -152,10 +150,8 @@ target_compile_definitions(ifsynth_core PUBLIC
     IFSYNTH_VERSION_STRING="${PROJECT_VERSION}")
 target_link_libraries(ifsynth_core PUBLIC pm_framework dgl-opengl)
 add_dependencies(ifsynth_core generate_presets generate_resources)
-# TRUE = the UI's Help button opens a native WebView. On macOS this adds DistrhoUI_macOS.mm and
-# links WebKit; the WebView implementation itself comes from DPF's UI sources (DistrhoUI_macOS.mm /
-# DistrhoUI.cpp / DistrhoUI_win32.cpp), not from dgl.
-dpf__add_plugin_specific_ui_sources(ifsynth_core TRUE)
+# FALSE = no WebView. On macOS this still adds DistrhoUI_macOS.mm (the editor's native window glue).
+dpf__add_plugin_specific_ui_sources(ifsynth_core FALSE)
 if(APPLE)
     # The live Retina scale of the host window (see the file's header comment).
     target_sources(ifsynth_core PRIVATE src/UI/BackingScale_mac.mm)

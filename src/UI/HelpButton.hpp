@@ -1,7 +1,6 @@
 // HelpButton.hpp — a "?" box with a caption above it, styled like Dropdown and HeaderButton so they
-// sit together in the header (the same button as the other Unlikelyware plugins). Used to toggle
-// the Help panel; the box's glyph swaps between "?" and "x" so it reads as open/close rather than
-// a single fixed action.
+// sit together in the header (the same button as the other Unlikelyware plugins). A click runs
+// the caller's action (the editor opens the embedded help page in the default browser).
 
 #ifndef IFSYNTH_HELPBUTTON_HPP
 #define IFSYNTH_HELPBUTTON_HPP
@@ -22,7 +21,6 @@ public:
         fHasFont = loadSharedResources();
     }
 
-    void setOpen(bool open) { fGlyph = open ? "x" : "?"; repaint(); }
     void setLabel(const std::string& label) { fLabel = label; }
     void setUiScale(float s)
     {
@@ -56,7 +54,7 @@ protected:
             textAlign(ALIGN_CENTER | ALIGN_MIDDLE);
             fontSize(15.0f * fUiScale);
             fillColor(Color(226, 230, 236));
-            text(bx + bw * 0.5f, by + bh * 0.5f, fGlyph.c_str(), nullptr);
+            text(bx + bw * 0.5f, by + bh * 0.5f, "?", nullptr);
         }
     }
 
@@ -91,7 +89,6 @@ private:
 
     std::function<void()> fOnClick;
     std::string           fLabel;
-    std::string           fGlyph = "?";
     bool                  fHasFont = false;
     bool                  fPressed = false;
     float                 fUiScale = 1.0f;

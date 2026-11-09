@@ -27,7 +27,7 @@ Most of IFSynth's sound sources and modulators share the same idea: a small 2D f
 
 ::: {.callout .callout-note .card}
 ## The Window {#window}
-Along the top: the Unlikelyware logo, the **IFSynth** wordmark, and the **Preset** menu; at the far right, **Save**, **Load**, and **Help**. **Help** opens this page in a panel inside the plugin window, covering everything below the top strip; click **Help** again to close it.
+Along the top: the Unlikelyware logo, the **IFSynth** wordmark, and the **Preset** menu; at the far right, **Save**, **Load**, and **Help**. **Help** opens this page in your web browser.
 
 Below that, four rows of panels:
 
