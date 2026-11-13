@@ -37,6 +37,9 @@
 #include "GroupBox.hpp"
 #include "HeaderButton.hpp"
 #include "HelpButton.hpp"
+#if !defined(DISTRHO_OS_MAC) && !defined(DISTRHO_OS_WINDOWS)
+#include "uw/base/HelpServer.h"   // uw-core: help over loopback on Linux
+#endif
 #include "IFSControl.hpp"
 #include "IFSEnvControl.hpp"
 #include "CPPTypes.hpp"         // DEFAULT_SAMPLE_RATE (the UIExporter's nominal rate below)
@@ -260,7 +263,7 @@ public:
         fPresetDropdown->setIndex(-1); // no preset selected until the user picks one
 
         // Help: opens the bundled help page in the default browser, as the other Unlikelyware synths do.
-        fHelpButton = std::make_unique<HelpButton>(this, [] { openHelp(); });
+        fHelpButton = std::make_unique<HelpButton>(this, [this] { openHelp(); });
         fHelpButton->setLabel("Help");
 
         // Save / Load the patch as a preset file (PresetFile.hpp), through the system file dialog.
@@ -555,6 +558,9 @@ private:
     std::unique_ptr<Dropdown>      fPresetDropdown;
     const clap_plugin_t*           fPlugin = nullptr;  // the raw CLAP plugin (see plugin_gui.h)
     std::unique_ptr<HelpButton>    fHelpButton;
+#if !defined(DISTRHO_OS_MAC) && !defined(DISTRHO_OS_WINDOWS)
+    uw::HelpServer fHelpServer;   // openHelp()'s, while the editor is open
+#endif
     std::unique_ptr<HeaderButton>  fSaveButton, fLoadButton;
     Browse                         fBrowsing = Browse::None;
     std::string                    fPatchName;          // the saved / loaded patch, "" for none yet
@@ -739,8 +745,20 @@ private:
     // plus the logo it shows as "Unlikelyware.png", to a temp folder and open that in the default
     // browser, as the other Unlikelyware synths do. Rewritten on every click so it always matches
     // this build.
-    static void openHelp()
+    void openHelp()
     {
+#if !defined(DISTRHO_OS_MAC) && !defined(DISTRHO_OS_WINDOWS)
+        // Linux: served over loopback (uw-core's HelpServer), not written to /tmp,
+        // as a snap or Flatpak browser can't read the real /tmp.
+        fHelpServer.open({
+            {"help.html", std::string(reinterpret_cast<const char*>(EmbeddedResources::helpData),
+                                      EmbeddedResources::helpDataSize)},
+            {"Unlikelyware.png",
+             std::string(reinterpret_cast<const char*>(EmbeddedResources::Unlikelyware_Final_ColorData),
+                         EmbeddedResources::Unlikelyware_Final_ColorDataSize)},
+        });
+        return;
+#endif
         namespace fs = std::filesystem;
         std::error_code ec;
         const fs::path dir = fs::temp_directory_path(ec) / "IFSynth-help";
