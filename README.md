@@ -33,6 +33,13 @@ source only.
 The [help page](Resources/help.md), also behind the editor's Help button, describes every control.
 [docs/how-it-works.md](docs/how-it-works.md) has the voice and the MIDI 2.0 details.
 
+## Known gaps
+
+- MPE's upper zone isn't supported, and Pitch 7.25 lasts for the sounding note only (no tuning
+  table).
+- Factory presets are chosen in the editor; CLAP's preset discovery, which lets a host's browser
+  list them, isn't implemented.
+
 ## Installing
 
 The download holds `IFSynth.clap`. Put it in your CLAP folder (create the folder if it isn't there),
