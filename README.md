@@ -12,8 +12,9 @@ A fractal synth from Unlikelyware: its oscillator, envelopes and LFOs are all sh
 | Version | 0.9.0 (preview) |
 | License | MIT |
 
-**Downloads:** ready-built plugins will be on itch.io with the 0.9 preview. This repo has the
-source only.
+**Downloads:** ready-built plugins will be in the
+[Unlikelyware downloads](https://github.com/erickampman/unlikelyware) with the 0.9 preview. This repo
+has the source only.
 
 ## What makes it different
 
