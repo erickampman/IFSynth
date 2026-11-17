@@ -1,6 +1,6 @@
 // HelpButton.hpp — a "?" box with a caption above it, styled like Dropdown and HeaderButton so they
 // sit together in the header (the same button as the other Unlikelyware plugins). A click runs
-// the caller's action (the editor opens the embedded help page in the default browser).
+// the caller's action (the editor opens the embedded help page in a window of its own).
 
 #ifndef IFSYNTH_HELPBUTTON_HPP
 #define IFSYNTH_HELPBUTTON_HPP

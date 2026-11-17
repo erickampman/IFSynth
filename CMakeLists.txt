@@ -88,10 +88,11 @@ add_custom_target(generate_presets DEPENDS "${IFSYNTH_GENERATED_PRESETS_H}")
 # on the resource file once built — same reasoning as the preset codegen above.
 set(IFSYNTH_RESOURCES_HPP "${CMAKE_BINARY_DIR}/generated/EmbeddedResources.hpp")
 set(IFSYNTH_RESOURCES_CPP "${CMAKE_BINARY_DIR}/generated/EmbeddedResources.cpp")
-# res2c.py embeds a whole folder and names each symbol by the file's stem, so help.md (the source of
-# help.html) would collide with help.html. Copy everything but *.md into a staging folder first.
+# res2c.py embeds a whole folder and names each symbol by the file's stem, so help.html (help.md made
+# into a web page, for the site) would collide with help.md, which the plugin's help window reads.
+# Copy everything but help.html into a staging folder first.
 file(GLOB IFSYNTH_RESOURCE_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/Resources/*")
-list(FILTER IFSYNTH_RESOURCE_FILES EXCLUDE REGEX "\\.md$")
+list(FILTER IFSYNTH_RESOURCE_FILES EXCLUDE REGEX "\\.html$")
 set(IFSYNTH_RESOURCES_STAGING "${CMAKE_BINARY_DIR}/generated/Resources")
 add_custom_command(
     OUTPUT "${IFSYNTH_RESOURCES_HPP}" "${IFSYNTH_RESOURCES_CPP}"
@@ -111,8 +112,8 @@ add_custom_target(generate_resources DEPENDS "${IFSYNTH_RESOURCES_HPP}" "${IFSYN
 add_subdirectory(dpf)
 # dgl-opengl is normally created by dpf_add_plugin()'s UI_TYPE branch; call the same helper
 # directly. SHARED_RESOURCES=TRUE embeds DGL's DejaVu font. USE_FILE_BROWSER=TRUE builds the file
-# dialog Save / Load open (DISTRHO_UI_FILE_BROWSER). USE_WEB_VIEW=FALSE: Help opens in the default
-# browser, so no WebView (and no WebKit) is built.
+# dialog Save / Load open (DISTRHO_UI_FILE_BROWSER). USE_WEB_VIEW=FALSE: Help opens in a window of
+# the plugin's own (uw-core's HelpWindow), so no WebView (and no WebKit) is built.
 dpf__add_dgl_opengl(TRUE TRUE FALSE)
 # IFSynth's own namespaces: on macOS pugl names its Objective-C classes after DGL_NAMESPACE, and
 # DPF's file dialog its delegate after DISTRHO_NAMESPACE, so two DPF binaries
@@ -135,8 +136,8 @@ set_target_properties(ifsynth_core PROPERTIES
     VISIBILITY_INLINES_HIDDEN ON
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED ON)
-# uw-core (git submodule), for one header: uw/base/HelpServer.h, which serves the
-# help page over loopback on Linux (a snap browser can't read /tmp). Nothing to link.
+# uw-core (git submodule), for headers only: uw/dgl/HelpWindow.hpp and uw/help/, the help page
+# in the plugin's own window. Nothing to link.
 # IFSYNTH_UW_CORE_DIR points at another uw-core clone (e.g. ../uw-core).
 set(IFSYNTH_UW_CORE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/uw-core" CACHE PATH "uw-core source")
 target_include_directories(ifsynth_core PRIVATE "${IFSYNTH_UW_CORE_DIR}/src")

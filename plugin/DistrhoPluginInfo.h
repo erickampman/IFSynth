@@ -34,7 +34,7 @@
 #define DISTRHO_PLUGIN_WANT_DIRECT_ACCESS 1
 
 #define DISTRHO_UI_USE_NANOVG          1   // knobs/labels drawn with NanoVG vector primitives
-#define DISTRHO_UI_WEB_VIEW           0   // Help opens in the default browser, not a WebView
+#define DISTRHO_UI_WEB_VIEW           0   // Help opens in a window of its own, not a WebView
 #define DISTRHO_UI_USER_RESIZABLE      1
 #define DISTRHO_UI_FILE_BROWSER        1   // Save / Load's file dialog (UI::openFileBrowser)
 #define DISTRHO_UI_DEFAULT_WIDTH       980
