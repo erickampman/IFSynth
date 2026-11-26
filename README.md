@@ -7,9 +7,9 @@ A fractal synth from Unlikelyware: its oscillator, envelopes and LFOs are all sh
 
 | | |
 |---|---|
-| Formats | CLAP. VST® 3 and AUv2 (macOS) build from source; ready-built in a later preview |
+| Formats | CLAP. VST® 3 and AUv2 (macOS) build from source; ready-built in 0.9.1 |
 | Platforms | Linux x86-64, macOS 26 or later on Apple Silicon. No Windows |
-| Version | 0.9.0 (preview) |
+| Version | 0.9.1 (preview) |
 | License | MIT |
 
 **Downloads:** ready-built plugins are in the

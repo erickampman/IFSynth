@@ -5,6 +5,12 @@ All notable changes to IFSynth. Versions follow the git tags; the format is
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-11-26
+
+### Added
+
+- VST® 3 and, on the Mac, AUv2 in the download, beside the CLAP.
+
 ### Changed
 
 - Help opens the help page in a window of the plugin's own, not in the web browser. Nothing is
@@ -22,3 +28,5 @@ First public preview.
 - MIDI 2.0 notes taken directly, so a Pitch 7.9 note plays its exact pitch; MPE and CLAP note
   expressions too.
 - CLAP plugin for Linux (x86-64) and macOS 26 or later (Apple Silicon).
+
+VST is a registered trademark of Steinberg Media Technologies GmbH.
